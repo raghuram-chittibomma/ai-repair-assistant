@@ -8,9 +8,9 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 9 of 10 — product ready for self-hosting on the LAN.** HTTP API
-> (`repair-assistant-api`), Docker deployment, and health checks (ADR-0016).
-> **LAN-only** — not exposed to the internet; no external auth or hardening planned.
+> **Status: Phase 9 of 10.** Run the app on your machine; Postgres lives on the LAN
+> Docker host. CLI, API, and web UI at `http://localhost:8080/ui` (see
+> [Deployment](docs/DEPLOYMENT.md)). **LAN-only** (D8) — not internet-facing.
 
 ---
 
@@ -63,32 +63,17 @@ repair-corpus bench-parse             # re-score extractors against parsing fixt
 repair-corpus parse tech-sheet-w11320651
 repair-corpus parse --all             # chunks under corpus/parsed/ (gitignored)
 
-# Phase 3 — copy .env.example → .env.local, start docker/compose.yaml, then:
+# Phase 3 — copy .env.example → .env.local (DATABASE_URL → LAN Postgres), then:
 repair-corpus db-migrate
-repair-corpus ingest --all --skip-embed   # text only
 repair-corpus ingest --all                # + local BGE embeddings (free)
 repair-corpus search "F5E1 door lock" --model WFW5620HW0
 
-# Phase 5 — add OPENAI_API_KEY to .env.local, then:
+# Phase 5+ — OPENAI_API_KEY in .env.local, app runs on your machine:
 repair-corpus ask "What does F5E2 mean?" --model WFW5620HW0
-
-# Phase 6 — multi-turn LangGraph troubleshooting:
 repair-corpus diagnose --model WFW5620HW0
-repair-corpus diagnose "Door locks but won't start, shows F5E2" --model WFW5620HW0
 
-# Phase 7 — safety policy (default audience: owner)
-repair-corpus ask "How do I measure voltage on the door lock?" --model WFW5620HW0
-repair-corpus ask "What are TEST #4 steps?" --model WFW5620HW0 --audience technician
-repair-corpus bench-safety
-
-# Phase 8 — live Q&A smoke bench (DB + OpenAI required)
-repair-corpus bench-qa --write
-
-# Phase 9 — HTTP API + web UI (see docs/DEPLOYMENT.md for LAN host)
-python -m repair_assistant.api.main
-# http://localhost:8080/ui
-
-repair-corpus bench-candidates --write
+# Web UI — same machine as CLI/API (see docs/DEPLOYMENT.md):
+python -m repair_assistant.api.main       # then open http://localhost:8080/ui
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
@@ -154,13 +139,14 @@ tests/                   deterministic tests
 
 Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are predetermined in the
 [charter](docs/CHARTER.md) (with [documented deviations](docs/CHARTER.md#deviations-from-this-charter)).
-PostgreSQL + pgvector are live via `docker/compose.yaml` and `repair-corpus ingest`.
-Embeddings are local open-source (`BAAI/bge-base-en-v1.5`, ADR-0009 / deviation D1);
-OpenAI is reserved for LLM inference. Docker services run on a shared LAN host; see
-[docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md). **LAN-only** — the API is not
-internet-facing and this project does not include public-deployment hardening (D8).
-Copy `docs/INFRASTRUCTURE.local.md.example` to `docs/INFRASTRUCTURE.local.md` for
-addresses and ports (that file is gitignored).
+
+**Typical layout:** Postgres on a shared **LAN Docker host**; CLI, API, web UI, and
+BGE embeddings on **your machine** — see [Deployment](docs/DEPLOYMENT.md) and
+[Infrastructure](docs/INFRASTRUCTURE.md). **LAN-only** (D8); not internet-facing.
+
+Embeddings are local open-source (`BAAI/bge-base-en-v1.5`, ADR-0009 / D1); OpenAI is
+reserved for LLM inference. Copy `docs/INFRASTRUCTURE.local.md.example` to
+`docs/INFRASTRUCTURE.local.md` for LAN host addresses (gitignored).
 
 ## Licence
 

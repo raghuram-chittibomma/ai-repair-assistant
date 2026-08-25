@@ -62,22 +62,19 @@ repair-corpus ingest --all                # local BAAI/bge-base-en-v1.5 (ADR-000
 Container name: `ai-repair-assistant-pg`. Image: `pgvector/pgvector:pg17`.
 See ADR-0008 / ADR-0009 for schema and embedding rules.
 
-## HTTP API (Phase 9)
+## HTTP API + web UI (Phase 9)
 
-`docker compose --env-file ../.env.local -f compose.yaml up -d --build` starts
-Postgres and the `ai-repair-assistant-api` container (port from `API_PORT` in
-`.env.local`, default 8080).
+**Default:** run on your laptop/workstation — not on the LAN Docker host.
 
-- `GET /health` — liveness
-- `GET /ready` — database connectivity
-- `POST /v1/search`, `/v1/ask`, `/v1/diagnose` — see ADR-0016
-
-No API key is required for normal LAN use (`REPAIR_API_KEY` stays empty).
-That optional hook exists only if an operator wants a shared secret on the
-local network; public exposure is out of scope ([D8](../CHARTER.md#deviations-from-this-charter)).
-
-For laptop-only development without Docker API:
-
-```bash
+```powershell
 python -m repair_assistant.api.main
 ```
+
+Open **http://localhost:8080/ui**. The app uses `DATABASE_URL` from `.env.local`
+to reach Postgres on the LAN host.
+
+Endpoints: `GET /health`, `GET /ready`, `POST /v1/search`, `/v1/ask`, `/v1/diagnose`
+(ADR-0016). No API key required (`REPAIR_API_KEY` empty, D8).
+
+**Optional:** run the API as a Docker container on the LAN host — see
+[DEPLOYMENT.md](DEPLOYMENT.md) (`docker/deploy-api.ps1`). Not needed for normal use.

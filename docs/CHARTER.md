@@ -948,5 +948,5 @@ ADRs / practice. Discussed with the project owner; update when new ADRs land.
 | D5 | Incremental depth | Below-document / structural change detection | Chunk `content_hash` skip ([ADR-0008](adr/0008-incremental-ingestion.md)); deepen later if manuals churn | **Accepted MVP** |
 | D6 | No downloader | Don’t redistribute / don’t circumvent | No fetcher at all ([ADR-0003](adr/0003-no-downloader.md)) | **Tightening** |
 | D7 | Docker placement | Self-hostable Docker | LAN Docker host ([ADR-0006](adr/0006-lan-docker-host.md)) | **Compatible** |
-| D8 | Deployment scope | Self-hostable product; auth *if required* | **LAN-only** — API/DB never internet-facing; no public auth/TLS work ([ADR-0016](adr/0016-http-api-docker.md)) | **Accepted** |
+| D8 | Deployment scope | Self-hostable product; auth *if required* | **LAN-only**; app on workstation + Postgres on LAN host; no internet-facing hardening ([DEPLOYMENT.md](DEPLOYMENT.md)) | **Accepted** |
 

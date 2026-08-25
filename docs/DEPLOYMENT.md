@@ -1,72 +1,102 @@
-# Deployment — LAN Docker host
+# Deployment
 
-How to run the **API + web UI** on `LAN_HOST` (or your LAN host). **LAN-only**
-(D8) — no internet exposure.
+How to run the app day-to-day. **LAN-only** (D8) — not exposed to the internet.
 
-## Current state check (from laptop)
+## Default: app on your machine, Postgres on the LAN host
 
-```powershell
-# Postgres should be open (already running from Phase 3)
-Test-NetConnection LAN_HOST -Port 5436
+This is the supported workflow:
 
-# API — closed until you deploy
-Test-NetConnection LAN_HOST -Port 8080
+| Component | Where it runs |
+| --- | --- |
+| **Postgres + pgvector** | LAN Docker host (e.g. `LAN_HOST:5436`) |
+| **CLI, API, web UI, BGE embeddings** | Your laptop / workstation |
+
+### 1. Configure `.env.local`
+
+Copy from `.env.example`. Minimum:
+
+```ini
+DATABASE_URL=postgresql://repair:YOUR_PASSWORD@LAN_HOST:5436/repair_assistant
+OPENAI_API_KEY=sk-...
+LLM_MODEL=gpt-4o-mini
+REPAIR_API_KEY=
 ```
 
-## Deploy the API on the host
+Leave `REPAIR_API_KEY` empty (LAN-only, no auth needed).
 
-Remote Docker from the laptop is **not** used. On the **Docker host** (RDP or
-local shell):
-
-1. Clone or pull this repo on the host (or copy the checkout).
-2. Ensure `.env.local` exists with at least:
-   - `POSTGRES_PASSWORD`
-   - `OPENAI_API_KEY`
-   - `HOST_PORT=5436` (existing Postgres)
-   - `API_PORT=8080`
-3. Run:
+### 2. Confirm the database is reachable
 
 ```powershell
-cd C:\path\to\ai-repair-assistant
+Test-NetConnection LAN_HOST -Port 5436
+```
+
+Postgres must already be running on the LAN host (see [INFRASTRUCTURE.md](INFRASTRUCTURE.md)).
+
+### 3. Run the CLI
+
+```powershell
+pip install -e ".[dev]"
+python -m repair_assistant.corpus.cli ask "What does F5E2 mean?" --model WFW5620HW0
+python -m repair_assistant.corpus.cli diagnose --model WFW5620HW0
+```
+
+### 4. Run the API + web UI (optional)
+
+```powershell
+python -m repair_assistant.api.main
+```
+
+Open **http://localhost:8080/ui** in your browser.
+
+| URL | Purpose |
+| --- | --- |
+| `http://localhost:8080/ui` | Web chat (ask + diagnose) |
+| `http://localhost:8080/health` | Liveness |
+| `http://localhost:8080/ready` | Database connectivity |
+
+The API on your laptop connects to Postgres on the LAN host via `DATABASE_URL`.
+
+### 5. Eval benches (optional)
+
+```powershell
+python -m repair_assistant.corpus.cli bench-qa --write
+python -m repair_assistant.corpus.cli bench-candidates --write
+python -m repair_assistant.corpus.cli bench-safety
+```
+
+---
+
+## Troubleshooting (local app)
+
+| Symptom | Fix |
+| --- | --- |
+| `DATABASE_URL` / connection errors | Check `.env.local`; confirm port 5436 open on LAN host |
+| API `503` on `/ready` | Postgres not running on the LAN host |
+| First ask/search very slow | BGE model loading on your machine (~30–60s cold start) |
+| UI works but answers fail | Check `OPENAI_API_KEY` in `.env.local` |
+| `repair-corpus` not found | Use `python -m repair_assistant.corpus.cli …` |
+
+---
+
+## Optional: run everything on the LAN Docker host
+
+Not required for normal use. Only if you want the API container on the same
+machine as Postgres (e.g. always-on box without your laptop).
+
+On the **Docker host** (RDP / local shell), with the repo and `.env.local`:
+
+```powershell
 .\docker\deploy-api.ps1
 ```
 
-This builds the image, connects to Postgres via `host.docker.internal:5436`,
-and publishes the API on `8080`.
+Then use `http://<lan-host-ip>:8080/ui` from other machines on the network.
 
-### Full stack via Compose (fresh host)
+### Fresh host — Postgres + API via Compose
 
-If Postgres is **not** running yet:
+If Postgres is not running yet:
 
 ```powershell
 docker compose --env-file .env.local -f docker/compose.yaml up -d --build
 ```
 
-## Use from the LAN
-
-| URL | Purpose |
-| --- | --- |
-| `http://LAN_HOST:8080/ui` | Web chat (ask + diagnose) |
-| `http://LAN_HOST:8080/health` | Liveness |
-| `http://LAN_HOST:8080/ready` | DB connectivity |
-
-No `REPAIR_API_KEY` required (LAN-only).
-
-## Laptop CLI (unchanged)
-
-Point `.env.local` `DATABASE_URL` at `LAN_HOST:5436` and use:
-
-```powershell
-python -m repair_assistant.corpus.cli ask "What does F5E2 mean?" --model WFW5620HW0
-python -m repair_assistant.corpus.cli bench-qa --write
-python -m repair_assistant.corpus.cli bench-candidates --write
-```
-
-## Troubleshooting
-
-| Symptom | Fix |
-| --- | --- |
-| `8080` closed | Run `deploy-api.ps1` on the host |
-| API `503` on `/ready` | Postgres not running or wrong `DATABASE_URL` |
-| First ask very slow | BGE model loading (~30–60s cold start) |
-| UI loads but ask fails | Check `OPENAI_API_KEY` in host `.env.local` |
+See [INFRASTRUCTURE.md](INFRASTRUCTURE.md) for host/port policy.
