@@ -10,6 +10,7 @@ from repair_assistant.diagnostic.graph import build_diagnostic_graph, citations_
 from repair_assistant.diagnostic.state import DiagnosticGraphState, TurnResult
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.generate import LLMClient
+from repair_assistant.safety.models import Audience, SafetyAction
 
 
 class DiagnosticSession:
@@ -21,6 +22,7 @@ class DiagnosticSession:
         manifest: Manifest,
         *,
         appliance: Appliance | None = None,
+        audience: Audience = Audience.OWNER,
         llm: LLMClient | None = None,
         retrieval_limit: int = 8,
         overfetch: int = 40,
@@ -36,12 +38,18 @@ class DiagnosticSession:
             "messages": [],
             "appliance_model": appliance.model if appliance else None,
             "appliance_serial": appliance.serial if appliance else None,
+            "audience": audience.value,
             "retrieval_query": "",
             "evidence_text": "",
             "citations_available": [],
             "retrieval_count": 0,
             "abstained": False,
             "abstain_reason": "",
+            "safety_action": SafetyAction.ALLOW.value,
+            "safety_notice": "",
+            "safety_rule_id": "allow",
+            "prompt_directive": "",
+            "escalated": False,
         }
         self._turn = 0
 
@@ -74,4 +82,7 @@ class DiagnosticSession:
             citations=cited,
             retrieval_count=int(result.get("retrieval_count") or 0),
             turn=self._turn,
+            safety_action=result.get("safety_action", SafetyAction.ALLOW.value),
+            safety_notice=result.get("safety_notice", ""),
+            escalated=bool(result.get("escalated")),
         )

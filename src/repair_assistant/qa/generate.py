@@ -16,6 +16,9 @@ from repair_assistant.qa.context import (
 )
 from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.retrieval.search import search
+from repair_assistant.safety.gate import gate_answer
+from repair_assistant.safety.models import Audience, SafetyAction
+from repair_assistant.safety.policy import assess_request, block_message
 
 _SYSTEM = """You are a Whirlpool appliance repair assistant.
 
@@ -79,11 +82,26 @@ def ask(
     question: str,
     *,
     appliance: Appliance | None = None,
+    audience: Audience = Audience.OWNER,
     retrieval_limit: int = 8,
     overfetch: int = 40,
     llm: LLMClient | None = None,
 ) -> AnswerResult:
     """Retrieve applicable chunks, then generate a cited answer or abstain."""
+    assessment = assess_request(question, audience=audience)
+    if assessment.action == SafetyAction.BLOCK:
+        return AnswerResult(
+            question=question,
+            answer=block_message(assessment),
+            abstained=True,
+            abstain_reason=assessment.reason,
+            citations=[],
+            retrieval_count=0,
+            safety_action=assessment.action.value,
+            safety_notice=assessment.reason,
+            escalated=True,
+        )
+
     result = search(
         db,
         manifest,
@@ -101,11 +119,16 @@ def ask(
             abstain_reason="No applicable manufacturer evidence was retrieved.",
             citations=[],
             retrieval_count=0,
+            safety_action=assessment.action.value,
+            safety_notice=assessment.reason,
         )
 
     evidence_text, available = format_evidence(result.hits)
+    system = _SYSTEM
+    if assessment.prompt_directive:
+        system = f"{_SYSTEM}\n\n{assessment.prompt_directive}"
     llm = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
-    raw = llm.complete(_SYSTEM, build_user_prompt(question, appliance, evidence_text))
+    raw = llm.complete(system, build_user_prompt(question, appliance, evidence_text))
 
     if raw.upper().startswith("ABSTAIN:"):
         return AnswerResult(
@@ -115,15 +138,22 @@ def ask(
             abstain_reason=raw.split(":", 1)[-1].strip(),
             citations=[],
             retrieval_count=len(result.hits),
+            safety_action=assessment.action.value,
+            safety_notice=assessment.reason,
         )
 
-    cited = citations_from_answer(raw, available)
+    gated = gate_answer(assessment, raw, evidence_text=evidence_text)
+    cited = [] if gated.blocked else citations_from_answer(gated.text, available)
     return AnswerResult(
         question=question,
-        answer=raw,
-        abstained=False,
+        answer=gated.text,
+        abstained=gated.blocked,
+        abstain_reason=gated.notice if gated.blocked else "",
         citations=cited,
         retrieval_count=len(result.hits),
+        safety_action=gated.action.value,
+        safety_notice=gated.notice,
+        escalated=gated.escalated,
     )
 
 

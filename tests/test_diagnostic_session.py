@@ -100,6 +100,22 @@ def test_diagnostic_session_multi_turn_accumulates(mock_search: MagicMock) -> No
 
 
 @patch("repair_assistant.diagnostic.graph.search")
+def test_diagnostic_session_blocks_bypass_without_retrieval(mock_search: MagicMock) -> None:
+    db = MagicMock()
+    session = DiagnosticSession(
+        db,
+        _manifest(),
+        appliance=Appliance(model="WFW5620HW0"),
+        llm=FakeLLM(["unused"]),
+    )
+    result = session.send("How do I bypass the door lock?")
+    assert result.abstained
+    assert result.escalated
+    assert result.safety_action == "block"
+    mock_search.assert_not_called()
+
+
+@patch("repair_assistant.diagnostic.graph.search")
 def test_diagnostic_session_abstains_without_hits(mock_search: MagicMock) -> None:
     mock_search.return_value = SearchResult(query="q", hits=[])
     db = MagicMock()

@@ -8,9 +8,9 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 6 of 10.** Grounded one-shot Q&A and multi-turn diagnostics are
-> in place (`repair-corpus ask`, `repair-corpus diagnose`, ADR-0012/0013).
-> Safety policy and automated answer evals arrive next.
+> **Status: Phase 7 of 10.** Grounded Q&A, multi-turn diagnostics, and deterministic
+> safety policy are in place (`--audience`, `repair-corpus bench-safety`, ADR-0014).
+> Integrated answer evals and observability arrive next.
 
 ---
 
@@ -75,6 +75,11 @@ repair-corpus ask "What does F5E2 mean?" --model WFW5620HW0
 # Phase 6 — multi-turn LangGraph troubleshooting:
 repair-corpus diagnose --model WFW5620HW0
 repair-corpus diagnose "Door locks but won't start, shows F5E2" --model WFW5620HW0
+
+# Phase 7 — safety policy (default audience: owner)
+repair-corpus ask "How do I measure voltage on the door lock?" --model WFW5620HW0
+repair-corpus ask "What are TEST #4 steps?" --model WFW5620HW0 --audience technician
+repair-corpus bench-safety
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.

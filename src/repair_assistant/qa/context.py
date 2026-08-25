@@ -28,6 +28,9 @@ class AnswerResult:
     abstain_reason: str = ""
     citations: list[Citation] = field(default_factory=list)
     retrieval_count: int = 0
+    safety_action: str = "allow"
+    safety_notice: str = ""
+    escalated: bool = False
 
 
 def format_label(hit: Hit) -> str:

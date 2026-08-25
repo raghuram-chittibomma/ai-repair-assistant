@@ -699,10 +699,27 @@ def search_cmd(query: str, model: str | None, serial: str | None, limit: int, ov
         click.echo()
 
 
+def _echo_safety(*, action: str, notice: str, escalated: bool) -> None:
+    if action != "allow" or notice or escalated:
+        label = f"Safety: {action}"
+        if escalated:
+            label += " (escalated)"
+        click.secho(label, fg="yellow", bold=True)
+        if notice:
+            click.echo(notice)
+
+
 @main.command("ask")
 @click.argument("question")
 @click.option("--model", default=None, help="Appliance model for applicability filter.")
 @click.option("--serial", default=None, help="Serial number for range checks.")
+@click.option(
+    "--audience",
+    type=click.Choice(["owner", "technician"]),
+    default="owner",
+    show_default=True,
+    help="Who the answer is for — controls safety policy (Phase 7).",
+)
 @click.option("--limit", default=8, show_default=True, type=int, help="Evidence chunks to pass to the LLM.")
 @click.option(
     "--overfetch",
@@ -715,6 +732,7 @@ def ask_cmd(
     question: str,
     model: str | None,
     serial: str | None,
+    audience: str,
     limit: int,
     overfetch: int,
 ) -> None:
@@ -723,6 +741,7 @@ def ask_cmd(
     from repair_assistant.ingest.env import database_url
     from repair_assistant.ingest.store import Database
     from repair_assistant.qa.generate import ask
+    from repair_assistant.safety.models import Audience
 
     try:
         url = database_url()
@@ -738,6 +757,7 @@ def ask_cmd(
                 corpus,
                 question,
                 appliance=appliance,
+                audience=Audience(audience),
                 retrieval_limit=limit,
                 overfetch=overfetch,
             )
@@ -752,12 +772,20 @@ def ask_cmd(
         )
     click.echo(f"Retrieved {result.retrieval_count} chunk(s)")
     click.echo()
+    _echo_safety(
+        action=result.safety_action,
+        notice=result.safety_notice,
+        escalated=result.escalated,
+    )
+    if result.safety_notice:
+        click.echo()
 
     if result.abstained:
         click.secho("Abstained", fg="yellow", bold=True)
-        reason = result.abstain_reason or result.answer
-        if reason:
-            click.echo(reason)
+        if result.answer:
+            click.echo(result.answer)
+        elif result.abstain_reason:
+            click.echo(result.abstain_reason)
         return
 
     click.secho("Answer", bold=True)
@@ -774,6 +802,13 @@ def ask_cmd(
 @click.argument("message", required=False)
 @click.option("--model", required=True, help="Appliance model, e.g. WFW5620HW0")
 @click.option("--serial", default=None, help="Serial number for range checks.")
+@click.option(
+    "--audience",
+    type=click.Choice(["owner", "technician"]),
+    default="owner",
+    show_default=True,
+    help="Who the session is for — controls safety policy (Phase 7).",
+)
 @click.option("--limit", default=8, show_default=True, type=int, help="Evidence chunks per turn.")
 @click.option(
     "--overfetch",
@@ -786,6 +821,7 @@ def diagnose_cmd(
     message: str | None,
     model: str,
     serial: str | None,
+    audience: str,
     limit: int,
     overfetch: int,
 ) -> None:
@@ -794,6 +830,7 @@ def diagnose_cmd(
     from repair_assistant.diagnostic.session import DiagnosticSession
     from repair_assistant.ingest.env import database_url
     from repair_assistant.ingest.store import Database
+    from repair_assistant.safety.models import Audience
 
     try:
         url = database_url()
@@ -813,6 +850,11 @@ def diagnose_cmd(
             click.secho("Assistant:", bold=True)
             click.echo(result.assistant_message)
         click.echo(f"(retrieved {result.retrieval_count} chunk(s))")
+        _echo_safety(
+            action=result.safety_action,
+            notice=result.safety_notice,
+            escalated=result.escalated,
+        )
         if result.citations:
             click.secho("Sources:", bold=True)
             for cite in result.citations:
@@ -824,6 +866,7 @@ def diagnose_cmd(
             db,
             corpus,
             appliance=appliance,
+            audience=Audience(audience),
             retrieval_limit=limit,
             overfetch=overfetch,
         )
@@ -856,6 +899,18 @@ def diagnose_cmd(
                 _print_turn(session.send(stripped))
             except RuntimeError as exc:
                 raise click.ClickException(str(exc)) from exc
+
+
+@main.command("bench-safety")
+def bench_safety_cmd() -> None:
+    """Run deterministic safety-policy checks against evals/safety/fixtures.yaml."""
+    from repair_assistant.safety.bench import run_bench, scorecard_markdown
+
+    results = run_bench()
+    card = scorecard_markdown(results)
+    click.echo(card)
+    if any(r.hard and not r.passed for r in results):
+        raise click.ClickException("safety bench failed hard fixtures; see output above")
 
 
 def yaml_dump(data: dict) -> str:

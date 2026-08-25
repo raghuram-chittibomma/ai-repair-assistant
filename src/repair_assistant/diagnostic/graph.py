@@ -1,4 +1,4 @@
-"""LangGraph workflow: retrieve evidence, then respond for one diagnostic turn."""
+"""LangGraph workflow: assess safety, retrieve evidence, respond."""
 
 from __future__ import annotations
 
@@ -15,6 +15,16 @@ from repair_assistant.qa.context import citations_from_answer, format_evidence
 from repair_assistant.qa.generate import LLMClient, OpenAIClient
 from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.retrieval.search import search
+from repair_assistant.safety.gate import gate_answer
+from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
+from repair_assistant.safety.policy import assess_request, block_message
+
+
+def _latest_human(messages: list) -> str:
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage) and msg.content:
+            return str(msg.content)
+    return ""
 
 
 def _transcript(messages: list) -> str:
@@ -28,7 +38,6 @@ def _transcript(messages: list) -> str:
 
 
 def _retrieval_query(messages: list) -> str:
-    """Build a search query from the latest user turn and any error codes seen."""
     parts: list[str] = []
     codes: list[str] = []
     for msg in messages:
@@ -41,6 +50,45 @@ def _retrieval_query(messages: list) -> str:
         unique = sorted(set(codes))
         query = f"{' '.join(unique)} {query}".strip()
     return query
+
+
+def make_assess_node():
+    def assess(state: DiagnosticGraphState) -> dict:
+        audience = Audience(state.get("audience") or Audience.OWNER.value)
+        question = _latest_human(state["messages"])
+        assessment = assess_request(question, audience=audience)
+        blocked = assessment.action == SafetyAction.BLOCK
+        return {
+            "safety_action": assessment.action.value,
+            "safety_notice": assessment.reason,
+            "safety_rule_id": assessment.rule_id,
+            "prompt_directive": assessment.prompt_directive,
+            "escalated": blocked or assessment.action == SafetyAction.ESCALATE,
+            "abstained": blocked,
+            "abstain_reason": assessment.reason if blocked else "",
+        }
+
+    return assess
+
+
+def make_blocked_node():
+    def blocked(state: DiagnosticGraphState) -> dict:
+        assessment = SafetyAssessment(
+            action=SafetyAction.BLOCK,
+            rule_id=state.get("safety_rule_id") or "blocked",
+            reason=state.get("safety_notice") or "",
+            audience=Audience(state.get("audience") or Audience.OWNER.value),
+        )
+        content = block_message(assessment)
+        return {
+            "messages": [AIMessage(content=content)],
+            "abstained": True,
+            "abstain_reason": assessment.reason,
+            "escalated": True,
+            "retrieval_count": 0,
+        }
+
+    return blocked
 
 
 def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int, overfetch: int):
@@ -93,13 +141,24 @@ def make_respond_node(llm: LLMClient):
                 "abstain_reason": reason,
             }
 
+        assessment = SafetyAssessment(
+            action=SafetyAction(state.get("safety_action") or SafetyAction.ALLOW.value),
+            rule_id=state.get("safety_rule_id") or "allow",
+            reason=state.get("safety_notice") or "",
+            audience=Audience(state.get("audience") or Audience.OWNER.value),
+            prompt_directive=state.get("prompt_directive") or "",
+        )
+        system = _SYSTEM
+        if assessment.prompt_directive:
+            system = f"{_SYSTEM}\n\n{assessment.prompt_directive}"
+
         user_prompt = build_diagnostic_user_prompt(
             appliance_model=state.get("appliance_model"),
             appliance_serial=state.get("appliance_serial"),
             evidence_text=state.get("evidence_text", ""),
             transcript=_transcript(state["messages"]),
         )
-        raw = llm.complete(_SYSTEM, user_prompt)
+        raw = llm.complete(system, user_prompt)
         if raw.upper().startswith("ABSTAIN:"):
             reason = raw.split(":", 1)[-1].strip()
             return {
@@ -107,13 +166,28 @@ def make_respond_node(llm: LLMClient):
                 "abstained": True,
                 "abstain_reason": reason,
             }
+
+        gated = gate_answer(
+            assessment,
+            raw,
+            evidence_text=state.get("evidence_text", ""),
+        )
         return {
-            "messages": [AIMessage(content=raw)],
-            "abstained": False,
-            "abstain_reason": "",
+            "messages": [AIMessage(content=gated.text)],
+            "abstained": gated.blocked,
+            "abstain_reason": gated.notice if gated.blocked else "",
+            "safety_action": gated.action.value,
+            "safety_notice": gated.notice,
+            "escalated": gated.escalated,
         }
 
     return respond
+
+
+def _route_after_assess(state: DiagnosticGraphState) -> str:
+    if state.get("safety_action") == SafetyAction.BLOCK.value:
+        return "blocked"
+    return "retrieve"
 
 
 def build_diagnostic_graph(
@@ -126,9 +200,13 @@ def build_diagnostic_graph(
 ):
     llm = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
     graph = StateGraph(DiagnosticGraphState)
+    graph.add_node("assess", make_assess_node())
+    graph.add_node("blocked", make_blocked_node())
     graph.add_node("retrieve", make_retrieve_node(db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch))
     graph.add_node("respond", make_respond_node(llm))
-    graph.add_edge(START, "retrieve")
+    graph.add_edge(START, "assess")
+    graph.add_conditional_edges("assess", _route_after_assess, {"blocked": "blocked", "retrieve": "retrieve"})
+    graph.add_edge("blocked", END)
     graph.add_edge("retrieve", "respond")
     graph.add_edge("respond", END)
     return graph.compile()
