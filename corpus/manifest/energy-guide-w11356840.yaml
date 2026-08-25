@@ -28,8 +28,10 @@ provenance:
   license: LicenseRef-Whirlpool-Proprietary
   redistributable: false
   access_notes: >-
-    Named in the literature package of parts list W11320547 Rev C. Single-sourced
-    publication number; confirm on acquisition.
+    Named in the literature package of parts list W11320547 Rev C as W11356840.
+    A nearby publication W11356849 (energy-guide-w11356849.pdf) was acquired from
+    the manuals search but is a different document — image-only, no extractable
+    model marking — and must not be filed as this entry. Keep hunting W11356840.
   local_filename: W11356840.pdf
 
 identity:

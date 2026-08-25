@@ -208,13 +208,31 @@ def test_browser_saved_pages_are_marked_volatile(corpus):
             assert not document.content_volatile, document.doc_id
 
 
+def test_revised_service_manual_is_held_not_merely_known(corpus):
+    """Rev B was the corpus's highest-value gap; acquiring it must flip the record.
+
+    Leaving it in `_excluded.yaml` after the file is held would teach the system
+    that a known gap and a held document are the same state.
+    """
+    held = corpus.by_publication("W11169652", "B")
+    assert len(held) == 1
+    assert held[0].local_filename == "W11169652B.pdf"
+    still_excluded = [
+        e
+        for e in corpus.excluded
+        if e.get("publication_number") == "W11169652" and e.get("revision") == "B"
+    ]
+    assert not still_excluded
+
+
 def test_gaps_are_recorded_rather_than_silent(corpus):
     """A known-missing document is different from a document nobody knew about."""
     assert corpus.excluded
-    revised_manual = [
-        e for e in corpus.excluded
-        if e.get("publication_number") == "W11169652" and e.get("revision") == "B"
+    intermediate = [
+        e
+        for e in corpus.excluded
+        if e.get("publication_number") == "W11156989" and e.get("revision") == "B"
     ]
-    assert revised_manual, "the revised service manual must be recorded as a known gap"
-    assert revised_manual[0]["reason"]
-    assert revised_manual[0]["evidence"]
+    assert intermediate, "intermediate tech-sheet revisions must stay recorded as gaps"
+    assert intermediate[0]["reason"]
+    assert intermediate[0]["evidence"]

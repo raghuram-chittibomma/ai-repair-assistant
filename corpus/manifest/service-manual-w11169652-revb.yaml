@@ -1,0 +1,97 @@
+doc_id: service-manual-w11169652-revb
+publication_number: W11169652
+revision: B
+title: Whirlpool & Maytag 27in Front-Load Washers Service Manual (job aid L-97, revised)
+doc_type: service_manual
+languages: [en-US]
+
+authority:
+  tier: service_literature
+
+applicability:
+  brands: [Whirlpool, Maytag, Amana, Inglis]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+    - WFW560CHW*
+    - WFW6620HC*
+    - WFW6620HW*
+    - WFW8620HC*
+    - WFW8620HW*
+    - WFW862CHC*
+    - WFW9620HBK*
+    - WFW9620HC*
+    - WFW9620HW*
+    - MHW5630HC*
+    - MHW5630HW*
+    - MHW6630HC*
+    - MHW6630HW*
+    - MHW8630HC*
+    - MHW8630HW*
+    - 7MMHW6621HC*
+    - 7MMHW6621HW*
+    - 7MWFW5622HW*
+    - 7MWFW6621HC*
+    - 7MWFW6622HW*
+    - NFW5800HW*
+    - IFW5900HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  # Creation metadata and cover marking place this after the June 2019 TSP that
+  # forced the revision; exact month not printed on the cover.
+  publication_date: 2019
+
+relationships:
+  - type: supersedes
+    target: W11169652
+    target_revision: A
+    note: >-
+      Incorporates the ACU diagnostic LED correction that W11375982 declared for
+      Rev A. Holding both revisions is the Phase 3 fixture the corpus originally
+      recorded as its highest-value gap.
+  - type: related
+    target: W11375982
+    locator: "Test #1: ACU Power Check, Step 10"
+    note: >-
+      The bulletin that forced this revision. Rev B carries the corrected Step 10
+      text; Rev A does not, which is the measurable delta between them.
+
+provenance:
+  # CDN slug uses W11699652 (one digit off the publication number). Internal
+  # marking on page 1 is unambiguously W11169652B; last page still carries a
+  # leftover W11169652A footer in places, which is why intake must prefer the
+  # cover marking / revision letter over a bare number match.
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Acquired under CDN slug technical-manual-w11699652-revb.pdf. The slug's
+    publication-looking token is wrong; identity rests on the document's own
+    W11169652B marking. Record the resolving URL here once known.
+  local_filename: W11169652B.pdf
+
+identity:
+  canonical_sha256: fee6461c53f4ee76c07e0ff8d36abc5be4a9f703ab2561dabf3fde708793295c
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 2b489d73322d123545b4038b0e720de7ea75ab3e3b1c755b0043f63016c1a862
+      bytes: 13194274
+      acquired_from: oem_public_pdf
+      page_count: 94
+      pdf_producer: Adobe PDF Library 15.0
+
+corpus:
+  role: applicable
+  rationale: >-
+    The revised service manual that W11375982 said existed on ServiceMatters and
+    that this corpus had recorded as its highest-value unobtainable document.
+    Paired with Rev A it is the real large-document revision fixture Phase 3
+    needs: unchanged sections must not be reprocessed, and the ACU LED passage
+    is the known delta. Also demotes the known-gap-revised-manual evaluation
+    scenario from 'gap' to a held-document test.

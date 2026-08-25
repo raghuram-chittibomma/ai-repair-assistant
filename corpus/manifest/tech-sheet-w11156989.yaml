@@ -27,10 +27,11 @@ relationships:
     locator: ACU diagnostic LED
   - type: superseded_by
     target: W11156989
-    target_revision: B
+    target_revision: D
     note: >-
-      W11375982 states the tech sheets for these models "have been revised" on
-      ServiceMatters. A Rev B therefore exists; no public artefact located.
+      Acquired as Rev D (tech-sheet-w11156989-revd.yaml). W11375982 stated the
+      tech sheets were revised after Rev A; intermediate revisions B and C are
+      implied by the letter jump and remain unlocated.
   - type: related
     target: W11320651
     note: >-

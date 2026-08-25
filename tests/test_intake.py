@@ -120,11 +120,25 @@ def test_revision_conflict_blocks_filing(tmp_path, corpus):
 
 
 def test_wrong_revision_of_a_known_document_is_flagged(tmp_path, corpus):
-    """Rev B of the service manual is the one we recorded as unobtainable."""
-    _pdf_with_text(tmp_path / "service-manual-w11169652-revb.pdf", "W11169652B")
+    """An intermediate tech-sheet revision that is not held must not be filed as D.
+
+    Rev B of W11156989 is recorded as a known gap. A download claiming to be that
+    revision must stop for a manifest update rather than overwrite Rev D.
+    """
+    _pdf_with_text(tmp_path / "tech-sheet-w11156989-revb.pdf", "W11156989B")
     (match,) = intake.plan(corpus, tmp_path)
     assert match.revision_conflict
-    assert "Rev B" in match.revision_conflict and "Rev A" in match.revision_conflict
+    assert "Rev B" in match.revision_conflict
+
+
+def test_revised_service_manual_files_as_its_own_edition(tmp_path, corpus):
+    """Rev B is held; intake must file it under W11169652B, not collide with A."""
+    _pdf_with_text(tmp_path / "technical-manual-w11699652-revb.pdf", "W11169652B")
+    (match,) = intake.plan(corpus, tmp_path)
+    assert match.document is not None
+    assert match.document.revision == "B"
+    assert match.target_name == "W11169652B.pdf"
+    assert match.revision_conflict is None
 
 
 def test_a_bulletin_is_not_mistaken_for_the_manual_it_corrects(tmp_path, corpus):

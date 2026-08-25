@@ -1,6 +1,6 @@
 doc_id: installation-instructions-w11156977
 publication_number: W11156977
-revision: null
+revision: D
 title: Front Load Washer Installation Instructions
 doc_type: installation_instructions
 languages: [en-US, fr-CA]
@@ -28,14 +28,19 @@ provenance:
   license: LicenseRef-Whirlpool-Proprietary
   redistributable: false
   access_notes: >-
-    Whirlpool manuals page, search WFW5620HW. Rev A and Rev B are both attested;
-    record which one you obtain.
-  local_filename: W11156977.pdf
+    Whirlpool manuals page, search WFW5620HW. Acquired as Rev D; earlier
+    revisions (A/B) are attested in the wild.
+  local_filename: W11156977D.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
-  instances: []
+  canonical_sha256: f3fac22ba6178eebc0ad6f42808ee0a26bd1d54440db62cdc5f07b64190092cb
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 13cc7b715a64652989aacb0b688580662cb2b5aa2aee416a7e214aada7196fbb
+      bytes: 4618002
+      acquired_from: oem_public_pdf
+      page_count: 24
+      pdf_producer: Adobe PDF Library 16.0.7
 
 corpus:
   role: applicable

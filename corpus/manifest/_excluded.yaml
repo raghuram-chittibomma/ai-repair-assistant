@@ -10,33 +10,31 @@
 
 excluded:
 
-  - publication_number: W11169652
-    revision: B
-    title: Whirlpool & Maytag 27in Front-Load Washers Service Manual (revised)
-    reason: not_publicly_available
-    evidence: >-
-      TSP W11375982 (June 2019) states "The Service Manual and Tech Sheets on
-      Service Matters have been revised." A post-Rev-A edition therefore exists.
-    searched: >-
-      Whirlpool asset CDN under the verified URL pattern; general web search.
-      No artefact located. Likely obtainable only through ServiceMatters.
-    impact: >-
-      This is the highest-value missing document in the corpus. A genuine Rev A
-      to Rev B pair of the same large manual is exactly the fixture Phase 3
-      needs to prove that unchanged sections are not reprocessed. Its absence is
-      partially mitigated: W11375982 prints the corrected Test #1 Step 10 text
-      verbatim, so a ground-truth delta can be constructed for that one passage
-      without holding Rev B.
+  # W11169652 Rev B was previously listed here as the highest-value gap. It is
+  # now held — see service-manual-w11169652-revb.yaml — acquired under CDN slug
+  # technical-manual-w11699652-revb.pdf (slug digit differs from the publication
+  # number; identity rests on the document's own W11169652B marking).
 
   - publication_number: W11156989
     revision: B
-    title: Tech Sheet - Whirlpool WFW5620HW Front-Load Washer (revised)
+    title: Tech Sheet - Whirlpool WFW5620HW Front-Load Washer (intermediate revision)
     reason: not_publicly_available
     evidence: >-
-      Same statement in W11375982, which says the tech sheets for the listed
-      models were revised alongside the service manual.
-    searched: Whirlpool asset CDN URL patterns for 2019 upload months; web search.
-    impact: Would give a second, smaller revision pair covering the same correction.
+      W11375982 (June 2019) stated the tech sheets were revised after Rev A.
+      Rev D is now held, so at least B and C existed as intermediate steps.
+    searched: Whirlpool manuals package; asset CDN patterns.
+    impact: >-
+      Would complete the A→B→C→D chain. The held A/D pair already supports
+      revision-delta evaluation; intermediate letters would show how the
+      correction landed.
+
+  - publication_number: W11156989
+    revision: C
+    title: Tech Sheet - Whirlpool WFW5620HW Front-Load Washer (intermediate revision)
+    reason: not_publicly_available
+    evidence: Implied by the held Rev D letter jump from Rev A.
+    searched: As above.
+    impact: As above.
 
   - publication_number: W11320651
     revision: A

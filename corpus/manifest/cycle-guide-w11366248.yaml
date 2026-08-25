@@ -1,0 +1,49 @@
+doc_id: cycle-guide-w11366248
+publication_number: W11366248
+revision: D
+title: Front Load Washer Cycle Guide
+doc_type: owners_manual
+languages: [en-US]
+
+authority:
+  tier: owner_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2020
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Acquired from the Whirlpool manuals package as cycle-guide-w11366248-revd.pdf.
+    Internal marking W11366248D.
+  local_filename: W11366248D.pdf
+
+identity:
+  canonical_sha256: cffd59ab750afd23c8ff8a646f6e154cb55899780b38165359394b67f7655e22
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 403d4ed2a5e5b1903b516be7d1992d06df1b62d7a73862251c6ba94fe63471cb
+      bytes: 1235677
+      acquired_from: oem_public_pdf
+      page_count: 20
+
+corpus:
+  role: supporting
+  rationale: >-
+    Owner-facing cycle descriptions with no diagnostic depth. Useful for the
+    owner-vs-technician depth scenarios: a retrieval system should prefer the
+    tech sheet or service manual for fault questions, not the cycle guide.

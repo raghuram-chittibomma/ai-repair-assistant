@@ -247,19 +247,70 @@ def plan(manifest, source_dir: Path) -> list[Match]:
         hits = [d for d in pdf_docs if d.publication_number in candidate.publication_numbers]
 
         if not hits:
-            matches.append(
-                Match(candidate, None, "no Whirlpool publication number found in name or content")
-            )
+            # Distinguish "no number extracted" from "number is not in the corpus".
+            if candidate.publication_numbers:
+                nums = ", ".join(sorted(candidate.publication_numbers))
+                matches.append(
+                    Match(
+                        candidate,
+                        None,
+                        f"publication number(s) {nums} not in the manifest",
+                    )
+                )
+            else:
+                matches.append(
+                    Match(
+                        candidate,
+                        None,
+                        "no Whirlpool publication number found in name or content",
+                    )
+                )
             continue
 
+        if candidate.revision:
+            exact = [d for d in hits if d.revision == candidate.revision]
+            if exact:
+                hits = exact
+            elif len(hits) == 1 and hits[0].revision is None:
+                # Single entry whose revision is not yet recorded. Match it so
+                # the operator sees which file to update, but block filing until
+                # the letter is written into the manifest.
+                matches.append(
+                    Match(
+                        candidate,
+                        hits[0],
+                        f"publication number {hits[0].publication_number}",
+                        revision_conflict=(
+                            f"document is Rev {candidate.revision} but the "
+                            "manifest records no revision; the manifest should "
+                            "be updated before filing"
+                        ),
+                    )
+                )
+                continue
+            else:
+                held = ", ".join(sorted({d.revision or "(none)" for d in hits}))
+                matches.append(
+                    Match(
+                        candidate,
+                        None,
+                        f"document is Rev {candidate.revision} but the manifest "
+                        f"holds revision(s) {held} of this publication; update "
+                        "the manifest before filing",
+                        revision_conflict=(
+                            f"document is Rev {candidate.revision} but the "
+                            f"manifest holds {held}"
+                        ),
+                    )
+                )
+                continue
+
         if len(hits) > 1:
-            # Prefer a document whose revision also agrees, then the one whose
-            # number appears in the filename rather than merely in the body,
-            # then the one that cites the others.
-            by_revision = [d for d in hits if d.revision and d.revision == candidate.revision]
+            # Prefer the one whose number appears in the filename rather than
+            # merely in the body, then the one that cites the others.
             in_name, _ = _from_filename(path.name)
             by_name = [d for d in hits if d.publication_number in in_name]
-            hits = by_revision or by_name or _by_citation(hits) or hits
+            hits = by_name or _by_citation(hits) or hits
 
         if len(hits) > 1:
             names = ", ".join(d.citation for d in hits)
@@ -267,24 +318,11 @@ def plan(manifest, source_dir: Path) -> list[Match]:
             continue
 
         document = hits[0]
-        conflict = None
-        if candidate.revision and document.revision and candidate.revision != document.revision:
-            conflict = (
-                f"document is Rev {candidate.revision} but the manifest says "
-                f"Rev {document.revision}"
-            )
-        elif candidate.revision and not document.revision:
-            conflict = (
-                f"document is Rev {candidate.revision} but the manifest records no "
-                "revision; the manifest should be updated before filing"
-            )
-
         matches.append(
             Match(
                 candidate,
                 document,
                 f"publication number {document.publication_number}",
-                revision_conflict=conflict,
             )
         )
 

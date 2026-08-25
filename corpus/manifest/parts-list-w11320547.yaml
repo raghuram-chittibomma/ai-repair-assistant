@@ -44,9 +44,14 @@ provenance:
   local_filename: W11320547C.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
-  instances: []
+  canonical_sha256: b6442b86c349f5faa3f7ceda294be546419b34683c89a728bfa5a41af961f471
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 8c25e15865239977eee178e950b230e62c2e67d33e5e7d277193fd444d614aaa
+      bytes: 5894690
+      acquired_from: oem_public_pdf
+      page_count: 12
+      pdf_producer: PDFlib+PDI 9.0.3p4 (Win32)
 
 corpus:
   role: applicable

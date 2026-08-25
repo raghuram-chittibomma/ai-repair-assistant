@@ -1,0 +1,64 @@
+doc_id: tech-sheet-w11156989-revd
+publication_number: W11156989
+revision: D
+title: Tech Sheet - Whirlpool WFW5620HW Front-Load Washer (Rev D)
+doc_type: tech_sheet
+languages: [en-US, fr-CA]
+
+authority:
+  tier: service_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2020
+
+relationships:
+  - type: supersedes
+    target: W11156989
+    target_revision: A
+    note: >-
+      Acquired as Rev D. Intermediate revisions B and C are implied by the letter
+      jump and by W11375982's statement that the tech sheets were revised; they
+      remain unlocated. The measurable pair in this corpus is therefore A and D.
+  - type: related
+    target: W11320651
+    note: Parallel multi-model tech sheet for the L-97 platform.
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Acquired from the Whirlpool manuals / literature package search. Filename
+    tech-sheet-w11156989-revd.pdf; internal marking W11156989D.
+  local_filename: W11156989D.pdf
+
+identity:
+  canonical_sha256: 7f16f16b6f9a99a0d80e7a48729ffa317158c9460145c4ba25be8c130494d7c0
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 9241ebe2db014b6499a7feda74c56441a2adbb094aeefc0ca2ddc5cb6d12442b
+      bytes: 2503247
+      acquired_from: oem_public_pdf
+      page_count: 56
+      pdf_producer: Adobe PDF Library 15.0
+
+corpus:
+  role: applicable
+  rationale: >-
+    Later revision of the single-model tech sheet already held as Rev A. The A/D
+    pair is a genuine incremental revision on the densest document type in the
+    corpus, complementary to the near-duplicate comparison against W11320651 and
+    to the Rev A/B service-manual pair. Expected intermediate revisions B and C
+    remain recorded as gaps where known.

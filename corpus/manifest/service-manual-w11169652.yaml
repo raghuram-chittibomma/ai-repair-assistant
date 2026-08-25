@@ -60,9 +60,8 @@ relationships:
     target: W11169652
     target_revision: B
     note: >-
-      W11375982 states the service manual "ha[s] been revised" on ServiceMatters.
-      A post-Rev-A edition therefore exists but no public artefact was located.
-      See corpus/manifest/_excluded.yaml.
+      Rev B is now held (see service-manual-w11169652-revb.yaml). Acquired under
+      CDN slug technical-manual-w11699652-revb.pdf; internal marking is W11169652B.
 
 provenance:
   source_url: https://www.whirlpool.com/content/dam/global/documents/201905/service-manual-w11169652-reva-27in-front-load-washers.pdf
