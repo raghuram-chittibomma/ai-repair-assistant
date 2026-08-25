@@ -50,6 +50,12 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0012](0012-grounded-qa.md) | Retrieve (ADR-0010) → numbered evidence → OpenAI chat; citations + abstention | Charter Phase 6 |
 
+## Phase 6 — Diagnostic assistant
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0013](0013-langgraph-diagnostic.md) | LangGraph retrieve→respond per turn; CLI REPL; smoke scenarios | Charter Phase 7 |
+
 ## Infrastructure
 
 | ADR | Decision | Driver |

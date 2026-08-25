@@ -27,6 +27,9 @@ dependencies = [
     "sentence-transformers>=3.0,<5",
     # Phase 5 grounded Q&A (charter Phase 6).
     "openai>=1.40,<3",
+    # Phase 6 LangGraph diagnostics (charter Phase 7).
+    "langgraph>=0.2,<2",
+    "langchain-core>=0.3,<2",
 ]
 
 [project.optional-dependencies]

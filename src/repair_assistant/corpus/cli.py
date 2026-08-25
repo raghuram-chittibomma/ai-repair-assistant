@@ -770,6 +770,94 @@ def ask_cmd(
             click.secho(f"      {cite.doc_id} / {cite.chunk_id}", fg="bright_black")
 
 
+@main.command("diagnose")
+@click.argument("message", required=False)
+@click.option("--model", required=True, help="Appliance model, e.g. WFW5620HW0")
+@click.option("--serial", default=None, help="Serial number for range checks.")
+@click.option("--limit", default=8, show_default=True, type=int, help="Evidence chunks per turn.")
+@click.option(
+    "--overfetch",
+    default=40,
+    show_default=True,
+    type=int,
+    help="Vector neighbours to fetch before applicability filter.",
+)
+def diagnose_cmd(
+    message: str | None,
+    model: str,
+    serial: str | None,
+    limit: int,
+    overfetch: int,
+) -> None:
+    """Multi-turn grounded troubleshooting (Phase 6 LangGraph)."""
+    from repair_assistant.corpus.applicability import Appliance
+    from repair_assistant.diagnostic.session import DiagnosticSession
+    from repair_assistant.ingest.env import database_url
+    from repair_assistant.ingest.store import Database
+
+    try:
+        url = database_url()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    appliance = Appliance(model=model, serial=serial)
+    corpus = _load()
+
+    def _print_turn(result) -> None:
+        click.secho(f"\nTurn {result.turn}", bold=True)
+        click.echo(f"You: {result.user_message}")
+        if result.abstained:
+            click.secho("Assistant (abstained):", fg="yellow", bold=True)
+            click.echo(result.abstain_reason or result.assistant_message)
+        else:
+            click.secho("Assistant:", bold=True)
+            click.echo(result.assistant_message)
+        click.echo(f"(retrieved {result.retrieval_count} chunk(s))")
+        if result.citations:
+            click.secho("Sources:", bold=True)
+            for cite in result.citations:
+                click.echo(f"  [{cite.index}] {cite.label}")
+                click.secho(f"      {cite.doc_id} / {cite.chunk_id}", fg="bright_black")
+
+    with Database(url) as db:
+        session = DiagnosticSession(
+            db,
+            corpus,
+            appliance=appliance,
+            retrieval_limit=limit,
+            overfetch=overfetch,
+        )
+
+        if message:
+            try:
+                _print_turn(session.send(message))
+            except RuntimeError as exc:
+                raise click.ClickException(str(exc)) from exc
+            return
+
+        click.secho(
+            f"Diagnostic session for {model}"
+            + (f" / {serial}" if serial else "")
+            + " — type 'quit' or 'exit' to end.",
+            bold=True,
+        )
+        while True:
+            try:
+                user = click.prompt("\nYou", prompt_suffix="> ")
+            except (EOFError, KeyboardInterrupt):
+                click.echo()
+                break
+            stripped = user.strip()
+            if not stripped:
+                continue
+            if stripped.lower() in {"quit", "exit", "q"}:
+                break
+            try:
+                _print_turn(session.send(stripped))
+            except RuntimeError as exc:
+                raise click.ClickException(str(exc)) from exc
+
+
 def yaml_dump(data: dict) -> str:
     import yaml
 

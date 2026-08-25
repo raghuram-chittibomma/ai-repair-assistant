@@ -1,0 +1,72 @@
+# Hand-run smoke scenarios for Phase 5 grounded Q&A.
+#
+# Run manually after ingest + OPENAI_API_KEY are configured. These are not CI
+# tests — they record expected behaviour for informal regression checks until
+# the Phase 9 answer eval harness exists.
+#
+# Example (Windows):
+#   python -m repair_assistant.corpus.cli ask "..." --model WFW5620HW0
+#
+# Log results under evals/qa/results/ with date and pass/fail notes.
+
+version: 1
+anchor_model: WFW5620HW0
+
+scenarios:
+  - id: f5e2-meaning
+    command: ask
+    question: What does F5E2 mean?
+    appliance: {model: WFW5620HW0}
+    expect_contains:
+      - door lock
+    expect_cites_any:
+      - W11169652
+      - W11320651
+      - W11156989
+    notes: >-
+      Door-lock failure, not lid switch (front-load). Should cite applicable
+      tech sheet or service manual rows.
+
+  - id: f5e2-door-locks-wont-start
+    command: diagnose
+    turns:
+      - My washer shows F5E2 and the door locks but it won't start.
+      - The door seems fully closed.
+    appliance: {model: WFW5620HW0}
+    expect_turn: 1
+    expect_contains:
+      - F5E2
+    notes: >-
+      Multi-turn: first turn should ground in door-lock evidence; second turn
+      should narrow checks without citing W11395614 (24in wrong platform).
+
+  - id: acu-led-step-10
+    command: ask
+    question: >-
+      On a WFW5620HW0, what should the ACU diagnostic LED do during the ACU
+      power check?
+    appliance: {model: WFW5620HW0}
+    expect_cites_any:
+      - W11375982
+    expect_contains:
+      - blink
+    notes: >-
+      Bulletin precedence case — slow blink is a pass, not a fault. Grade
+      direction of conclusion, not just presence of timings.
+
+  - id: door-locks-wont-run-no-wrong-bulletin
+    command: ask
+    question: My Whirlpool front load washer locks the door but won't start.
+    appliance: {model: WFW5620HW0}
+    must_not_cite:
+      - W11395614
+    notes: >-
+      Applicability filter must exclude 24in-only bulletin even if semantically
+      similar.
+
+  - id: unknown-error-abstain
+    command: ask
+    question: What does error code ZZ99 mean?
+    appliance: {model: WFW5620HW0}
+    expect_abstain: true
+    notes: Fabricated code — should abstain or say evidence lacks ZZ99.

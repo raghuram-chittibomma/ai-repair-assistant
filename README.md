@@ -8,9 +8,9 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 5 of 10.** Corpus, parse, ingest, and retrieval are in place.
-> Grounded Q&A is `repair-corpus ask` with citations and abstention (ADR-0012).
-> LangGraph diagnostics arrive next.
+> **Status: Phase 6 of 10.** Grounded one-shot Q&A and multi-turn diagnostics are
+> in place (`repair-corpus ask`, `repair-corpus diagnose`, ADR-0012/0013).
+> Safety policy and automated answer evals arrive next.
 
 ---
 
@@ -71,6 +71,10 @@ repair-corpus search "F5E1 door lock" --model WFW5620HW0
 
 # Phase 5 — add OPENAI_API_KEY to .env.local, then:
 repair-corpus ask "What does F5E2 mean?" --model WFW5620HW0
+
+# Phase 6 — multi-turn LangGraph troubleshooting:
+repair-corpus diagnose --model WFW5620HW0
+repair-corpus diagnose "Door locks but won't start, shows F5E2" --model WFW5620HW0
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
@@ -82,6 +86,7 @@ is not on your PATH (common after `pip install -e`). Either add your Python
 ```powershell
 python -m repair_assistant.corpus.cli status
 python -m repair_assistant.corpus.cli ask "What does F5E2 mean?" --model WFW5620HW0
+python -m repair_assistant.corpus.cli diagnose --model WFW5620HW0
 ```
 
 ---
