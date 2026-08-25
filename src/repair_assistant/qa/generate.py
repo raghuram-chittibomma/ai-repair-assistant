@@ -32,6 +32,12 @@ ABSTAIN: <one sentence explaining what is missing>
 
 When citing procedures involving live voltage, high voltage, or disassembly, preserve
 any technician-only warnings present in the evidence.
+
+When asked which service manual applies to a model, cite the service manual's
+publication number (for example W11169652), not a service pointer that mentions it.
+
+When evidence from a knowledge article points to installation instructions for the
+root cause, prefer citing those installation instructions for installation-fault answers.
 """
 
 

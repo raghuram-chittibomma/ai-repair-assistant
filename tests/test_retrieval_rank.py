@@ -114,3 +114,165 @@ def test_filter_drops_inapplicable_and_boosts_correcting_bulletin() -> None:
     assert "tsp-w11395614" not in ids
     assert ids[0] == "tsp-w11375982"
     assert ranked[0].final_score > ranked[1].final_score
+
+
+def test_bibliographic_query_prefers_service_manual_over_tsp() -> None:
+    manual = _doc(
+        "service-manual-w11169652-revb",
+        {
+            "doc_id": "service-manual-w11169652-revb",
+            "title": "Service Manual",
+            "doc_type": "service_manual",
+            "publication_number": "W11169652",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "service_literature"},
+            "applicability": {
+                "models": ["WFW5620HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+        },
+    )
+    bulletin = _doc(
+        "tsp-w11375982",
+        {
+            "doc_id": "tsp-w11375982",
+            "title": "TSP",
+            "doc_type": "technical_service_pointer",
+            "publication_number": "W11375982",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "service_pointer"},
+            "applicability": {
+                "models": ["WFW5620HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+            "relationships": [{"type": "corrects", "target": "W11169652"}],
+        },
+    )
+    manifest = Manifest(documents=[manual, bulletin])
+    hits = [
+        {
+            "doc_id": "tsp-w11375982",
+            "chunk_id": "a",
+            "text": "Service Manual (W11169652) regarding the ACU Diagnostic LED",
+            "page": 1,
+            "kind": "prose",
+            "error_codes": [],
+            "publication_number": "W11375982",
+            "revision": None,
+            "score": 0.92,
+        },
+        {
+            "doc_id": "service-manual-w11169652-revb",
+            "chunk_id": "b",
+            "text": "27 inch front load washer service manual WFW5620HW",
+            "page": 1,
+            "kind": "prose",
+            "error_codes": [],
+            "publication_number": "W11169652",
+            "revision": "B",
+            "score": 0.88,
+        },
+    ]
+    ranked = filter_and_rank(
+        hits,
+        manifest,
+        Appliance(model="WFW5620HW"),
+        limit=5,
+        query="What service manual covers a WFW5620HW?",
+    )
+    assert ranked[0].doc_id == "service-manual-w11169652-revb"
+
+
+def test_installation_query_boosts_referenced_install_guide() -> None:
+    kb = _doc(
+        "kb-f7e1-front-load",
+        {
+            "doc_id": "kb-f7e1-front-load",
+            "title": "F7 E1",
+            "doc_type": "knowledge_article",
+            "publication_number": None,
+            "corpus": {"role": "applicable"},
+            "authority": {"tier": "support_article"},
+            "applicability": {
+                "models": ["WFW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+            "relationships": [{"type": "references", "target": "W11156977"}],
+        },
+    )
+    install = _doc(
+        "installation-instructions-w11156977",
+        {
+            "doc_id": "installation-instructions-w11156977",
+            "title": "Installation",
+            "doc_type": "installation_instructions",
+            "publication_number": "W11156977",
+            "corpus": {"role": "applicable"},
+            "authority": {"tier": "owner_literature"},
+            "applicability": {
+                "models": ["WFW5620HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+        },
+    )
+    manual = _doc(
+        "service-manual-w11169652-revb",
+        {
+            "doc_id": "service-manual-w11169652-revb",
+            "title": "Service Manual",
+            "doc_type": "service_manual",
+            "publication_number": "W11169652",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "service_literature"},
+            "applicability": {
+                "models": ["WFW5620HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+        },
+    )
+    manifest = Manifest(documents=[kb, install, manual])
+    hits = [
+        {
+            "doc_id": "kb-f7e1-front-load",
+            "chunk_id": "kb",
+            "text": "F7 E1 motor speed error from shipping bolts",
+            "page": None,
+            "kind": "article",
+            "error_codes": ["F7E1"],
+            "publication_number": None,
+            "revision": None,
+            "score": 1.0,
+        },
+        {
+            "doc_id": "service-manual-w11169652-revb",
+            "chunk_id": "manual",
+            "text": "F7E1 motor control fault troubleshooting",
+            "page": 10,
+            "kind": "prose",
+            "error_codes": ["F7E1"],
+            "publication_number": "W11169652",
+            "revision": "B",
+            "score": 1.0,
+        },
+        {
+            "doc_id": "installation-instructions-w11156977",
+            "chunk_id": "inst",
+            "text": "Remove all four shipping bolts before first use",
+            "page": 3,
+            "kind": "prose",
+            "error_codes": [],
+            "publication_number": "W11156977",
+            "revision": "D",
+            "score": 0.85,
+        },
+    ]
+    ranked = filter_and_rank(
+        hits,
+        manifest,
+        Appliance(model="WFW5620HW0"),
+        limit=5,
+        query="My new washer shakes violently and shows F7 E1 during the spin cycle.",
+        query_error_codes=["F7E1"],
+    )
+    pubs = [h.publication_number for h in ranked]
+    assert pubs[0] == "W11156977"

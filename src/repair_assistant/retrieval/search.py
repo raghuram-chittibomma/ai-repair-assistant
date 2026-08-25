@@ -11,7 +11,7 @@ from repair_assistant.ingest.env import embedding_model
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import code_to_spaced_regex
 from repair_assistant.parsing.error_codes import extract_error_codes
-from repair_assistant.retrieval.rank import RankedHit, filter_and_rank
+from repair_assistant.retrieval.rank import RankedHit, filter_and_rank, is_installation_query
 
 
 @dataclass
@@ -120,6 +120,58 @@ def code_fetch(db: Database, codes: list[str], *, limit: int = 30) -> list[dict]
     return out
 
 
+def reference_fetch(
+    db: Database,
+    manifest: Manifest,
+    seed_hits: list[dict],
+    *,
+    query: str = "",
+    limit: int = 8,
+) -> list[dict]:
+    """Pull chunks from publications referenced by KB articles (multi-hop recall)."""
+    by_id = {d.doc_id: d for d in manifest.documents}
+    target_pubs: set[str] = set()
+    for hit in seed_hits:
+        doc = by_id.get(hit["doc_id"])
+        if doc is None:
+            continue
+        for rel in doc.relationships():
+            if rel.get("type") == "references" and rel.get("target"):
+                target_pubs.add(str(rel["target"]))
+    if not target_pubs:
+        return []
+
+    install_kw = is_installation_query(query)
+    rows = db.fetchall(
+        """
+        SELECT
+            doc_id,
+            chunk_id,
+            text,
+            page,
+            kind,
+            error_codes,
+            publication_number,
+            revision,
+            0.85 AS score
+        FROM chunks
+        WHERE publication_number = ANY(%s::text[])
+        ORDER BY
+            CASE WHEN coalesce(language, 'en') = 'en' THEN 0 ELSE 1 END,
+            CASE
+                WHEN text ~* 'shipping|transport bolt|transport bolts|spacer' THEN 0
+                WHEN %s AND text ~* 'shipping|bolt|level|install' THEN 1
+                ELSE 2
+            END,
+            page,
+            chunk_id
+        LIMIT %s
+        """,
+        (list(target_pubs), install_kw, limit),
+    )
+    return [_row_to_hit(row) for row in rows]
+
+
 def merge_hits(*lists: list[dict]) -> list[dict]:
     """Dedupe by (doc_id, chunk_id); earlier lists win on score."""
     seen: set[tuple[str, str]] = set()
@@ -151,8 +203,10 @@ def search(
         return SearchResult(query=query)
 
     codes = extract_error_codes(query)
+    code_hits = code_fetch(db, codes)
     raw = merge_hits(
-        code_fetch(db, codes),
+        code_hits,
+        reference_fetch(db, manifest, code_hits, query=query, limit=3),
         vector_fetch(db, vectors[0], limit=max(overfetch, limit)),
     )
     all_ranked = filter_and_rank(
@@ -160,6 +214,7 @@ def search(
         manifest,
         appliance,
         limit=len(raw),
+        query=query,
         query_error_codes=codes,
     )
     filtered_out = (len(raw) - len(all_ranked)) if appliance is not None else 0
@@ -195,6 +250,7 @@ __all__ = [
     "code_fetch",
     "extract_error_codes",
     "merge_hits",
+    "reference_fetch",
     "search",
     "vector_fetch",
 ]

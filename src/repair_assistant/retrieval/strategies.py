@@ -167,14 +167,14 @@ def run_strategy(
             vector_fetch(db, vectors, limit=overfetch),
         )
         ranked = filter_and_rank(
-            raw, manifest, appliance, limit=k, query_error_codes=codes
+            raw, manifest, appliance, limit=k, query=query, query_error_codes=codes
         )
         return _hits_from_ranked(ranked)
 
     if strategy_id == "lexical_apply":
         raw = merge_hits(code_fetch(db, codes), lexical_fetch(db, query, limit=overfetch))
         ranked = filter_and_rank(
-            raw, manifest, appliance, limit=k, query_error_codes=codes
+            raw, manifest, appliance, limit=k, query=query, query_error_codes=codes
         )
         return _hits_from_ranked(ranked)
 
@@ -190,7 +190,7 @@ def run_strategy(
             ),
         )
         ranked = filter_and_rank(
-            fused, manifest, appliance, limit=k, query_error_codes=codes
+            fused, manifest, appliance, limit=k, query=query, query_error_codes=codes
         )
         return _hits_from_ranked(ranked)
 
