@@ -357,3 +357,114 @@ families:
           Author this only after every document is acquired and studied.
           Choosing it before then risks picking something the corpus can in fact
           answer, which would silently invert the test.
+
+  # -------------------------------------------------------------------------
+  # The family below was derived from measurement rather than research: it
+  # exists because acquiring both tech sheets revealed they are near-duplicates.
+  # See CORPUS_STUDY.md section 7.
+  - id: near-duplicate-tech-sheets
+    title: Two tech sheets sharing most of their content
+    why: >-
+      W11156989 Rev A and W11320651 Rev B are byte-identical on 13 of 28
+      comparable pages, including an unbroken run of eight. Where they diverge
+      they do so in three separable ways - one differing token, a pure reflow,
+      and a genuine content addition - which lets retrieval, deduplication and
+      revision handling be tested independently on the same document pair.
+      Nothing else in the corpus isolates these concerns so cleanly.
+    scenarios:
+      - id: identifier-only-distinction
+        status: ready
+        question: What does the safety notice on page 1 of W11320651 say?
+        must_cite: [W11320651]
+        must_not_cite_as_current: [W11156989]
+        expect: >-
+          The notice from W11320651 specifically, even though the equivalent page
+          of W11156989 carries word-for-word identical text.
+        ground_truth: >-
+          Page 1 of the two documents differs on exactly one line: the
+          publication number. Every other line is identical.
+        fails_if: >-
+          The answer cites W11156989, or cites both as though interchangeable.
+        note: >-
+          The hardest retrieval case in the corpus. There is no lexical or
+          semantic signal to separate these two pages - the only distinguishing
+          token is the identifier itself. Embedding similarity cannot pass this;
+          exact identifier matching must.
+
+      - id: shared-pages-deduplicated
+        status: ready
+        question: >-
+          Before servicing, what should be checked according to the diagnostic
+          guide?
+        appliance: {model: WFW5620HW0}
+        expect: >-
+          One answer citing the applicable tech sheet, not the same passage
+          returned twice from two documents.
+        ground_truth: >-
+          Pages 4-11 are byte-identical between W11156989 and W11320651.
+        fails_if: >-
+          Both documents are cited for identical text, or duplicate passages
+          crowd genuinely different material out of the results.
+
+      - id: reflow-is-not-a-revision
+        status: ready
+        question: >-
+          Do the two tech sheets differ in what they say about voltage checks on
+          page 3?
+        expect: >-
+          No. The "IMPORTANT: Voltage checks must be made with all connectors
+          attached" paragraph appears in both, in different positions.
+        ground_truth: >-
+          The paragraph moves from line 41 to line 88. The content is unchanged.
+        fails_if: >-
+          The relocation is reported as a substantive difference.
+        note: >-
+          A guard against the corpus's own methodology. Comparing these pages by
+          extracted-text equality alone reports page 3 as changed, which would
+          have put a fabricated revision difference into the manifest.
+
+      - id: genuine-incremental-addition
+        status: ready
+        question: >-
+          What are the steps for measuring voltage safely on the L-97 platform?
+        must_cite: [W11320651]
+        expect: >-
+          The four-step procedure, attributed to W11320651, noting that the
+          other tech sheet does not carry it.
+        ground_truth: >-
+          W11320651 page 12 adds a four-step voltage-measurement procedure that
+          W11156989 lacks, and rewords a cross-reference from "See Figure 2,
+          below." to "See Figure 2."
+        fails_if: >-
+          The procedure is attributed to both documents, or the answer treats
+          its absence from W11156989 as an extraction failure.
+
+      - id: language-must-be-filtered
+        status: ready
+        question: What do the tech sheets say about the interference filter?
+        expect: An English answer.
+        ground_truth: >-
+          W11156989 carries English on pages 1-29 and French on pages 30-55, so
+          the same content exists twice in two languages within one document.
+        fails_if: >-
+          A French passage is returned to an English question, or the English and
+          French versions of one passage are cited as two independent sources.
+        note: >-
+          Discovered by measurement: this document was recorded as English-only
+          until its pages were actually scanned.
+
+      - id: symbol-font-list-structure
+        status: ready
+        question: List the diagnostic guide's pre-service checks in order.
+        expect: >-
+          A correctly ordered list, with each item separate.
+        ground_truth: >-
+          The tech sheets mark list items with private-use codepoints U+F0D8 and
+          U+F06E - Wingdings glyph positions, not text. There are 465 such
+          markers across the two documents.
+        fails_if: >-
+          Items run together, or unmappable characters appear in the answer.
+        note: >-
+          Companion to error-code-orphaned-by-extraction: that scenario tests
+          table structure surviving parsing, this one tests list structure.
+          A procedure needs both.

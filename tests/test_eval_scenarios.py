@@ -37,8 +37,15 @@ def _all_scenarios(seeds):
 
 
 def test_the_families_the_corpus_revealed_are_all_present(seeds):
+    """Pinned so that deleting a family is a deliberate act, not an accident.
+
+    ``near-duplicate-tech-sheets`` differs from the rest in provenance: the
+    others were reasoned from research before the documents arrived, that one was
+    measured from the files afterwards. Both kinds belong here.
+    """
     ids = {f["id"] for f in seeds["families"]}
     assert ids == {
+        "near-duplicate-tech-sheets",
         "precedence-bulletin-over-manual",
         "applicability-serial-range",
         "applicability-product-category",

@@ -8,10 +8,13 @@ input to the Phase 2 parser selection.
 
 | Document | Examined | Basis |
 | --- | --- | --- |
-| W11320651 Rev B — Tech Sheet | **Yes, in detail** | Full text extraction obtained during research and analysed below |
-| W11169652 Rev A — Service Manual | Partially | Structure known from the tech sheet's cross-references and the TSP that corrects it |
-| W11375982 — Service Pointer | Structure only | Format is standardised across the service pointers examined |
-| Everything else | Not yet | Awaiting acquisition; see [ACQUISITION.md](ACQUISITION.md) |
+| W11320651 Rev B — Tech Sheet | **Yes, in detail** | Acquired; full text extraction analysed below |
+| W11156989 Rev A — Tech Sheet | **Yes, in detail** | Acquired; compared page-by-page against W11320651 in §7 |
+| W11169652 Rev A — Service Manual | Partially | Acquired (94 pages); structure confirmed, contents not yet analysed |
+| W11395614, W11533288 Rev A, W11766193 Rev B — Service Pointers | Metadata only | Acquired; page counts and languages confirmed in §7 |
+| W11375982 — Service Pointer | Structure only | **Not acquired.** Format inferred from the service pointers that were |
+| Knowledge-base articles (6) | Structure only | Acquired as MHTML; content not yet analysed |
+| Everything else | Not acquired | See [ACQUISITION.md](ACQUISITION.md) |
 
 The tech sheet is the right document to have studied first: it is the densest,
 the most structurally hostile, and the one the retrieval system will lean on
@@ -21,12 +24,22 @@ Sections below marked **pending** are placeholders with the specific questions t
 answer, not empty headings. Fill them in as documents arrive rather than
 inventing content.
 
+Section 7 was written after the documents actually arrived, and it corrects two
+things this study previously got wrong from inference alone. That is recorded
+rather than quietly edited, because the size of the gap between inferred and
+measured is itself a finding: it is the argument for not trusting §3 either.
+
 ---
 
 ## 1. W11320651 Rev B — Tech Sheet (examined)
 
-**28 pages, dual-language (English/French), embedded text layer, no OCR needed.**
+**28 pages, English only, embedded text layer, no OCR needed.**
 Internal part marking reads `W11320651B`, dated `04/19`.
+
+> Corrected after acquisition. This was recorded as dual-language English/French
+> on the reasonable assumption that a North American service document is
+> bilingual. It is not: the French pages belong to the *other* tech sheet,
+> W11156989 Rev A, which is 60 pages precisely because it carries both. See §7.
 
 ### Declared structure
 
@@ -270,3 +283,93 @@ current. Recorded in `_excluded.yaml` and as an evaluation scenario.
 | 4 — Retrieval | Must filter on applicability before ranking, and must follow intra-document cross-references. Similarity alone provably fails on the F5E2 triple and the ACU LED case. |
 | 5 — Precedence | Four real precedence rules exist, three stated by the manufacturer. Model them as data. |
 | 6 — Answers | Must abstain on part-number currency. Must distinguish owner-safe from technician-only procedures: the tech sheet opens "For Technicians only" and involves live-voltage measurement. |
+
+---
+
+## 7. Measured findings from the acquired documents
+
+Everything above §7 was reasoned from research; this section was measured from
+the files themselves after acquisition. Twelve of twenty documents are held.
+
+### The two tech sheets are near-duplicates, and differ in three distinct ways
+
+This is the most valuable structure in the corpus and it was not anticipated.
+W11156989 Rev A (60 pages, English 1–29, French 30–55) and W11320651 Rev B
+(28 pages, English) share their English half almost entirely: **13 of 28
+comparable pages are byte-identical after whitespace normalisation, including an
+unbroken run of eight (pages 4–11).**
+
+Where they differ, they differ in three separable ways, which is what makes the
+pair useful rather than merely redundant:
+
+| Page | Difference | What it tests |
+| --- | --- | --- |
+| 1 | **One token.** Identical safety notice, identical wording throughout; the only differing line is the publication number itself — `W11156989A` against `W11320651B` | Exact-identifier retrieval, with no lexical or semantic signal available to help |
+| 3 | **Pure reflow.** The "IMPORTANT: Voltage checks must be made with all connectors attached" paragraph appears in both, moved from line 41 to line 88 | That relocation is not mistaken for a content change; that chunk ordering follows layout, not stream order |
+| 12+ | **Genuine addition.** Rev B adds a four-step voltage-measurement procedure absent from the other, and rewords a cross-reference from "See Figure 2, below." to "See Figure 2." | Real incremental revision, including a cross-reference whose wording changed while its target did not |
+
+Page 1 is the sharpest retrieval case in the corpus. Two documents, one
+distinguishing token, and that token is exactly what a technician would quote.
+No embedding can separate them; only exact identifier matching can.
+
+The reflow on page 3 is a warning about method. Had these pages been compared by
+extracted-text equality alone, page 3 would have been reported as changed and
+the corpus would have carried a fabricated revision difference.
+
+### Procedure bullets are private-use codepoints, not characters
+
+Both tech sheets render list markers with symbol-font glyphs mapped into the
+Unicode private use area: **U+F0D8 (218 occurrences in W11156989A, 109 in
+W11320651B) and U+F06E (92 and 46).** These are Wingdings positions, not text.
+
+Naive extraction yields unmappable codepoints where step boundaries should be,
+which compounds the extraction failure documented in §1: a procedure loses both
+its table structure *and* its list structure. Any parser benchmark in Phase 2
+must include a private-use-area mapping table, and the count above is the
+metric — 465 markers that must survive parsing as list structure.
+
+This is also why the analysis script for this section crashed on first run: a
+`cp1252` console cannot encode U+F06E at all. Worth stating plainly, because the
+same class of failure will appear silently inside a parsing pipeline.
+
+### Producer toolchains vary within a single document type
+
+| Document | Producer | Pages |
+| --- | --- | --- |
+| W11169652 Rev A — service manual | Adobe PDF Library 15.0 | 94 |
+| W11156989 Rev A — tech sheet | Adobe PDF Library 15.0 | 60 |
+| W11320651 Rev B — tech sheet | Adobe PDF Library 15.0 | 28 |
+| W11395614 — service pointer | Microsoft® Word 2013 | 3 |
+| W11533288 Rev A — service pointer | Skia/PDF m89 | 1 |
+| W11766193 Rev B — service pointer | *(none declared)* | 6 |
+
+The three service pointers — same publisher, same document type, same purpose —
+come from three different toolchains, one of which (Skia) is Chrome's print
+pipeline. Phase 2 cannot assume that document type predicts internal structure.
+Benchmark per producer, not per type.
+
+### Language coverage does not follow document type either
+
+Measured by scanning for French and Spanish markers per page:
+
+- W11395614 — 3 pages, one per language (en/fr/es)
+- W11766193 Rev B — 6 pages, two per language; the French pages confirm the
+  revision independently, reading `Bulletin technique no : W11766193 Rév. B`
+- W11533288 Rev A — 1 page, English only
+- W11169652 Rev A — 94 pages, English only
+
+Two manifest entries were corrected against this: W11156989's French half had
+been attributed to W11320651, and W11766193 had been recorded as English-only
+when it is trilingual. Both errors came from assuming that North American
+service documents are uniformly bilingual. They are not, and the variation is
+per-document.
+
+### Consequences for the phases
+
+| Phase | Determined by §7 |
+| --- | --- |
+| 2 — Parsing | Benchmark per producer toolchain, not per document type. A private-use-area mapping table is mandatory, not optional. |
+| 2 — Chunking | Compare candidate chunkers on the tech-sheet pair: identical pages must produce identical chunks, and the page-3 reflow must not read as a change. |
+| 3 — Ingestion | Deduplication must operate at page or chunk level. Eight identical pages across two documents will otherwise be indexed twice and crowd out other results. |
+| 4 — Retrieval | Page 1 of the tech-sheet pair is the exact-identifier benchmark. Language must be a filter, or a French answer will be returned to an English query from W11156989. |
+| 5 — Precedence | The two tech sheets are not revisions of each other; they are parallel documents for different model sets. Precedence must not infer supersession from a shared publication lineage. |
