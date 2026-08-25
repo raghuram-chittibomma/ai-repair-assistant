@@ -57,3 +57,21 @@ repair-corpus ingest --all                # local BAAI/bge-base-en-v1.5 (ADR-000
 
 Container name: `ai-repair-assistant-pg`. Image: `pgvector/pgvector:pg17`.
 See ADR-0008 / ADR-0009 for schema and embedding rules.
+
+## HTTP API (Phase 9)
+
+`docker compose --env-file ../.env.local -f compose.yaml up -d --build` starts
+Postgres and the `ai-repair-assistant-api` container (port from `API_PORT` in
+`.env.local`, default 8080).
+
+- `GET /health` — liveness
+- `GET /ready` — database connectivity
+- `POST /v1/search`, `/v1/ask`, `/v1/diagnose` — see ADR-0016
+
+Set `REPAIR_API_KEY` in `.env.local` to require the `X-API-Key` header.
+
+For laptop-only development without Docker API:
+
+```bash
+python -m repair_assistant.api.main
+```

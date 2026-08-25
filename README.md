@@ -8,8 +8,8 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 8 of 10.** Repeatable Q&A smoke bench with JSON run logs
-> (`repair-corpus bench-qa`, ADR-0015). Product hardening arrives next.
+> **Status: Phase 9 of 10 — product ready for self-hosting.** HTTP API (`repair-assistant-api`),
+> Docker deployment, health checks, and optional API-key auth (ADR-0016).
 
 ---
 
@@ -82,6 +82,15 @@ repair-corpus bench-safety
 
 # Phase 8 — live Q&A smoke bench (DB + OpenAI required)
 repair-corpus bench-qa --write
+
+# Phase 9 — HTTP API (local or Docker)
+python -m repair_assistant.api.main
+curl http://localhost:8080/health
+curl -X POST http://localhost:8080/v1/ask -H "Content-Type: application/json" \
+  -d "{\"question\":\"What does F5E2 mean?\",\"model\":\"WFW5620HW0\"}"
+
+# Docker (Postgres + API on LAN host):
+docker compose --env-file .env.local -f docker/compose.yaml up -d --build
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.

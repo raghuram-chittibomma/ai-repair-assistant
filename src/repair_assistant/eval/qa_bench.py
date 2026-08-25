@@ -126,10 +126,10 @@ def _run_ask(db: Database, corpus, scenario: dict[str, Any]) -> QAScenarioResult
 
 def _run_diagnose(db: Database, corpus, scenario: dict[str, Any]) -> QAScenarioResult:
     start = time.perf_counter()
-    session = DiagnosticSession(db, corpus, appliance=_appliance(scenario))
+    session = DiagnosticSession(corpus, appliance=_appliance(scenario))
     turns: list[TurnRecord] = []
     for user_message in scenario.get("turns") or []:
-        last = session.send(user_message)
+        last = session.send(db, user_message)
         turns.append(
             TurnRecord(
                 turn=last.turn,

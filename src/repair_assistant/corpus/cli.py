@@ -863,7 +863,6 @@ def diagnose_cmd(
 
     with Database(url) as db:
         session = DiagnosticSession(
-            db,
             corpus,
             appliance=appliance,
             audience=Audience(audience),
@@ -873,7 +872,7 @@ def diagnose_cmd(
 
         if message:
             try:
-                _print_turn(session.send(message))
+                _print_turn(session.send(db, message))
             except RuntimeError as exc:
                 raise click.ClickException(str(exc)) from exc
             return
@@ -896,7 +895,7 @@ def diagnose_cmd(
             if stripped.lower() in {"quit", "exit", "q"}:
                 break
             try:
-                _print_turn(session.send(stripped))
+                _print_turn(session.send(db, stripped))
             except RuntimeError as exc:
                 raise click.ClickException(str(exc)) from exc
 

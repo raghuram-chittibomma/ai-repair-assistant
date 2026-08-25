@@ -68,6 +68,12 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0015](0015-qa-eval-logging.md) | `bench-qa` smoke runner; deterministic grader; JSON run logs | Charter Phase 9 (incremental) |
 
+## Phase 9 — Product hardening
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0016](0016-http-api-docker.md) | FastAPI `/v1/*`; optional API key; Dockerfile + Compose `api` service | Charter Phase 10 |
+
 ## Infrastructure
 
 | ADR | Decision | Driver |

@@ -30,6 +30,9 @@ dependencies = [
     # Phase 6 LangGraph diagnostics (charter Phase 7).
     "langgraph>=0.2,<2",
     "langchain-core>=0.3,<2",
+    # Phase 9 HTTP API (charter Phase 10).
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +43,7 @@ dev = [
 
 [project.scripts]
 repair-corpus = "repair_assistant.corpus.cli:main"
+repair-assistant-api = "repair_assistant.api.main:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/repair_assistant"]

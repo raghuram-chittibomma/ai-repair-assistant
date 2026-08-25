@@ -62,12 +62,11 @@ def test_diagnostic_session_single_turn(mock_search: MagicMock) -> None:
     db = MagicMock()
     llm = FakeLLM(["F5E2 indicates a door lock fault [1]."])
     session = DiagnosticSession(
-        db,
         _manifest(),
         appliance=Appliance(model="WFW5620HW0"),
         llm=llm,
     )
-    result = session.send("What does F5E2 mean?")
+    result = session.send(db, "What does F5E2 mean?")
     assert result.turn == 1
     assert not result.abstained
     assert "F5E2" in result.assistant_message
@@ -86,13 +85,12 @@ def test_diagnostic_session_multi_turn_accumulates(mock_search: MagicMock) -> No
         ]
     )
     session = DiagnosticSession(
-        db,
         _manifest(),
         appliance=Appliance(model="WFW5620HW0"),
         llm=llm,
     )
-    first = session.send("Washer shows F5E2")
-    second = session.send("Door looks closed")
+    first = session.send(db, "Washer shows F5E2")
+    second = session.send(db, "Door looks closed")
     assert first.turn == 1
     assert second.turn == 2
     assert llm.calls == 2
@@ -103,12 +101,11 @@ def test_diagnostic_session_multi_turn_accumulates(mock_search: MagicMock) -> No
 def test_diagnostic_session_blocks_bypass_without_retrieval(mock_search: MagicMock) -> None:
     db = MagicMock()
     session = DiagnosticSession(
-        db,
         _manifest(),
         appliance=Appliance(model="WFW5620HW0"),
         llm=FakeLLM(["unused"]),
     )
-    result = session.send("How do I bypass the door lock?")
+    result = session.send(db, "How do I bypass the door lock?")
     assert result.abstained
     assert result.escalated
     assert result.safety_action == "block"
@@ -120,11 +117,10 @@ def test_diagnostic_session_abstains_without_hits(mock_search: MagicMock) -> Non
     mock_search.return_value = SearchResult(query="q", hits=[])
     db = MagicMock()
     session = DiagnosticSession(
-        db,
         _manifest(),
         appliance=Appliance(model="WFW5620HW0"),
         llm=FakeLLM(["unused"]),
     )
-    result = session.send("What is ZZ99?")
+    result = session.send(db, "What is ZZ99?")
     assert result.abstained
     assert "No applicable" in result.abstain_reason

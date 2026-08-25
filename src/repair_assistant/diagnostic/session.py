@@ -18,7 +18,6 @@ class DiagnosticSession:
 
     def __init__(
         self,
-        db: Database,
         manifest: Manifest,
         *,
         appliance: Appliance | None = None,
@@ -27,13 +26,10 @@ class DiagnosticSession:
         retrieval_limit: int = 8,
         overfetch: int = 40,
     ) -> None:
-        self._graph = build_diagnostic_graph(
-            db,
-            manifest,
-            llm=llm,
-            retrieval_limit=retrieval_limit,
-            overfetch=overfetch,
-        )
+        self._manifest = manifest
+        self._llm = llm
+        self._retrieval_limit = retrieval_limit
+        self._overfetch = overfetch
         self._state: DiagnosticGraphState = {
             "messages": [],
             "appliance_model": appliance.model if appliance else None,
@@ -57,14 +53,21 @@ class DiagnosticSession:
     def turn_count(self) -> int:
         return self._turn
 
-    def send(self, user_message: str) -> TurnResult:
+    def send(self, db: Database, user_message: str) -> TurnResult:
         """Process one user message and return the assistant turn."""
         self._turn += 1
+        graph = build_diagnostic_graph(
+            db,
+            self._manifest,
+            llm=self._llm,
+            retrieval_limit=self._retrieval_limit,
+            overfetch=self._overfetch,
+        )
         invoke_state: DiagnosticGraphState = {
             **self._state,
             "messages": [*self._state["messages"], HumanMessage(content=user_message)],
         }
-        result = self._graph.invoke(invoke_state)
+        result = graph.invoke(invoke_state)
         self._state = result
 
         assistant = ""
