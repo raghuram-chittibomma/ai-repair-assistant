@@ -17,3 +17,9 @@ supersedes an earlier draft of this project's acquisition design.
 | [0003](0003-no-downloader.md) | The repository ships no downloader | Whirlpool's Terms of Use prohibit automated retrieval, notwithstanding a permissive `robots.txt` |
 | [0004](0004-applicability-and-precedence.md) | Applicability and precedence are structured data | A correct instruction for the wrong machine is still wrong, and that must be decidable rather than inferred |
 | [0005](0005-copyright-separation-and-licence.md) | Three-way copyright separation, Apache-2.0, SPDX, enforced in CI | Free access under right-to-repair law is not a redistribution licence |
+
+## Infrastructure
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0006](0006-lan-docker-host.md) | Postgres / pgvector run on a shared LAN Docker host; addresses stay local | Shared host already runs other DBs; laptop is not the default runtime; LAN details are not committed |

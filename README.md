@@ -105,13 +105,18 @@ tests/                   deterministic tests
   ServiceMatters confidentiality, why there is no downloader
 - [Acquisition guide](docs/corpus/ACQUISITION.md) — how to obtain each document
 - [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is actually in these documents
+- [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker policy; real host/ports in gitignored local file
 - [Architecture decision records](docs/adr/) — the reasoning behind each significant choice
 
 ## Fixed technology constraints
 
 Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are predetermined for this
 project. None of them are required in Phase 1, and none have been introduced yet —
-PostgreSQL arrives with incremental ingestion in Phase 3.
+PostgreSQL arrives with incremental ingestion in Phase 3. Docker services (starting with
+Postgres + pgvector) run on a shared LAN host; see
+[docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md). Copy
+`docs/INFRASTRUCTURE.local.md.example` to `docs/INFRASTRUCTURE.local.md` for
+addresses and ports (that file is gitignored).
 
 ## Licence
 

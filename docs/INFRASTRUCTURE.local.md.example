@@ -1,0 +1,34 @@
+# Infrastructure — local values (gitignored)
+
+Copy this file to `INFRASTRUCTURE.local.md` and replace the placeholders.
+`INFRASTRUCTURE.local.md` is gitignored; do not commit real addresses or secrets.
+
+## Docker host
+
+| Field | Value |
+| --- | --- |
+| Host | `REPLACE_WITH_LAN_HOST` |
+| Role | Shared Docker host for this and other local projects |
+| Reachability | Local LAN only |
+
+## Occupied host ports
+
+List other projects' bindings on that host so this project does not collide.
+
+| Container | Image | Host port(s) |
+| --- | --- | --- |
+| *(other project)* | | `HOST_PORT` → 5432 |
+
+## This project
+
+| Field | Value |
+| --- | --- |
+| Suggested container name | `ai-repair-assistant-pg` |
+| Image | `pgvector/pgvector:pg17` |
+| Host port | `REPLACE_WITH_FREE_HOST_PORT` |
+| Database | `repair_assistant` |
+| User / password | *(set when creating the container; prefer `.env.local`)* |
+
+```text
+postgresql://USER:PASSWORD@REPLACE_WITH_LAN_HOST:REPLACE_WITH_FREE_HOST_PORT/repair_assistant
+```
