@@ -21,8 +21,9 @@ HTTP surface for integrations without reimplementing CLI wiring.
    - `GET /ready` — Postgres connectivity
    - `POST /v1/search`, `/v1/ask`, `/v1/diagnose` — same logic as CLI
    - `DELETE /v1/diagnose/{session_id}` — drop in-memory session
-2. **Optional auth:** `REPAIR_API_KEY` env var; when set, routes require
-   `X-API-Key` header. Empty = open on the LAN (operator choice).
+2. **Optional auth (LAN-only):** `REPAIR_API_KEY` env var; when set, routes
+   require `X-API-Key`. **Default: empty** — appropriate for LAN-only use
+   (charter deviation D8). No TLS, OAuth, or internet-facing hardening is planned.
 3. **Diagnose sessions:** in-memory `SessionStore` keyed by UUID; not durable
    across restarts. `DiagnosticSession` refactored to accept `db` per turn so
    HTTP handlers use short-lived connections.
@@ -31,9 +32,11 @@ HTTP surface for integrations without reimplementing CLI wiring.
    downloads on first request (same as CLI).
 5. **CLI entry:** `repair-assistant-api` (uvicorn) for non-Docker runs.
 
-**Charter alignment:** implements Phase 10 (README Phase 9). No new deviations.
+**Charter alignment:** implements Phase 10 (README Phase 9). Deployment scope
+narrowed to LAN-only ([D8](../CHARTER.md#deviations-from-this-charter)).
 
-**Out of scope:** web UI, OAuth, horizontal session replication, GPU serving.
+**Out of scope:** web UI, internet exposure, TLS/reverse-proxy setup, OAuth,
+horizontal session replication, GPU serving.
 
 ## Consequences
 

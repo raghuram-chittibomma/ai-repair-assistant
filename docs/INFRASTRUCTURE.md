@@ -6,6 +6,10 @@ Where this project runs services that are not on the developer workstation.
 
 - Docker services for this project (Postgres + pgvector first) run on a **shared
   LAN Docker host**, not on the laptop by default. See ADR-0006.
+- **LAN-only deployment.** The API and database are for use on the home/office
+  network only. They are **not** exposed to the internet, and this project does
+  not plan TLS termination, reverse-proxy hardening, OAuth, or other
+  public-facing security work. See charter deviation [D8](../CHARTER.md#deviations-from-this-charter).
 - **Host addresses, host ports, credentials, and other machines' container
   inventories are local secrets.** They are not committed.
 - Tracked docs describe *how* to configure the host. The *values* live in a
@@ -68,7 +72,9 @@ Postgres and the `ai-repair-assistant-api` container (port from `API_PORT` in
 - `GET /ready` — database connectivity
 - `POST /v1/search`, `/v1/ask`, `/v1/diagnose` — see ADR-0016
 
-Set `REPAIR_API_KEY` in `.env.local` to require the `X-API-Key` header.
+No API key is required for normal LAN use (`REPAIR_API_KEY` stays empty).
+That optional hook exists only if an operator wants a shared secret on the
+local network; public exposure is out of scope ([D8](../CHARTER.md#deviations-from-this-charter)).
 
 For laptop-only development without Docker API:
 

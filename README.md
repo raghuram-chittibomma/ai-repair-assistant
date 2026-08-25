@@ -8,8 +8,9 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 9 of 10 — product ready for self-hosting.** HTTP API (`repair-assistant-api`),
-> Docker deployment, health checks, and optional API-key auth (ADR-0016).
+> **Status: Phase 9 of 10 — product ready for self-hosting on the LAN.** HTTP API
+> (`repair-assistant-api`), Docker deployment, and health checks (ADR-0016).
+> **LAN-only** — not exposed to the internet; no external auth or hardening planned.
 
 ---
 
@@ -158,8 +159,9 @@ Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are predetermined in
 PostgreSQL + pgvector are live via `docker/compose.yaml` and `repair-corpus ingest`.
 Embeddings are local open-source (`BAAI/bge-base-en-v1.5`, ADR-0009 / deviation D1);
 OpenAI is reserved for LLM inference. Docker services run on a shared LAN host; see
-[docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md). Copy
-`docs/INFRASTRUCTURE.local.md.example` to `docs/INFRASTRUCTURE.local.md` for
+[docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md). **LAN-only** — the API is not
+internet-facing and this project does not include public-deployment hardening (D8).
+Copy `docs/INFRASTRUCTURE.local.md.example` to `docs/INFRASTRUCTURE.local.md` for
 addresses and ports (that file is gitignored).
 
 ## Licence
