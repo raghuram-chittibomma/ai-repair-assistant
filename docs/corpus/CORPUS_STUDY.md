@@ -12,7 +12,7 @@ input to the Phase 2 parser selection.
 | W11156989 Rev A — Tech Sheet | **Yes, in detail** | Acquired; compared page-by-page against W11320651 in §7 |
 | W11169652 Rev A — Service Manual | Partially | Acquired (94 pages); structure confirmed, contents not yet analysed |
 | W11395614, W11533288 Rev A, W11766193 Rev B — Service Pointers | Metadata only | Acquired; page counts and languages confirmed in §7 |
-| W11375982 — Service Pointer | Structure only | **Not acquired.** Format inferred from the service pointers that were |
+| W11375982 — Service Pointer | **Content confirmed** | Acquired from a mirror; the corrected Step 10 text is held and recorded as evaluation ground truth |
 | Knowledge-base articles (6) | Structure only | Acquired as MHTML; content not yet analysed |
 | Everything else | Not acquired | See [ACQUISITION.md](ACQUISITION.md) |
 
@@ -364,6 +364,33 @@ when it is trilingual. Both errors came from assuming that North American
 service documents are uniformly bilingual. They are not, and the variation is
 per-document.
 
+### A mirror-sourced document needs internal evidence, not a trusted host
+
+Two of the thirteen held documents came from third-party mirrors rather than Whirlpool:
+W11375982 from device.report and W11766193 Rev B from iFixit. Both were recorded as
+`oem_public_pdf` until this was checked, in one case while the prose notes on the same
+entry said "third-party mirror" — the queryable field disagreed with its own commentary.
+
+This is not pedantry. A mirror can serve a file that has been altered, re-rendered, or is a
+different revision than the entry claims, and any later reasoning about how much to trust a
+citation has to be able to see that. The schema now carries `third_party_mirror` as an
+explicit `access_method`, a test asserts the field agrees with the host in `source_url`, and
+`publisher_url_unverified` keeps a reconstructed manufacturer path from being mistaken for
+a route anyone has actually used.
+
+Where the host cannot be trusted, authenticity has to come from the document. For
+W11375982 the internal evidence is strong: its page count and three languages match what
+the manifest predicted before the file was held, its creation timestamp of 2019-06-10
+matches the recorded publication month, and it names W11169652 as the target of its
+correction exactly as the recorded relationship says it should. W11766193's French pages
+state `Bulletin technique no : W11766193 Rév. B`, confirming both number and revision from
+inside the file.
+
+Worth noting what the content-hash filename does and does not establish. device.report
+names files by sha256 and `9a1c7666…` is precisely the hash of the file we hold — but that
+only shows the mirror serves what it indexed. It is an integrity check on the transfer, not
+a provenance check on the publisher.
+
 ### Consequences for the phases
 
 | Phase | Determined by §7 |
@@ -373,3 +400,4 @@ per-document.
 | 3 — Ingestion | Deduplication must operate at page or chunk level. Eight identical pages across two documents will otherwise be indexed twice and crowd out other results. |
 | 4 — Retrieval | Page 1 of the tech-sheet pair is the exact-identifier benchmark. Language must be a filter, or a French answer will be returned to an English query from W11156989. |
 | 5 — Precedence | The two tech sheets are not revisions of each other; they are parallel documents for different model sets. Precedence must not infer supersession from a shared publication lineage. |
+| 6 — Answers | Two of thirteen documents are mirror-sourced. Citation confidence should reflect acquisition route, not treat every held document as equally attested. |

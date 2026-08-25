@@ -42,6 +42,19 @@ families:
         ground_truth: >-
           W11375982 states there is incorrect information in W11169652 at
           "Test #1: ACU Power Check, Step 10" and prints the corrected text.
+          The corrected behaviour, in the bulletin's own terms: after the ACU is
+          plugged in the LED blinks rapidly for a few seconds, then blinks slowly
+          at 0.5s on / 0.5s off. Not lit means no 5 VDC supply to the
+          microcontroller - replace the ACU. Not blinking slowly within 30
+          seconds of power-up means the microcontroller is not responding -
+          replace the ACU. Blinking slowly during operation means the ACU is
+          probably fine and the fault lies elsewhere.
+        grading_note: >-
+          Three gradeable facts, and the third is the one that matters: a slow
+          blink is a *pass*, so an answer that reports it as a fault inverts the
+          diagnosis and sends a technician to replace a working control board.
+          Grade the direction of the conclusion, not just the presence of the
+          timings.
         fails_if: >-
           The answer quotes the manual's original Step 10, or cites both without
           indicating which one wins.

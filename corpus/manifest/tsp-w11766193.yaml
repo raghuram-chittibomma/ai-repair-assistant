@@ -40,12 +40,17 @@ relationships:
 provenance:
   source_url: https://www.ifixit.com/Document/x3h1Ydc4A1mQDVZM/service-pointer-w11766193-revb.pdf
   url_status: confirmed
-  access_method: oem_public_pdf
+  # An iFixit URL is not an OEM public PDF, however genuine the document. The
+  # access_notes already said "third-party mirror" while the machine-readable
+  # field claimed otherwise, and only the field is queryable.
+  access_method: third_party_mirror
   license: LicenseRef-Whirlpool-Proprietary
   redistributable: false
   access_notes: >-
     Located via a third-party mirror during research. Prefer ServiceMatters or
-    the Whirlpool asset CDN if the document can be found there.
+    the Whirlpool asset CDN if the document can be found there. Authenticity
+    rests on internal evidence: the French pages read "Bulletin technique no :
+    W11766193 Rev. B", independently confirming both number and revision.
   local_filename: W11766193B.pdf
 
 identity:

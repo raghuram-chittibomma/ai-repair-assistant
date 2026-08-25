@@ -187,6 +187,43 @@ def _web_archive_match(candidate: Candidate, documents) -> tuple[object | None, 
     return None, "no declared URL, source path or title matched any manifest entry"
 
 
+# Relationship types that point outward, from the document doing something to
+# the document it acts upon. Their inverses (corrected_by, superseded_by) are
+# recorded on the other end of the same edge, so "is related to" is symmetric
+# and useless for telling two candidates apart. Direction is what disambiguates.
+_OUTBOUND_RELATIONSHIPS = frozenset({"corrects", "supersedes", "references"})
+
+
+def _by_citation(hits: list) -> list:
+    """Narrow candidates using the relationships the manifest already records.
+
+    A bulletin that corrects a manual necessarily prints the manual's
+    publication number, so both numbers appear in the bulletin's text and
+    matching on number alone finds both documents. Chronology breaks the tie:
+    the correcting document names its target, while the target predates the
+    correction and cannot mention it. So of two candidates, the one holding an
+    outbound edge to the other is the document in hand.
+
+    Only decides when exactly one candidate accounts for all the others, so two
+    documents with no relationship between them stay ambiguous rather than being
+    resolved by coin toss.
+    """
+    numbers = {d.publication_number for d in hits}
+
+    def outbound_targets(document) -> set:
+        return {
+            rel.get("target")
+            for rel in (document.data.get("relationships") or [])
+            if rel.get("type") in _OUTBOUND_RELATIONSHIPS
+            # A same-publication edge points at another revision of the document
+            # itself, which says nothing about which candidate this file is.
+            and rel.get("target") != document.publication_number
+        }
+
+    citing = [d for d in hits if numbers - {d.publication_number} <= outbound_targets(d)]
+    return citing if len(citing) == 1 else []
+
+
 ACCEPTED_SUFFIXES = frozenset({".pdf", ".html", ".htm", ".mhtml", ".mht"})
 
 
@@ -217,11 +254,12 @@ def plan(manifest, source_dir: Path) -> list[Match]:
 
         if len(hits) > 1:
             # Prefer a document whose revision also agrees, then the one whose
-            # number appears in the filename rather than merely in the body.
+            # number appears in the filename rather than merely in the body,
+            # then the one that cites the others.
             by_revision = [d for d in hits if d.revision and d.revision == candidate.revision]
             in_name, _ = _from_filename(path.name)
             by_name = [d for d in hits if d.publication_number in in_name]
-            hits = by_revision or by_name or hits
+            hits = by_revision or by_name or _by_citation(hits) or hits
 
         if len(hits) > 1:
             names = ", ".join(d.citation for d in hits)

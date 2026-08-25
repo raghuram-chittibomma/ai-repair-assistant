@@ -149,6 +149,42 @@ def test_f5e2_articles_are_separated_by_product_category(corpus):
     assert [d.doc_id for d in applying] == ["kb-f5e2-front-load"]
 
 
+def test_access_method_agrees_with_the_host_it_came_from(corpus):
+    """A document from iFixit is not an OEM public PDF, however genuine it is.
+
+    Two entries drifted this way: their prose notes said "third-party mirror"
+    while ``access_method`` claimed ``oem_public_pdf``. Only the field is
+    queryable, so only the field counts. This matters beyond tidiness -- a mirror
+    can serve an altered or differently-revised file, so anything downstream that
+    reasons about trust needs to see the real acquisition route.
+    """
+    from urllib.parse import urlparse
+
+    oem_hosts = {
+        "www.whirlpool.com",
+        "whirlpool.com",
+        "www.whirlpooldigitalassets.com",
+        "producthelp.whirlpool.com",
+    }
+
+    for document in corpus.documents:
+        url = document.provenance.get("source_url")
+        method = document.provenance.get("access_method")
+        if not url or method in {"shipped_with_appliance", "user_supplied"}:
+            continue
+
+        host = urlparse(url).netloc.lower()
+        if host in oem_hosts:
+            assert method != "third_party_mirror", (
+                f"{document.doc_id}: {host} is a manufacturer host"
+            )
+        else:
+            assert method == "third_party_mirror", (
+                f"{document.doc_id}: source_url host {host!r} is not a manufacturer "
+                f"host, but access_method says {method!r}"
+            )
+
+
 def test_browser_saved_pages_are_marked_volatile(corpus):
     """Hash mismatch on a browser-saved page must not be reported as corruption.
 

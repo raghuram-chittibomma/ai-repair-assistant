@@ -62,26 +62,36 @@ relationships:
     note: The bulletin states the tech sheets for the listed models were also wrong.
 
 provenance:
-  # Revised to the form that actually worked for the other two service pointers:
-  # the digitalassets host with the /_jcr_content/renditions/original suffix. The
-  # previous guess used that host without the suffix, a combination nothing in
-  # the corpus has ever demonstrated. Still a pattern, but now an informed one.
+  # The held copy came from a third-party mirror, so source_url names that host.
+  # Recording the Whirlpool CDN path here instead would be tidier and false.
   #
-  # Two variables defeat guessing here. The date folder is the publication month
-  # as filed, which need not match the document's own date, and the slug's case
-  # is inconsistent across the corpus -- W11395614 is filed uppercase while
-  # W11533288 is lowercase. See ACQUISITION.md for the candidates to try.
-  source_url: https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-w11375982.pdf/_jcr_content/renditions/original
-  url_status: pattern
-  access_method: oem_public_pdf
+  # The mirror names files by content hash, and 9a1c7666... is exactly the
+  # sha256 of the file we hold. That proves only that the mirror serves what it
+  # indexed, not that Whirlpool published it -- so authenticity rests on
+  # internal evidence: three pages in en/fr/es as this entry already predicted,
+  # a PDF creation date of 2019-06-10 matching the June 2019 publication month,
+  # and the corrected Step 10 text naming W11169652 as its target.
+  source_url: https://device.report/m/9a1c76663e0065ef9471aa4cd5024041474c3ad18210ffb18c9102c74f2d7c9f.pdf
+  url_status: confirmed
+  # Whirlpool's own path, reconstructed but never successfully retrieved. Kept
+  # because it is the publisher's canonical location and worth re-trying: the
+  # CDN slug carries the document title, which is why earlier shorter guesses
+  # failed.
+  publisher_url_unverified: https://www.whirlpool.com/content/dam/global/documents/201906/service-pointer-w11375982-acu-diagnostic-led-correction.pdf
+  access_method: third_party_mirror
   license: LicenseRef-Whirlpool-Proprietary
   redistributable: false
   local_filename: W11375982.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
-  instances: []
+  canonical_sha256: ea5dd8cf9de79d403eeea23ed62f8c4d4b10d80bebf1418b4b51bbb0e7eb9061
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 9a1c76663e0065ef9471aa4cd5024041474c3ad18210ffb18c9102c74f2d7c9f
+      bytes: 1622749
+      acquired_from: third_party_mirror
+      page_count: 3
+      pdf_producer: Skia/PDF m76
 
 corpus:
   role: applicable

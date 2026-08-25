@@ -214,14 +214,26 @@
           "enum": ["confirmed", "pattern", "search"],
           "description": "confirmed = content retrieved and read; pattern = built from the CDN convention, unverified; search = must be located by model number."
         },
+        "mirror_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "A non-manufacturer host known to serve the same document, recorded where the manufacturer path is unconfirmed and the file has not yet been acquired. Once acquired, source_url must name the host it actually came from. Advisory: a mirror may serve a different revision than the one this entry describes."
+        },
+        "publisher_url_unverified": {
+          "type": "string",
+          "format": "uri",
+          "description": "The manufacturer's own reconstructed path, where the held copy came from somewhere else. Kept distinct from source_url so provenance stays honest: this URL has never been shown to resolve, and treating it as the source would overstate what is known."
+        },
         "access_method": {
           "enum": [
             "oem_public_pdf",
             "oem_public_html",
+            "third_party_mirror",
             "servicematters_limited_access",
             "shipped_with_appliance",
             "user_supplied"
-          ]
+          ],
+          "description": "How the held copy was actually obtained, not how it could have been. 'third_party_mirror' matters because a mirror can serve an altered or differently-revised file, so authenticity rests on internal evidence rather than on the host."
         },
         "license": {
           "type": "string",

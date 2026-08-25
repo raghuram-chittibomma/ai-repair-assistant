@@ -127,6 +127,34 @@ def test_wrong_revision_of_a_known_document_is_flagged(tmp_path, corpus):
     assert "Rev B" in match.revision_conflict and "Rev A" in match.revision_conflict
 
 
+def test_a_bulletin_is_not_mistaken_for_the_manual_it_corrects(tmp_path, corpus):
+    """W11375982 prints W11169652's number because it corrects it.
+
+    Matching on publication number alone finds both, and picking the wrong one
+    would file a 3-page bulletin over a 94-page service manual. The manifest
+    already records which direction the correction runs.
+    """
+    text = (
+        "TECHNICAL SERVICE POINTER Technical Service Pointer #: W11375982 "
+        "There is potentially incorrect service information in the 27in Front Load "
+        "Washer Service Manual (W11169652) regarding the ACU Diagnostic LED."
+    )
+    _pdf_with_text(tmp_path / "9a1c766.pdf", text)
+
+    (match,) = intake.plan(corpus, tmp_path)
+    assert match.document is not None, match.reason
+    assert match.document.publication_number == "W11375982"
+
+
+def test_two_unrelated_candidates_stay_ambiguous(tmp_path, corpus):
+    """The citation rule must not resolve a genuine ambiguity by coin toss."""
+    _pdf_with_text(tmp_path / "unclear.pdf", "W11356840 and W11355381 both appear here")
+
+    (match,) = intake.plan(corpus, tmp_path)
+    assert match.document is None
+    assert "ambiguous" in match.reason
+
+
 def test_plain_html_is_identified_by_its_canonical_url(tmp_path, corpus):
     (tmp_path / "saved_page.html").write_text(
         '<html><head><link rel="canonical" href="https://producthelp.whirlpool.com/'

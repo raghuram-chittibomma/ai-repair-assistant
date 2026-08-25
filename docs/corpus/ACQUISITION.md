@@ -91,7 +91,7 @@ browser to snapshot one. Do not crawl the site.
 | W11169652 | A | Service manual (L-97) | `W11169652A.pdf` | **confirmed** [CDN 201905](https://www.whirlpool.com/content/dam/global/documents/201905/service-manual-w11169652-reva-27in-front-load-washers.pdf) |
 | W11320651 | B | Tech sheet | `W11320651B.pdf` | **confirmed** [CDN 201905](https://www.whirlpool.com/content/dam/global/documents/201905/tech-sheet-w11320651-rev-b.pdf) |
 | W11156989 | A | Tech sheet | `W11156989A.pdf` | **confirmed** [CDN 201901](https://www.whirlpool.com/content/dam/global/documents/201901/tech-sheet-w11156989-reva.pdf) — was a pattern guess, and it resolved |
-| W11375982 | — | Service pointer | `W11375982.pdf` | **pattern, still not found** — see below |
+| W11375982 | — | Service pointer | `W11375982.pdf` | **confirmed** — via mirror, not the CDN; see below |
 | W11320547 | C | Repair parts list | `W11320547C.pdf` | **search** — parts list for `WFW5620HW0` |
 | W11355369 | ? | Owner's manual | `W11355369.pdf` | **search** — manuals page, `WFW5620HW` |
 | W11156977 | ? | Installation instructions | `W11156977.pdf` | **search** — manuals page |
@@ -106,34 +106,60 @@ revision is part of logical identity, so `W11355369C.pdf` must be distinguishabl
 `W11355369A.pdf`, and both the manifest `revision` field and `local_filename` need
 updating once known.
 
-### W11375982 — the one that matters most
+### W11375982 — acquired from a mirror
 
-This is the highest-value outstanding document. It is the corpus's central precedence
-case: a two-page bulletin that overrides a named passage of the 94-page service manual for
-the anchor model. Without it, the `precedence-bulletin-over-manual` scenario family cannot
-be evaluated against a real document, and that family is the main reason this corpus exists.
+**Held.** Three pages, English/French/Spanish, filed as `W11375982.pdf`. This is the
+corpus's central precedence case: a bulletin that overrides a named passage of the 94-page
+service manual for the anchor model, so the `precedence-bulletin-over-manual` family is now
+backed by a real document.
 
-Candidates to try in a browser, in this order. The first applies the service-pointer form
-that worked for the two pointers already held; the rest vary the three fields that are
-known to be inconsistent.
+It came from a mirror rather than Whirlpool's CDN, which is recorded honestly:
+`access_method: third_party_mirror`, `source_url` naming the mirror, and the reconstructed
+manufacturer path kept separately as `publisher_url_unverified` because it has never been
+shown to resolve.
+
+A mirror can serve an altered or differently-revised file, so authenticity rests on
+internal evidence rather than on the host — and here it is unusually strong:
+
+- Three pages in English, French and Spanish, exactly as the manifest entry predicted
+  before the file existed locally.
+- A PDF creation timestamp of 2019-06-10, matching the recorded June 2019 publication month.
+- The corrected Step 10 text present and naming W11169652 as its target, consistent with
+  the `corrects` relationship already recorded.
+- The mirror names files by content hash, and `9a1c7666…` is exactly the sha256 of the file
+  we hold. That proves the mirror serves what it indexed — not that Whirlpool published it,
+  which is why the three points above carry the weight.
+
+The route below is retained because the publisher's own copy is still worth obtaining.
+
+Earlier guesses at this URL all truncated the slug. Whirlpool's CDN slugs carry the
+document *title*, not merely its publication number — the service manual is filed as
+`service-manual-w11169652-reva-27in-front-load-washers` — and the two service pointers
+already held looked like exceptions only because their own titles are short. A third-party
+index exposed this document's path fragment as
+`...w11375982 acu diagnostic led correction ... documents 201906`, giving both the full
+slug and the date folder:
 
 ```
-https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-w11375982.pdf/_jcr_content/renditions/original
-https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-W11375982.pdf/_jcr_content/renditions/original
-https://www.whirlpooldigitalassets.com/content/dam/global/documents/201907/service-pointer-w11375982.pdf/_jcr_content/renditions/original
-https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-w11375982-reva.pdf/_jcr_content/renditions/original
-https://www.whirlpool.com/content/dam/global/documents/201906/service-pointer-w11375982.pdf
+https://www.whirlpool.com/content/dam/global/documents/201906/service-pointer-w11375982-acu-diagnostic-led-correction.pdf
 ```
 
-If none resolve, a web search for `"W11375982"` alone is worth trying: W11766193 was found
-on an iFixit mirror rather than the CDN, and third-party appliance-parts sites mirror
-service pointers routinely. Record the real host in `provenance.source_url` if so — a
-mirror is a legitimate provenance, an inaccurate one is not.
+If that does not resolve, a mirror is confirmed to serve the document:
 
-Failing that, ServiceMatters Limited Access under `WFW5620HW0`, with the confidentiality
+```
+https://device.report/m/9a1c76663e0065ef9471aa4cd5024041474c3ad18210ffb18c9102c74f2d7c9f.pdf
+```
+
+Set `provenance.source_url` to whichever host the file actually came from. A mirror is
+legitimate provenance; an inaccurate `source_url` is not. Check the revision on arrival —
+a mirror can serve a different revision than the entry describes.
+
+Failing both, ServiceMatters Limited Access under `WFW5620HW0`, with the confidentiality
 consequence noted above. If it cannot be obtained at all, move it to `_excluded.yaml` with
-the routes attempted, and demote the scenario family that depends on it — the correction
-text is quoted in the study, but a quotation is not a citable source.
+the routes attempted, and demote the scenario family that depends on it. The corrected
+Step 10 text is now known and recorded as evaluation ground truth, but knowing the answer
+is not the same as holding a citable source — and a corpus that cites a document it does
+not have is exactly the failure this project exists to prevent.
 
 ## Applicability contrast — deliberately NOT applicable to WFW5620HW0
 
