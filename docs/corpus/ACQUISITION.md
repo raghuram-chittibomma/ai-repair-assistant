@@ -8,6 +8,14 @@ You acquire them through your own browser and the tool verifies what you have.
 
 Run `repair-corpus status` at any time to see what is still missing.
 
+## Acquisition status (closed 2026-08-25)
+
+**22 documents held and verifying clean.** Primary gaps moved to
+`corpus/manifest/_excluded.yaml`: owner's manual W11355369, energy guide
+W11356840, wiring diagram W11243716. A nearby energy-guide file W11356849 was
+downloaded but is a different publication number and was not filed. Reopen this
+guide only if those three become available.
+
 ---
 
 ## Verification status of the URLs below
