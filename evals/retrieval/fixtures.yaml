@@ -1,0 +1,64 @@
+# Retrieval bake-off fixtures (charter D4 / Phase 4 practice).
+# Graded on publication_number or doc_id appearing in top-K hits after retrieval.
+# Requires a live Postgres with ingested embeddings (repair-corpus ingest --all).
+
+version: 1
+k: 8
+
+strategies:
+  - id: vector_raw
+    description: Cosine neighbours only (no applicability filter)
+  - id: vector_apply
+    description: Vector + applicability drop (no authority boosts)
+  - id: vector_apply_boost
+    description: ADR-0010 interim — vector + apply + light boosts
+  - id: lexical_apply
+    description: Postgres full-text + applicability drop
+  - id: hybrid_rrf_apply
+    description: RRF fusion of vector + lexical, then applicability
+
+fixtures:
+  - id: acu-led-step-10
+    family: precedence-bulletin-over-manual
+    question: >-
+      On a WFW5620HW0, what should the ACU diagnostic LED do during the ACU
+      power check?
+    appliance: {model: WFW5620HW0}
+    must_cite: [W11375982]
+    hard: true
+
+  - id: door-locks-wont-run-wrong-platform
+    family: applicability-serial-range
+    question: My Whirlpool front load washer locks the door but won't start.
+    appliance: {model: WFW5620HW0}
+    must_not_cite: [W11395614]
+    hard: true
+
+  - id: f5e2-front-load-not-top-load
+    family: applicability-product-category
+    question: What does error code F5E2 mean on my front-load washer?
+    appliance: {model: WFW5620HW0}
+    must_cite: [kb-f5e2-front-load]
+    must_not_cite: [kb-f5e2-top-load, kb-f5e2-laundry-tower]
+    hard: true
+
+  - id: error-code-f6e1
+    family: retrieval-exact-identifier
+    question: What is F6E1?
+    appliance: {model: WFW5620HW0}
+    must_cite_any: [W11320651, W11156989]
+    hard: true
+
+  - id: serial-inside-door-lock-tsp
+    family: applicability-serial-range
+    question: Does the door-lock service pointer apply to my machine?
+    appliance: {model: WFW3090GW2, serial: CF83000000, model_introduced: 2018}
+    must_cite: [W11395614]
+    hard: false
+
+  - id: serial-outside-door-lock-tsp
+    family: applicability-serial-range
+    question: Does the door-lock service pointer apply to my machine?
+    appliance: {model: WFW3090GW2, serial: CF84900000, model_introduced: 2018}
+    must_not_cite: [W11395614]
+    hard: false

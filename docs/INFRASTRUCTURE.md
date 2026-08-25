@@ -40,3 +40,20 @@ postgresql://USER:PASSWORD@DOCKER_HOST:HOST_PORT/repair_assistant
 
 Resolve `DOCKER_HOST` and `HOST_PORT` from `docs/INFRASTRUCTURE.local.md` (or
 from environment variables loaded from `.env.local`).
+
+## Compose (Phase 3)
+
+Template: [`docker/compose.yaml`](../docker/compose.yaml). Env: copy
+[`.env.example`](../.env.example) → `.env.local`.
+
+```bash
+# From the repo root, with DOCKER_HOST aimed at the LAN Docker daemon if needed:
+docker compose --env-file .env.local -f docker/compose.yaml up -d
+
+repair-corpus db-migrate
+repair-corpus ingest --all --skip-embed   # schema smoke, no encoder
+repair-corpus ingest --all                # local BAAI/bge-base-en-v1.5 (ADR-0009)
+```
+
+Container name: `ai-repair-assistant-pg`. Image: `pgvector/pgvector:pg17`.
+See ADR-0008 / ADR-0009 for schema and embedding rules.

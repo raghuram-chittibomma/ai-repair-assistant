@@ -4,9 +4,15 @@ One record per significant decision: the context, the options genuinely
 considered, what was chosen, why, and what it costs. A decision without a
 recorded cost has usually not been thought through.
 
+**North star:** [../CHARTER.md](../CHARTER.md). Before accepting an ADR, check
+it against the charter. If the decision **deviates**, say so in the ADR and add
+a row to the charter’s [Deviations](../CHARTER.md#deviations-from-this-charter)
+register.
+
 Records are immutable once accepted. To change a decision, write a new ADR that
 supersedes the old one and update the older record's status. ADR-0003 already
 supersedes an earlier draft of this project's acquisition design.
+ADR-0009 supersedes the embedding provider choice in ADR-0008.
 
 ## Phase 1 — Corpus
 
@@ -23,6 +29,20 @@ supersedes an earlier draft of this project's acquisition design.
 | ADR | Decision | Driver |
 | --- | --- | --- |
 | [0007](0007-parser-and-chunker.md) | pdfplumber + structured table-row chunking; pypdf fixed-size is the failing control | Tech-sheet error table and F6E1 binding measured in bake-off |
+
+## Phase 3 — Ingestion
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0008](0008-incremental-ingestion.md) | Parsed JSONL → Postgres/pgvector; fingerprint skip | Incremental refresh without re-parse; LAN DB |
+| [0009](0009-local-open-embeddings.md) | Local `BAAI/bge-base-en-v1.5` (768-d); OpenAI not used for embed | Zero embed cost; OpenAI reserved for LLM only |
+
+## Phase 4 — Retrieval
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0010](0010-retrieval-applicability.md) | Over-fetch vectors; filter by applicability; light boosts (**interim default**) | W11395614 / W11375982 cases |
+| [0011](0011-retrieval-bakeoff.md) | Bake-off confirms ADR-0010; lexical/hybrid not adopted yet | D4 experiments; F5E2 KB gap |
 
 ## Infrastructure
 

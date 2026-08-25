@@ -29,6 +29,8 @@ _COLOURS = {
     "mismatch": "red",
     "unpinned": "cyan",
     "drift": "magenta",
+    "skipped": "bright_black",
+    "failed": "red",
 }
 
 
@@ -517,6 +519,184 @@ def parse_cmd(doc_id: str | None, parse_all: bool, extractor: str) -> None:
         _echo_status("ok", document.citation, str(out.relative_to(corpus.root)))
         written += 1
     click.echo(f"Wrote chunks for {written} document(s).")
+
+
+@main.command("db-migrate")
+def db_migrate_cmd() -> None:
+    """Apply Postgres / pgvector schema migrations (Phase 3)."""
+    from repair_assistant.ingest.env import database_url
+    from repair_assistant.ingest.store import Database, apply_migrations
+
+    try:
+        url = database_url()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    with Database(url) as db:
+        applied = apply_migrations(db)
+    if applied:
+        for version in applied:
+            click.echo(f"Applied {version}")
+    else:
+        click.echo("Schema already up to date.")
+
+
+@main.command("ingest")
+@click.argument("doc_id", required=False)
+@click.option("--all", "ingest_all", is_flag=True, help="Ingest every corpus/parsed document.")
+@click.option("--force", is_flag=True, help="Re-upsert even when content fingerprint matches.")
+@click.option(
+    "--skip-embed",
+    is_flag=True,
+    help="Load text only; leave embedding columns NULL.",
+)
+def ingest_cmd(doc_id: str | None, ingest_all: bool, force: bool, skip_embed: bool) -> None:
+    """Load corpus/parsed JSONL into Postgres and embed new/changed chunks."""
+    from repair_assistant.ingest.embeddings import build_embedder
+    from repair_assistant.ingest.env import database_url, embedding_model
+    from repair_assistant.ingest.pipeline import ingest_parsed
+    from repair_assistant.ingest.store import Database, apply_migrations
+
+    if ingest_all == bool(doc_id):
+        raise click.ClickException("pass a doc_id or --all")
+
+    try:
+        url = database_url()
+        embedder = build_embedder(skip=skip_embed, model=embedding_model())
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    corpus = _load()
+    doc_ids: set[str] | None = None
+    if doc_id:
+        matches = [
+            d for d in corpus.documents if d.doc_id == doc_id or d.publication_number == doc_id
+        ]
+        if matches:
+            doc_ids = {d.doc_id for d in matches}
+        else:
+            doc_ids = {doc_id}
+
+    sha_by_doc: dict[str, str] = {}
+    for d in corpus.documents:
+        if d.known_hashes:
+            sha_by_doc[d.doc_id] = sorted(d.known_hashes)[0]
+
+    with Database(url) as db:
+        apply_migrations(db)
+        result = ingest_parsed(
+            db,
+            corpus.root / "corpus",
+            embedder,
+            doc_ids=doc_ids,
+            force=force,
+            corpus_sha_by_doc=sha_by_doc,
+        )
+
+    for stats in result.documents:
+        detail = stats.detail
+        if stats.status == "upserted":
+            detail = detail or f"{stats.chunks} chunks, {stats.embedded} embedded"
+        _echo_status(stats.status if stats.status != "upserted" else "ok", stats.doc_id, detail)
+
+    click.echo()
+    click.echo(
+        f"Ingested {result.upserted}, skipped {result.skipped}, failed {result.failed}."
+    )
+    if result.failed:
+        raise SystemExit(1)
+
+
+@main.command("bench-retrieve")
+@click.option("--write/--no-write", default=False, help="Write scorecard under evals/retrieval/results/")
+@click.option("--k", default=None, type=int, help="Override top-K (default from fixtures.yaml).")
+def bench_retrieve_cmd(write: bool, k: int | None) -> None:
+    """Score retrieval strategies against evals/retrieval/fixtures.yaml (needs live DB)."""
+    from repair_assistant.retrieval import bench as retrieve_bench
+
+    try:
+        results = retrieve_bench.run_bakeoff(k=k)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    card = retrieve_bench.scorecard_markdown(results)
+    click.echo(card)
+    if write:
+        corpus = _load()
+        out = corpus.root / "evals" / "retrieval" / "results"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "scorecard.md").write_text(card, encoding="utf-8", newline="\n")
+        click.echo(f"Wrote {out / 'scorecard.md'}")
+
+    hard_fails = [r for r in results if r.hard and not r.passed]
+    # Interim baseline must clear hard fixtures; bake-off records who wins.
+    boost = [r for r in results if r.strategy == "vector_apply_boost" and r.hard]
+    if boost and not any(r.passed for r in boost):
+        raise click.ClickException(
+            "vector_apply_boost failed all hard fixtures; see scorecard"
+        )
+
+
+@main.command("search")
+@click.argument("query")
+@click.option("--model", default=None, help="Appliance model for applicability filter.")
+@click.option("--serial", default=None, help="Serial number for range checks.")
+@click.option("--limit", default=8, show_default=True, type=int, help="Hits to return.")
+@click.option(
+    "--overfetch",
+    default=40,
+    show_default=True,
+    type=int,
+    help="Vector neighbours to fetch before applicability filter.",
+)
+def search_cmd(query: str, model: str | None, serial: str | None, limit: int, overfetch: int) -> None:
+    """Semantic search over ingested chunks (Phase 4)."""
+    from repair_assistant.corpus.applicability import Appliance
+    from repair_assistant.ingest.env import database_url
+    from repair_assistant.ingest.store import Database
+    from repair_assistant.retrieval.search import search
+
+    try:
+        url = database_url()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    appliance = Appliance(model=model, serial=serial) if model else None
+    corpus = _load()
+    with Database(url) as db:
+        result = search(
+            db,
+            corpus,
+            query,
+            appliance=appliance,
+            limit=limit,
+            overfetch=overfetch,
+        )
+
+    click.secho(f"Query: {result.query}", bold=True)
+    if appliance:
+        click.echo(f"Appliance: {appliance.model}" + (f" / {appliance.serial}" if appliance.serial else ""))
+    click.echo(
+        f"Fetched {result.fetched} neighbours; "
+        f"showing {len(result.hits)}"
+        + (f" (filtered out {result.filtered_out})" if result.filtered_out else "")
+    )
+    click.echo()
+    for i, hit in enumerate(result.hits, 1):
+        cite = hit.publication_number or hit.doc_id
+        if hit.revision:
+            cite = f"{cite} Rev {hit.revision}"
+        page = f" p.{hit.page}" if hit.page else ""
+        codes = f" [{', '.join(hit.error_codes)}]" if hit.error_codes else ""
+        click.secho(f"{i}. {cite}{page}{codes}  score={hit.score:.3f}", bold=True)
+        click.echo(f"   {hit.doc_id} / {hit.chunk_id}")
+        if hit.apply_reason:
+            click.secho(f"   {hit.apply_reason}", fg="bright_black")
+        preview = " ".join(hit.text.split())
+        if len(preview) > 280:
+            preview = preview[:277] + "..."
+        click.echo(f"   {preview}")
+        click.echo()
 
 
 def yaml_dump(data: dict) -> str:

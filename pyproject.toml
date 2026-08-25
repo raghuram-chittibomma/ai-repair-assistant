@@ -21,6 +21,10 @@ dependencies = [
     # Phase 2 extractors — selected by bake-off (see ADR-0007 / evals/parsing).
     "pdfplumber>=0.11,<0.12",
     "pymupdf>=1.24,<1.29",
+    # Phase 3 ingestion (ADR-0008 / ADR-0009).
+    "psycopg[binary]>=3.2,<4",
+    # Local OSS embeddings — OpenAI is reserved for LLM inference later.
+    "sentence-transformers>=3.0,<5",
 ]
 
 [project.optional-dependencies]

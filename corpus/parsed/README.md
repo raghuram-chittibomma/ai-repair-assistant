@@ -9,3 +9,6 @@ corpus/parsed/<doc_id>/meta.json
 
 These files are derived from copyrighted manufacturer documents and are
 **not committed**. Re-run parse locally after cloning.
+
+Load into Postgres with `repair-corpus ingest` (see ADR-0008 /
+docs/INFRASTRUCTURE.md).

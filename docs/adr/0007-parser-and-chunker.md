@@ -40,6 +40,10 @@ MHTML decode). Scorecard: `evals/parsing/results/scorecard.md`.
 5. **Preserve manufacturer typos** in extracted text (citation fidelity /
    hash verification).
 
+**Charter deviations:** [D2](../CHARTER.md#deviations-from-this-charter) (chunking
+folded into parse phase), [D3](../CHARTER.md#deviations-from-this-charter)
+(chosen on parsing fixtures, not yet retrieval end-to-end evals).
+
 ## Consequences
 
 - `repair-corpus parse` writes `corpus/parsed/<doc_id>/chunks.jsonl` (gitignored).

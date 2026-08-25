@@ -1,0 +1,32 @@
+# Postgres + pgvector for AI Repair Assistant.
+# Addresses and credentials come from .env.local (gitignored), never from this file.
+#
+# On the LAN Docker host (see docs/INFRASTRUCTURE.md / ADR-0006):
+#   docker compose --env-file ../.env.local -f compose.yaml up -d
+#
+# From a laptop with DOCKER_HOST pointing at that machine:
+#   set DOCKER_HOST=tcp://DOCKER_HOST:2375   # or your TLS endpoint
+#   docker compose --env-file .env.local -f docker/compose.yaml up -d
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: ai-repair-assistant-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-repair}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.local}
+      POSTGRES_DB: ${POSTGRES_DB:-repair_assistant}
+    ports:
+      - "${HOST_PORT:?set HOST_PORT in .env.local}:5432"
+    volumes:
+      - ai_repair_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  ai_repair_pg_data:

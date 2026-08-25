@@ -8,10 +8,9 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 2 of 10.** Corpus layer is in place. Parsing/chunking is selected by
-> bake-off (`repair-corpus bench-parse`); production extract uses pdfplumber and writes
-> gitignored chunks under `corpus/parsed/`. Retrieval, embeddings, Postgres, and model
-> integration arrive in later phases.
+> **Status: Phase 4 of 10.** Corpus, parse, and ingest are in place. Retrieval is
+> `repair-corpus search` with applicability filtering (ADR-0010). LangGraph Q&A
+> arrives next.
 
 ---
 
@@ -63,6 +62,12 @@ repair-corpus applies --model WFW5620HW0
 repair-corpus bench-parse             # re-score extractors against parsing fixtures
 repair-corpus parse tech-sheet-w11320651
 repair-corpus parse --all             # chunks under corpus/parsed/ (gitignored)
+
+# Phase 3 — copy .env.example → .env.local, start docker/compose.yaml, then:
+repair-corpus db-migrate
+repair-corpus ingest --all --skip-embed   # text only
+repair-corpus ingest --all                # + local BGE embeddings (free)
+repair-corpus search "F5E1 door lock" --model WFW5620HW0
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
@@ -104,20 +109,22 @@ tests/                   deterministic tests
 
 ## Documentation
 
+- [Project charter](docs/CHARTER.md) — vision, constraints, principles, roadmap; ADRs record deviations
 - [Corpus licensing and acquisition](docs/CORPUS_LICENSING.md) — copyright, terms of use,
   ServiceMatters confidentiality, why there is no downloader
 - [Acquisition guide](docs/corpus/ACQUISITION.md) — how to obtain each document
 - [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is actually in these documents
 - [Parsing bake-off](evals/parsing/results/scorecard.md) — extractor scores; decision in ADR-0007
-- [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker policy; real host/ports in gitignored local file
-- [Architecture decision records](docs/adr/) — the reasoning behind each significant choice
+- [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker + Compose; real host/ports in gitignored local file
+- [Architecture decision records](docs/adr/) — decisions; must note charter deviations when they occur
 
 ## Fixed technology constraints
 
-Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are predetermined for this
-project. None of them are required in Phase 1, and none have been introduced yet —
-PostgreSQL arrives with incremental ingestion in Phase 3. Docker services (starting with
-Postgres + pgvector) run on a shared LAN host; see
+Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are predetermined in the
+[charter](docs/CHARTER.md) (with [documented deviations](docs/CHARTER.md#deviations-from-this-charter)).
+PostgreSQL + pgvector are live via `docker/compose.yaml` and `repair-corpus ingest`.
+Embeddings are local open-source (`BAAI/bge-base-en-v1.5`, ADR-0009 / deviation D1);
+OpenAI is reserved for LLM inference. Docker services run on a shared LAN host; see
 [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md). Copy
 `docs/INFRASTRUCTURE.local.md.example` to `docs/INFRASTRUCTURE.local.md` for
 addresses and ports (that file is gitignored).
