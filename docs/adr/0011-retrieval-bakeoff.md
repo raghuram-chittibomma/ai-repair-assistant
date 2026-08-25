@@ -18,7 +18,7 @@ category / F6E1):
 | --- | --- |
 | `vector_raw` | 3/4 |
 | `vector_apply` | 3/4 |
-| `vector_apply_boost` (ADR-0010) | **3/4** |
+| `vector_apply_boost` (ADR-0010) | **4/4** (after F5E2 KB fix) |
 | `lexical_apply` | 2/4 |
 | `hybrid_rrf_apply` | 2/4 |
 
@@ -27,10 +27,9 @@ category / F6E1):
 1. **Keep `vector_apply_boost` (ADR-0010) as the default** for `repair-corpus search`.
 2. **Do not adopt pure lexical or RRF-hybrid yet** — lexical returned empty or
    weak sets on several fixtures; hybrid diluted the ACU LED bulletin hit.
-3. **Known gap:** all strategies fail `f5e2-front-load-not-top-load` because the
-   MindTouch KB chunks are not retrieved into top-K (tech sheets dominate). Treat
-   as a follow-up (chunking/ingest of KB articles + stronger exact-code lexical),
-   not a reason to switch strategies today.
+3. **F5E2 KB gap (closed):** MindTouch pages title codes as `F5 E2` and nav chrome
+   lists sibling codes. Fix: spaced-code recall, slug/lead extraction for MHTML,
+   and knowledge-article ranking boosts. Re-run scorecard after corpus changes.
 4. Re-run `repair-corpus bench-retrieve --write` when corpus or chunking changes.
 
 ## Consequences

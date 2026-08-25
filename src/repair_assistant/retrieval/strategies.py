@@ -9,8 +9,9 @@ from repair_assistant.corpus.manifest import Manifest
 from repair_assistant.ingest.embeddings import Embedder, build_embedder
 from repair_assistant.ingest.env import embedding_model
 from repair_assistant.ingest.store import Database
+from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.retrieval.rank import RankedHit, filter_and_rank
-from repair_assistant.retrieval.search import extract_error_codes, vector_fetch
+from repair_assistant.retrieval.search import code_fetch, merge_hits, vector_fetch
 
 
 def _appliance(raw: dict | None) -> Appliance | None:
@@ -149,23 +150,29 @@ def run_strategy(
 
     if strategy_id == "vector_raw":
         vectors = embedder.embed([query])[0]
-        return vector_fetch(db, vectors, limit=k)
+        return merge_hits(code_fetch(db, codes), vector_fetch(db, vectors, limit=k))[:k]
 
     if strategy_id == "vector_apply":
         vectors = embedder.embed([query])[0]
-        raw = vector_fetch(db, vectors, limit=overfetch)
+        raw = merge_hits(
+            code_fetch(db, codes),
+            vector_fetch(db, vectors, limit=overfetch),
+        )
         return _hits_from_ranked(_apply_only(raw, manifest, appliance, limit=k))
 
     if strategy_id == "vector_apply_boost":
         vectors = embedder.embed([query])[0]
-        raw = vector_fetch(db, vectors, limit=overfetch)
+        raw = merge_hits(
+            code_fetch(db, codes),
+            vector_fetch(db, vectors, limit=overfetch),
+        )
         ranked = filter_and_rank(
             raw, manifest, appliance, limit=k, query_error_codes=codes
         )
         return _hits_from_ranked(ranked)
 
     if strategy_id == "lexical_apply":
-        raw = lexical_fetch(db, query, limit=overfetch)
+        raw = merge_hits(code_fetch(db, codes), lexical_fetch(db, query, limit=overfetch))
         ranked = filter_and_rank(
             raw, manifest, appliance, limit=k, query_error_codes=codes
         )
@@ -173,11 +180,14 @@ def run_strategy(
 
     if strategy_id == "hybrid_rrf_apply":
         vectors = embedder.embed([query])[0]
-        fused = _rrf(
-            [
-                vector_fetch(db, vectors, limit=overfetch),
-                lexical_fetch(db, query, limit=overfetch),
-            ]
+        fused = merge_hits(
+            code_fetch(db, codes),
+            _rrf(
+                [
+                    vector_fetch(db, vectors, limit=overfetch),
+                    lexical_fetch(db, query, limit=overfetch),
+                ]
+            ),
         )
         ranked = filter_and_rank(
             fused, manifest, appliance, limit=k, query_error_codes=codes

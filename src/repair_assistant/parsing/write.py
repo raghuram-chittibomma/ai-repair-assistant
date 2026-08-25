@@ -69,15 +69,31 @@ def parse_document(
 
 
 def _chunks_from_mhtml(path: Path, document: manifest_mod.Document) -> list[Chunk]:
+    import re
+
+    from repair_assistant.parsing.error_codes import extract_error_codes
+
     html = load_mhtml(path)
     text = html_to_visible_text(html)
+    # Prefer the slug (kb-f5e2-…) and lead copy — full MindTouch pages list many
+    # sibling codes in nav chrome, which poisons specificity ranking.
+    slug_codes = [
+        f"F{a}E{b}".upper()
+        for a, b in re.findall(r"f(\d)e(\d)", document.doc_id, flags=re.IGNORECASE)
+    ]
+    lead_codes = extract_error_codes(text[:1200])
+    codes = list(dict.fromkeys([*slug_codes, *lead_codes]))
+    if not codes:
+        codes = extract_error_codes(text)
+    if codes:
+        text = "Error codes: " + ", ".join(codes) + "\n\n" + text
     return [
         Chunk(
             chunk_id=f"{document.doc_id}-article",
             text=text,
             page=1,
             kind="article",
-            error_codes=[],
+            error_codes=codes,
             language="en",
             doc_id=document.doc_id,
             publication_number=document.publication_number,

@@ -10,10 +10,10 @@ from __future__ import annotations
 import hashlib
 import re
 
+from .error_codes import extract_error_codes
 from .models import Chunk, ExtractedDocument, Table
 from .pua import map_pua, split_list_items
 
-_ERROR_CODE_RE = re.compile(r"\b(F\dE\d)\b")
 _HEADING_RE = re.compile(
     r"^(FOR SERVICE TECHNICIAN|DIAGNOSTIC|TEST #\d|ERROR CODE|IMPORTANT|"
     r"WARNING|ABBREVIATIONS|TECHNICAL SERVICE POINTER)",
@@ -64,7 +64,7 @@ def _structured_chunks(
             # Still keep non-table prose by removing table cell strings roughly.
             pass
         for piece in _split_prose(prose_text):
-            codes = _ERROR_CODE_RE.findall(piece)
+            codes = extract_error_codes(piece)
             kind = "heading" if _HEADING_RE.match(piece.strip()) else "prose"
             if "•" in piece and len(split_list_items(piece)) > 1:
                 kind = "procedure"
@@ -100,7 +100,7 @@ def _chunks_from_table(
         if not cells:
             continue
         code_cell = cells[error_col] if error_col < len(cells) else cells[0]
-        codes = _ERROR_CODE_RE.findall(code_cell)
+        codes = extract_error_codes(code_cell)
         # Also accept a bare F#E# as the whole first cell.
         if not codes and re.fullmatch(r"F\dE\d", code_cell.strip()):
             codes = [code_cell.strip()]
@@ -140,7 +140,7 @@ def _naive_fixed_chunks(
             window = text[start : start + size]
             if not window.strip():
                 continue
-            codes = _ERROR_CODE_RE.findall(window)
+            codes = extract_error_codes(window)
             chunks.append(
                 _make_chunk(
                     text=window,

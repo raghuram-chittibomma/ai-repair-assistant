@@ -85,8 +85,15 @@ def filter_and_rank(
                 boost += 0.02
 
         codes = [str(c).upper() for c in (hit.get("error_codes") or [])]
+        kind = hit.get("kind") or ""
         if query_codes and query_codes.intersection(codes):
-            boost += 0.1
+            boost += 0.15
+            if set(codes) <= query_codes or len(set(codes)) <= 2:
+                boost += 0.25
+            if kind == "article":
+                boost += 0.1
+            if doc is not None and doc.doc_type == "knowledge_article":
+                boost += 0.2
 
         ranked.append(
             RankedHit(
