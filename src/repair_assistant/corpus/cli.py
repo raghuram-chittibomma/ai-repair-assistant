@@ -278,6 +278,98 @@ def export(fmt: str) -> None:
 
 
 @main.command()
+@click.argument("source", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("--apply/--dry-run", default=False,
+              help="Actually move the files. Defaults to a dry run.")
+@click.option("--copy", is_flag=True, help="Copy instead of moving, leaving the source intact.")
+def intake(source: Path, apply: bool, copy: bool) -> None:
+    """Identify downloaded documents in SOURCE and file them into the corpus.
+
+    Works out which manifest entry each download is, from its filename and the
+    publication number printed in it, then renames it to the expected name.
+    Nothing is downloaded: this only sorts what you already have.
+    """
+    from . import intake as intake_mod
+
+    corpus = _load()
+    matches = intake_mod.plan(corpus, source)
+
+    if not matches:
+        raise click.ClickException(f"no PDF or HTML files found in {source}")
+
+    documents_dir = corpus.documents_dir
+    filed, skipped, blocked = 0, 0, 0
+    claimed: dict[str, Path] = {}
+
+    for match in matches:
+        name = match.candidate.path.name
+
+        if match.document is None:
+            _echo_status("mismatch", name, match.reason)
+            blocked += 1
+            continue
+
+        target = documents_dir / match.target_name
+
+        if match.target_name in claimed:
+            _echo_status(
+                "mismatch", name,
+                f"would overwrite {match.target_name}, already claimed by "
+                f"{claimed[match.target_name].name}",
+            )
+            blocked += 1
+            continue
+
+        if match.revision_conflict:
+            # Filing under the wrong revision silently corrupts logical identity,
+            # which is the one thing the manifest exists to get right.
+            _echo_status("mismatch", name, match.revision_conflict)
+            click.echo(f"          would have filed as {match.target_name}; not filing")
+            blocked += 1
+            continue
+
+        if target.exists() and identity.sha256_file(target) == identity.sha256_file(
+            match.candidate.path
+        ):
+            _echo_status("ok", name, f"already filed as {match.target_name}")
+            skipped += 1
+            continue
+
+        claimed[match.target_name] = match.candidate.path
+        verb = "copy" if copy else "move"
+        _echo_status("ok", name, f"{verb} -> corpus/documents/{match.target_name}")
+        click.secho(f"          {match.reason}", fg="bright_black")
+
+        if apply:
+            import shutil
+
+            documents_dir.mkdir(parents=True, exist_ok=True)
+            if copy:
+                shutil.copy2(match.candidate.path, target)
+            else:
+                shutil.move(str(match.candidate.path), str(target))
+        filed += 1
+
+    click.echo()
+    if apply:
+        click.secho(f"Filed {filed}, skipped {skipped}, blocked {blocked}.", bold=True)
+        click.echo("Next: repair-corpus verify, then repair-corpus pin --write")
+    else:
+        click.secho(
+            f"Dry run: {filed} would be filed, {skipped} already present, {blocked} blocked.",
+            bold=True,
+        )
+        click.echo("Re-run with --apply to move them.")
+
+    if blocked:
+        click.secho(
+            "\nBlocked files need a decision before filing. A revision mismatch usually "
+            "means the manifest needs updating, not that the download is wrong.",
+            fg="yellow",
+        )
+
+
+@main.command()
 @click.option("--write/--dry-run", default=False,
               help="Write the computed hashes back into the manifest.")
 def pin(write: bool) -> None:

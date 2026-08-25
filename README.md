@@ -49,12 +49,17 @@ missing   service_manual            W11169652 Rev A   27in Front-Load Washers (L
           save as: corpus/documents/W11169652A.pdf
 ```
 
-Once you have downloaded documents into `corpus/documents/`:
+Download them wherever your browser puts them, then let the tool sort them out —
+it identifies each file by its publication number and renames it correctly:
 
 ```bash
+repair-corpus intake ~/Downloads/whirlpool   # dry run
+repair-corpus intake ~/Downloads/whirlpool --apply
+
 repair-corpus verify                  # hash and check against the manifest
+repair-corpus pin --write             # record hashes for newly acquired files
 repair-corpus show W11375982          # full metadata for one document
-repair-corpus export --format croissant > corpus.jsonld
+repair-corpus applies --model WFW5620HW0
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
