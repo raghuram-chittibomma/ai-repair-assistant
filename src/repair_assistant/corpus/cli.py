@@ -699,6 +699,77 @@ def search_cmd(query: str, model: str | None, serial: str | None, limit: int, ov
         click.echo()
 
 
+@main.command("ask")
+@click.argument("question")
+@click.option("--model", default=None, help="Appliance model for applicability filter.")
+@click.option("--serial", default=None, help="Serial number for range checks.")
+@click.option("--limit", default=8, show_default=True, type=int, help="Evidence chunks to pass to the LLM.")
+@click.option(
+    "--overfetch",
+    default=40,
+    show_default=True,
+    type=int,
+    help="Vector neighbours to fetch before applicability filter.",
+)
+def ask_cmd(
+    question: str,
+    model: str | None,
+    serial: str | None,
+    limit: int,
+    overfetch: int,
+) -> None:
+    """Grounded repair Q&A over retrieved manufacturer evidence (Phase 5)."""
+    from repair_assistant.corpus.applicability import Appliance
+    from repair_assistant.ingest.env import database_url
+    from repair_assistant.ingest.store import Database
+    from repair_assistant.qa.generate import ask
+
+    try:
+        url = database_url()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    appliance = Appliance(model=model, serial=serial) if model else None
+    corpus = _load()
+    with Database(url) as db:
+        try:
+            result = ask(
+                db,
+                corpus,
+                question,
+                appliance=appliance,
+                retrieval_limit=limit,
+                overfetch=overfetch,
+            )
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+    click.secho(f"Question: {result.question}", bold=True)
+    if appliance:
+        click.echo(
+            f"Appliance: {appliance.model}"
+            + (f" / {appliance.serial}" if appliance.serial else "")
+        )
+    click.echo(f"Retrieved {result.retrieval_count} chunk(s)")
+    click.echo()
+
+    if result.abstained:
+        click.secho("Abstained", fg="yellow", bold=True)
+        reason = result.abstain_reason or result.answer
+        if reason:
+            click.echo(reason)
+        return
+
+    click.secho("Answer", bold=True)
+    click.echo(result.answer)
+    if result.citations:
+        click.echo()
+        click.secho("Sources", bold=True)
+        for cite in result.citations:
+            click.echo(f"  [{cite.index}] {cite.label}")
+            click.secho(f"      {cite.doc_id} / {cite.chunk_id}", fg="bright_black")
+
+
 def yaml_dump(data: dict) -> str:
     import yaml
 

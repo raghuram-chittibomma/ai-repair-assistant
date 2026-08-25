@@ -8,9 +8,9 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 4 of 10.** Corpus, parse, and ingest are in place. Retrieval is
-> `repair-corpus search` with applicability filtering (ADR-0010). LangGraph Q&A
-> arrives next.
+> **Status: Phase 5 of 10.** Corpus, parse, ingest, and retrieval are in place.
+> Grounded Q&A is `repair-corpus ask` with citations and abstention (ADR-0012).
+> LangGraph diagnostics arrive next.
 
 ---
 
@@ -68,9 +68,21 @@ repair-corpus db-migrate
 repair-corpus ingest --all --skip-embed   # text only
 repair-corpus ingest --all                # + local BGE embeddings (free)
 repair-corpus search "F5E1 door lock" --model WFW5620HW0
+
+# Phase 5 — add OPENAI_API_KEY to .env.local, then:
+repair-corpus ask "What does F5E2 mean?" --model WFW5620HW0
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
+
+**Windows:** if PowerShell says `repair-corpus` is not recognized, the console script
+is not on your PATH (common after `pip install -e`). Either add your Python
+`Scripts` folder to PATH, or invoke the CLI as a module:
+
+```powershell
+python -m repair_assistant.corpus.cli status
+python -m repair_assistant.corpus.cli ask "What does F5E2 mean?" --model WFW5620HW0
+```
 
 ---
 

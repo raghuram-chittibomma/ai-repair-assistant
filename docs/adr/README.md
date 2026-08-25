@@ -44,6 +44,12 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0010](0010-retrieval-applicability.md) | Over-fetch vectors; filter by applicability; light boosts (**interim default**) | W11395614 / W11375982 cases |
 | [0011](0011-retrieval-bakeoff.md) | Bake-off confirms ADR-0010; lexical/hybrid not adopted yet | D4 experiments; F5E2 KB gap |
 
+## Phase 5 — Grounded Q&A
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0012](0012-grounded-qa.md) | Retrieve (ADR-0010) → numbered evidence → OpenAI chat; citations + abstention | Charter Phase 6 |
+
 ## Infrastructure
 
 | ADR | Decision | Driver |

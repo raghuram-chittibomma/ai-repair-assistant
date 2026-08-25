@@ -25,6 +25,8 @@ dependencies = [
     "psycopg[binary]>=3.2,<4",
     # Local OSS embeddings — OpenAI is reserved for LLM inference later.
     "sentence-transformers>=3.0,<5",
+    # Phase 5 grounded Q&A (charter Phase 6).
+    "openai>=1.40,<3",
 ]
 
 [project.optional-dependencies]
