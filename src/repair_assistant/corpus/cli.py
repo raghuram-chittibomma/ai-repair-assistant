@@ -901,6 +901,47 @@ def diagnose_cmd(
                 raise click.ClickException(str(exc)) from exc
 
 
+@main.command("bench-qa")
+@click.option("--write/--no-write", default=False, help="Write scorecard and JSON run log.")
+@click.option("--scenario", "scenario_ids", multiple=True, help="Run only these scenario id(s).")
+def bench_qa_cmd(write: bool, scenario_ids: tuple[str, ...]) -> None:
+    """Run live Q&A smoke scenarios (needs DB + OPENAI_API_KEY)."""
+    from datetime import UTC, datetime
+
+    from repair_assistant.eval.qa_bench import run_smoke_bench, scorecard_markdown, write_run_log
+    from repair_assistant.ingest.env import database_url
+    from repair_assistant.ingest.store import Database
+
+    try:
+        url = database_url()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    ids = set(scenario_ids) if scenario_ids else None
+    with Database(url) as db:
+        try:
+            results = run_smoke_bench(db, scenario_ids=ids)
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+    card = scorecard_markdown(results)
+    click.echo(card)
+
+    if write:
+        corpus = _load()
+        out = corpus.root / "evals" / "qa" / "results"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "scorecard.md").write_text(card, encoding="utf-8", newline="\n")
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        log_path = out / "runs" / f"{stamp}.json"
+        write_run_log(results, log_path)
+        click.echo(f"Wrote {out / 'scorecard.md'}")
+        click.echo(f"Wrote {log_path}")
+
+    if any(not r.passed for r in results):
+        raise click.ClickException("one or more Q&A smoke scenarios failed; see scorecard")
+
+
 @main.command("bench-safety")
 def bench_safety_cmd() -> None:
     """Run deterministic safety-policy checks against evals/safety/fixtures.yaml."""

@@ -8,9 +8,8 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 7 of 10.** Grounded Q&A, multi-turn diagnostics, and deterministic
-> safety policy are in place (`--audience`, `repair-corpus bench-safety`, ADR-0014).
-> Integrated answer evals and observability arrive next.
+> **Status: Phase 8 of 10.** Repeatable Q&A smoke bench with JSON run logs
+> (`repair-corpus bench-qa`, ADR-0015). Product hardening arrives next.
 
 ---
 
@@ -80,6 +79,9 @@ repair-corpus diagnose "Door locks but won't start, shows F5E2" --model WFW5620H
 repair-corpus ask "How do I measure voltage on the door lock?" --model WFW5620HW0
 repair-corpus ask "What are TEST #4 steps?" --model WFW5620HW0 --audience technician
 repair-corpus bench-safety
+
+# Phase 8 — live Q&A smoke bench (DB + OpenAI required)
+repair-corpus bench-qa --write
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.

@@ -62,6 +62,12 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0014](0014-safety-policy.md) | Deterministic allow/warn/escalate/block; `--audience`; bench-safety fixtures | Charter Phase 8 |
 
+## Phase 8 — Evaluation and observability
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0015](0015-qa-eval-logging.md) | `bench-qa` smoke runner; deterministic grader; JSON run logs | Charter Phase 9 (incremental) |
+
 ## Infrastructure
 
 | ADR | Decision | Driver |
