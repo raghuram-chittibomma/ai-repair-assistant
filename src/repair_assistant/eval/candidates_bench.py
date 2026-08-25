@@ -1,0 +1,162 @@
+"""Run live ask() against ready scenarios from evals/scenarios/candidates.yaml."""
+
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from repair_assistant.corpus import manifest as manifest_mod
+from repair_assistant.corpus.applicability import Appliance
+from repair_assistant.eval.grading import grade_answer
+from repair_assistant.eval.qa_bench import QAScenarioResult, _cite_keys, write_run_log
+from repair_assistant.ingest.store import Database
+from repair_assistant.qa.generate import ask
+
+
+@dataclass
+class CandidateBenchResult:
+    scenario_id: str
+    family_id: str
+    passed: bool
+    skipped: bool = False
+    detail: str = ""
+    answer: str = ""
+    citations: list[str] = field(default_factory=list)
+    abstained: bool = False
+    duration_ms: int = 0
+
+
+def load_candidates(path: Path | None = None) -> dict[str, Any]:
+    root = manifest_mod.load().root
+    path = path or (root / "evals" / "scenarios" / "candidates.yaml")
+    with open(path, encoding="utf-8") as handle:
+        return yaml.safe_load(handle)
+
+
+def load_grading_overlay(path: Path | None = None) -> dict[str, dict[str, Any]]:
+    root = manifest_mod.load().root
+    path = path or (root / "evals" / "qa" / "candidates-grading.yaml")
+    if not path.is_file():
+        return {}
+    with open(path, encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+    return data.get("scenarios") or {}
+
+
+def _merge_scenario(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in overlay.items():
+        if key == "id":
+            continue
+        if isinstance(value, list) and isinstance(merged.get(key), list):
+            merged[key] = list(merged[key]) + value
+        else:
+            merged[key] = value
+    return merged
+
+
+def iter_runnable(data: dict[str, Any], *, grading: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for family in data.get("families") or []:
+        for scenario in family.get("scenarios") or []:
+            if scenario.get("status") != "ready":
+                continue
+            if not scenario.get("question"):
+                continue
+            merged = _merge_scenario(scenario, grading.get(scenario["id"], {}))
+            merged["_family_id"] = family["id"]
+            out.append(merged)
+    return out
+
+
+def _appliance(scenario: dict[str, Any]) -> Appliance | None:
+    app = scenario.get("appliance") or {}
+    model = app.get("model")
+    if not model:
+        return None
+    return Appliance(
+        model=model,
+        serial=app.get("serial"),
+        model_introduced=app.get("model_introduced"),
+    )
+
+
+def run_candidates_bench(
+    db: Database,
+    *,
+    candidates_path: Path | None = None,
+    grading_path: Path | None = None,
+    scenario_ids: set[str] | None = None,
+) -> list[CandidateBenchResult]:
+    data = load_candidates(candidates_path)
+    grading = load_grading_overlay(grading_path)
+    corpus = manifest_mod.load()
+    results: list[CandidateBenchResult] = []
+
+    for scenario in iter_runnable(data, grading=grading):
+        if scenario_ids and scenario["id"] not in scenario_ids:
+            continue
+        start = time.perf_counter()
+        outcome = ask(
+            db,
+            corpus,
+            scenario["question"],
+            appliance=_appliance(scenario),
+        )
+        elapsed = int((time.perf_counter() - start) * 1000)
+        cite_keys = _cite_keys(outcome.citations)
+        passed, detail = grade_answer(
+            scenario,
+            answer=outcome.answer,
+            citations=cite_keys,
+            abstained=outcome.abstained,
+        )
+        results.append(
+            CandidateBenchResult(
+                scenario_id=scenario["id"],
+                family_id=scenario["_family_id"],
+                passed=passed,
+                detail=detail,
+                answer=outcome.answer,
+                citations=cite_keys,
+                abstained=outcome.abstained,
+                duration_ms=elapsed,
+            )
+        )
+    return results
+
+
+def scorecard_markdown(results: list[CandidateBenchResult]) -> str:
+    runnable = [r for r in results if not r.skipped]
+    passed = sum(1 for r in runnable if r.passed)
+    lines = ["# Candidate scenarios bench", "", f"**{passed}/{len(runnable)} passed**", ""]
+    lines.append("| scenario | family | pass | ms | detail |")
+    lines.append("| --- | --- | --- | ---: | --- |")
+    for r in results:
+        mark = "skip" if r.skipped else ("yes" if r.passed else "NO")
+        lines.append(
+            f"| {r.scenario_id} | {r.family_id} | {mark} | {r.duration_ms} | {r.detail} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def to_qa_results(results: list[CandidateBenchResult]) -> list[QAScenarioResult]:
+    return [
+        QAScenarioResult(
+            scenario_id=r.scenario_id,
+            passed=r.passed,
+            detail=r.detail,
+            command="ask",
+            abstained=r.abstained,
+            answer=r.answer,
+            citations=r.citations,
+            duration_ms=r.duration_ms,
+        )
+        for r in results
+        if not r.skipped
+    ]

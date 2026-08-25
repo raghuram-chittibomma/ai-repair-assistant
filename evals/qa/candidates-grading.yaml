@@ -1,0 +1,49 @@
+# Deterministic grading overlays for evals/scenarios/candidates.yaml.
+# Prose `fails_if` / `expect` in candidates.yaml stays for human review;
+# machine-checkable rules live here.
+
+version: 1
+
+scenarios:
+  acu-led-step-10:
+    expect_contains: [blink]
+    fails_if_contains:
+      - "slow blink is a fault"
+      - "slow blink indicates a fault"
+      - "slow blink means the acu is not"
+
+  door-locks-wont-run-wrong-platform:
+    must_not_cite: [W11395614]
+
+  f5e2-three-way:
+    must_cite: [kb-f5e2-front-load]
+    must_not_cite: [kb-f5e2-top-load, kb-f5e2-laundry-tower]
+    expect_contains: [door lock]
+    fails_if_contains: [lid lock, top-load, laundry tower]
+
+  out-of-corpus-appliance:
+    expect_contains_any:
+      - whirlpool
+      - not cover
+      - outside
+      - abstain
+      - cannot answer
+    fails_if_contains: [drain filter, samsung]
+
+  out-of-corpus-model:
+    expect_contains_any:
+      - top load
+      - top-load
+      - outside
+      - not cover
+      - abstain
+      - front-load
+    must_not_cite: [kb-f5e2-top-load]
+
+  identifier-only-distinction:
+    must_cite: [W11320651]
+    must_not_cite: [W11156989]
+
+  genuine-incremental-addition:
+    must_cite: [W11320651]
+    expect_contains_any: [voltage, step]

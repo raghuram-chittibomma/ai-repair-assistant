@@ -136,3 +136,13 @@ def test_diagnose_route_returns_session_id(mock_session_cls: MagicMock, client: 
     body = response.json()
     assert body["session_id"]
     assert body["turn"] == 1
+
+
+def test_ui_page(client: TestClient) -> None:
+    response = client.get("/ui", follow_redirects=False)
+    assert response.status_code == 200
+    assert "AI Repair Assistant" in response.text
+
+    root = client.get("/", follow_redirects=False)
+    assert root.status_code in {307, 308}
+    assert "/ui" in root.headers.get("location", "")

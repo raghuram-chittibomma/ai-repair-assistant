@@ -73,6 +73,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | ADR | Decision | Driver |
 | --- | --- | --- |
 | [0016](0016-http-api-docker.md) | FastAPI `/v1/*`; optional API key; Dockerfile + Compose `api` service | Charter Phase 10 |
+| [0017](0017-web-ui-deploy-eval.md) | `/ui` web chat; `deploy-api.ps1`; `bench-candidates` + grading overlay | LAN product use |
 
 ## Infrastructure
 

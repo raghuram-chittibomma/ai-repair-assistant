@@ -6,8 +6,11 @@ import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import lru_cache
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from repair_assistant.api.schemas import (
     AskRequest,
@@ -185,6 +188,19 @@ def create_app(
         return {"deleted": store.delete(session_id)}
 
     app.state.session_store = store
+
+    static_dir = Path(__file__).resolve().parent / "static"
+    if static_dir.is_dir():
+        app.mount("/ui/static", StaticFiles(directory=static_dir), name="ui-static")
+
+        @app.get("/ui")
+        def ui_page() -> FileResponse:
+            return FileResponse(static_dir / "index.html")
+
+        @app.get("/")
+        def root() -> RedirectResponse:
+            return RedirectResponse(url="/ui")
+
     return app
 
 

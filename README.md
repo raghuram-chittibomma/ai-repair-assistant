@@ -84,14 +84,11 @@ repair-corpus bench-safety
 # Phase 8 — live Q&A smoke bench (DB + OpenAI required)
 repair-corpus bench-qa --write
 
-# Phase 9 — HTTP API (local or Docker)
+# Phase 9 — HTTP API + web UI (see docs/DEPLOYMENT.md for LAN host)
 python -m repair_assistant.api.main
-curl http://localhost:8080/health
-curl -X POST http://localhost:8080/v1/ask -H "Content-Type: application/json" \
-  -d "{\"question\":\"What does F5E2 mean?\",\"model\":\"WFW5620HW0\"}"
+# http://localhost:8080/ui
 
-# Docker (Postgres + API on LAN host):
-docker compose --env-file .env.local -f docker/compose.yaml up -d --build
+repair-corpus bench-candidates --write
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
@@ -150,6 +147,7 @@ tests/                   deterministic tests
 - [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is actually in these documents
 - [Parsing bake-off](evals/parsing/results/scorecard.md) — extractor scores; decision in ADR-0007
 - [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker + Compose; real host/ports in gitignored local file
+- [Deployment](docs/DEPLOYMENT.md) — run API + web UI on the LAN Docker host
 - [Architecture decision records](docs/adr/) — decisions; must note charter deviations when they occur
 
 ## Fixed technology constraints

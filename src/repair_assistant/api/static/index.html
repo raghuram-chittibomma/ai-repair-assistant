@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Repair Assistant</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #8b9bb4;
+      --accent: #3d8bfd;
+      --ok: #3dd68c;
+      --warn: #ffb020;
+      --border: #2a3544;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
+    header p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
+    main {
+      flex: 1;
+      max-width: 52rem;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1rem 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 0.75rem;
+      align-items: end;
+    }
+    label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.25rem; }
+    input, select, button, textarea {
+      width: 100%;
+      font: inherit;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      padding: 0.55rem 0.75rem;
+    }
+    button {
+      cursor: pointer;
+      background: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+      width: auto;
+      min-width: 5.5rem;
+    }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    button.secondary { background: transparent; border-color: var(--border); }
+    #log {
+      flex: 1;
+      min-height: 18rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .msg {
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .msg.user { border-color: #35507a; }
+    .msg.assistant { border-color: #2a4a3a; }
+    .msg.system { color: var(--muted); font-size: 0.85rem; border-style: dashed; }
+    .msg.abstain { border-color: var(--warn); }
+    .cites { margin-top: 0.65rem; font-size: 0.8rem; color: var(--muted); }
+    .cites span { display: block; }
+    .composer { display: flex; gap: 0.5rem; align-items: flex-end; }
+    .composer textarea { min-height: 3.2rem; resize: vertical; }
+    .status { font-size: 0.8rem; color: var(--muted); }
+    .status.ok { color: var(--ok); }
+    .status.err { color: #ff6b6b; }
+    @media (max-width: 640px) {
+      .controls { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AI Repair Assistant</h1>
+    <p>Grounded Q&amp;A over manufacturer docs — LAN only (WFW5620H family)</p>
+  </header>
+  <main>
+    <div class="controls">
+      <div>
+        <label for="model">Model</label>
+        <input id="model" value="WFW5620HW0" autocomplete="off" />
+      </div>
+      <div>
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="ask">Single question</option>
+          <option value="diagnose">Diagnostic chat</option>
+        </select>
+      </div>
+      <div>
+        <button type="button" id="newSession" class="secondary" title="New diagnostic session">New chat</button>
+      </div>
+    </div>
+    <div id="status" class="status">Checking API…</div>
+    <div id="log" aria-live="polite"></div>
+    <form class="composer" id="form">
+      <textarea id="input" rows="2" placeholder="Ask a repair question…" required></textarea>
+      <button type="submit" id="send">Send</button>
+    </form>
+  </main>
+  <script>
+    const log = document.getElementById("log");
+    const statusEl = document.getElementById("status");
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const modelEl = document.getElementById("model");
+    const modeEl = document.getElementById("mode");
+    const sendBtn = document.getElementById("send");
+    const newSessionBtn = document.getElementById("newSession");
+    let sessionId = null;
+
+    function append(role, text, citations = [], abstained = false) {
+      const div = document.createElement("div");
+      div.className = "msg " + role + (abstained ? " abstain" : "");
+      div.textContent = text;
+      if (citations.length) {
+        const cites = document.createElement("div");
+        cites.className = "cites";
+        citations.forEach((c) => {
+          const line = document.createElement("span");
+          line.textContent = `[${c.index}] ${c.label} — ${c.doc_id}`;
+          cites.appendChild(line);
+        });
+        div.appendChild(cites);
+      }
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    async function checkHealth() {
+      try {
+        const r = await fetch("/ready");
+        if (!r.ok) throw new Error("not ready");
+        statusEl.textContent = "API ready";
+        statusEl.className = "status ok";
+      } catch {
+        statusEl.textContent = "API not ready — is the server running?";
+        statusEl.className = "status err";
+      }
+    }
+
+    newSessionBtn.addEventListener("click", () => {
+      sessionId = null;
+      append("system", "Started a new diagnostic session.");
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      append("user", text);
+      sendBtn.disabled = true;
+      try {
+        const model = modelEl.value.trim();
+        const mode = modeEl.value;
+        let res;
+        if (mode === "diagnose") {
+          const body = { message: text, model };
+          if (sessionId) body.session_id = sessionId;
+          res = await fetch("/v1/diagnose", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+        } else {
+          res = await fetch("/v1/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: text, model }),
+          });
+        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        if (data.session_id) sessionId = data.session_id;
+        const answer = data.answer ?? data.assistant_message ?? "";
+        append("assistant", answer, data.citations || [], data.abstained);
+      } catch (err) {
+        append("system", "Error: " + err.message);
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    });
+
+    checkHealth();
+    input.focus();
+  </script>
+</body>
+</html>

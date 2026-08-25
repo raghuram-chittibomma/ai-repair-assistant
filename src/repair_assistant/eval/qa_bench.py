@@ -14,6 +14,7 @@ import yaml
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.diagnostic.session import DiagnosticSession
+from repair_assistant.eval.grading import grade_answer
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.context import Citation
 from repair_assistant.qa.generate import ask
@@ -60,35 +61,13 @@ def _cite_keys(citations: list[Citation]) -> list[str]:
     return keys
 
 
-def _matches_citation(keys: list[str], needle: str) -> bool:
-    return any(needle == k or k.startswith(needle) or needle in k for k in keys)
-
-
 def grade_scenario(scenario: dict[str, Any], result: QAScenarioResult) -> tuple[bool, str]:
-    """Deterministic checks on a completed scenario run."""
-    failures: list[str] = []
-    answer_text = result.answer.lower()
-    cite_keys = result.citations
-
-    if scenario.get("expect_abstain"):
-        if not result.abstained:
-            failures.append("expected abstention")
-
-    for needle in scenario.get("expect_contains") or []:
-        if needle.lower() not in answer_text:
-            failures.append(f"missing {needle!r}")
-
-    any_of = scenario.get("expect_cites_any") or []
-    if any_of and not any(_matches_citation(cite_keys, req) for req in any_of):
-        failures.append(f"expect_cites_any missing one of {any_of}; got {cite_keys}")
-
-    for forbidden in scenario.get("must_not_cite") or []:
-        if _matches_citation(cite_keys, forbidden):
-            failures.append(f"must_not_cite hit {forbidden!r}")
-
-    if failures:
-        return False, "; ".join(failures)
-    return True, "ok"
+    return grade_answer(
+        scenario,
+        answer=result.answer,
+        citations=result.citations,
+        abstained=result.abstained,
+    )
 
 
 def _appliance(scenario: dict[str, Any]) -> Appliance | None:
@@ -118,7 +97,12 @@ def _run_ask(db: Database, corpus, scenario: dict[str, Any]) -> QAScenarioResult
         citations=cite_keys,
         duration_ms=elapsed,
     )
-    passed, detail = grade_scenario(scenario, result)
+    passed, detail = grade_answer(
+        scenario,
+        answer=result.answer,
+        citations=result.citations,
+        abstained=result.abstained,
+    )
     result.passed = passed
     result.detail = detail
     return result
@@ -163,7 +147,12 @@ def _run_diagnose(db: Database, corpus, scenario: dict[str, Any]) -> QAScenarioR
         turns=turns,
         duration_ms=elapsed,
     )
-    passed, detail = grade_scenario(scenario, result)
+    passed, detail = grade_answer(
+        scenario,
+        answer=result.answer,
+        citations=result.citations,
+        abstained=result.abstained,
+    )
     result.passed = passed
     result.detail = detail
     return result
