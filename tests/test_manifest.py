@@ -149,17 +149,21 @@ def test_f5e2_articles_are_separated_by_product_category(corpus):
     assert [d.doc_id for d in applying] == ["kb-f5e2-front-load"]
 
 
-def test_browser_saved_html_is_marked_volatile(corpus):
-    """Hash mismatch on browser-saved HTML must not be reported as corruption.
+def test_browser_saved_pages_are_marked_volatile(corpus):
+    """Hash mismatch on a browser-saved page must not be reported as corruption.
 
     MindTouch pages embed session tokens, render timestamps and analytics tags,
     so two saves of an unchanged page differ. Pinning them strictly would make
     `verify` report corruption that did not happen, which is worse than saying
     nothing.
+
+    Asserted on "not a PDF" rather than on a specific extension, because the
+    saved format is whatever the browser produced -- it was .html when this was
+    written and became .mhtml once the documents actually arrived.
     """
-    html = [d for d in corpus.documents if d.local_filename.endswith(".html")]
-    assert len(html) == 6
-    for document in html:
+    archives = [d for d in corpus.documents if not d.local_filename.endswith(".pdf")]
+    assert len(archives) == 6
+    for document in archives:
         assert document.content_volatile, document.doc_id
 
     # PDFs are byte-stable once acquired and must stay strictly verified.

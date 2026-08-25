@@ -49,9 +49,13 @@ provenance:
   local_filename: W11766193B.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
-  instances: []
+  canonical_sha256: 2564bfc33acc62cffae185e1be3b059b629913940149cef3123c9b739899bf45
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: ba508b04512477b685f29021ed1cdcfade9c271478c65dee85abc2ee431f548b
+      bytes: 438799
+      acquired_from: oem_public_pdf
+      page_count: 6
 
 corpus:
   role: distractor

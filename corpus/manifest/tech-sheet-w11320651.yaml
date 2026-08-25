@@ -48,12 +48,17 @@ provenance:
   local_filename: W11320651B.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
+  canonical_sha256: cb5a3790d3e24efa81b64ea6cbbc6abfa7391beb0b5b813f3210b2aa627a86e9
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
   # Internal part marking reads "W11320651B 04/19"; 28 pages per its own table of
   # contents. Recorded here as expectations to check on acquisition, not as
   # verified fixity: no instance has been hashed yet.
-  instances: []
+  instances:
+    - sha256: 6cb3d9d3dc1ce0cb6804ff613fa415ae7f6386772d7f3fa16be6589f24cc0a23
+      bytes: 1506538
+      acquired_from: oem_public_pdf
+      page_count: 28
+      pdf_producer: Adobe PDF Library 15.0
 
 corpus:
   role: applicable

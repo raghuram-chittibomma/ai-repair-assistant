@@ -73,9 +73,14 @@ provenance:
   local_filename: W11169652A.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
-  instances: []
+  canonical_sha256: afd17266e2284568c69598516c956e543fe5a06dfb7695ebba62744a68d9550d
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 4649f91df18c9b04a78ebfe302e0ee7a239a0fdf3e62d872238ada2b0046b1f1
+      bytes: 13066703
+      acquired_from: oem_public_pdf
+      page_count: 94
+      pdf_producer: Adobe PDF Library 15.0
 
 corpus:
   role: applicable

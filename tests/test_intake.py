@@ -127,7 +127,7 @@ def test_wrong_revision_of_a_known_document_is_flagged(tmp_path, corpus):
     assert "Rev B" in match.revision_conflict and "Rev A" in match.revision_conflict
 
 
-def test_html_is_identified_by_its_canonical_url(tmp_path, corpus):
+def test_plain_html_is_identified_by_its_canonical_url(tmp_path, corpus):
     (tmp_path / "saved_page.html").write_text(
         '<html><head><link rel="canonical" href="https://producthelp.whirlpool.com/'
         'Laundry/Washers/Top_Load_Washer/Error_Codes_or_Flashing_Lights/%22F%22_Codes/'
@@ -135,7 +135,33 @@ def test_html_is_identified_by_its_canonical_url(tmp_path, corpus):
         encoding="utf-8",
     )
     (match,) = intake.plan(corpus, tmp_path)
-    assert match.target_name == "kb-f5e2-top-load.html"
+    assert match.document.doc_id == "kb-f5e2-top-load"
+
+
+def test_mhtml_is_identified_by_its_content_location_header(tmp_path, corpus):
+    """The real case: Chrome and Edge save as MHTML by default."""
+    (tmp_path / "F5E2 - Error Code.mhtml").write_text(
+        "From: <Saved by Blink>\r\n"
+        "Snapshot-Content-Location: https://producthelp.whirlpool.com/Laundry/Washers/"
+        "Top_Load_Washer/Error_Codes_or_Flashing_Lights/%22F%22_Codes/F5E2_-_Error_Code\r\n"
+        "MIME-Version: 1.0\r\n\r\n",
+        encoding="utf-8",
+    )
+    (match,) = intake.plan(corpus, tmp_path)
+    assert match.document.doc_id == "kb-f5e2-top-load"
+    assert "declares" in match.reason
+
+
+def test_quoted_printable_soft_breaks_do_not_defeat_matching(tmp_path, corpus):
+    """MHTML wraps long lines with a trailing '='; URLs get split mid-path."""
+    (tmp_path / "saved.mhtml").write_text(
+        "MIME-Version: 1.0\r\n\r\n"
+        "<a href=3D\"https://producthelp.whirlpool.com/Laundry/Stacked_Laundry_Cent=\r\n"
+        "er/Laundry_Tower/Error_Codes/Washer/F5E2_Error_Code\">link</a>\r\n",
+        encoding="utf-8",
+    )
+    (match,) = intake.plan(corpus, tmp_path)
+    assert match.document.doc_id == "kb-f5e2-laundry-tower"
 
 
 def test_the_three_f5e2_articles_do_not_collide(tmp_path, corpus):
@@ -159,11 +185,11 @@ def test_the_three_f5e2_articles_do_not_collide(tmp_path, corpus):
             encoding="utf-8",
         )
 
-    targets = {m.target_name for m in intake.plan(corpus, tmp_path)}
-    assert targets == {
-        "kb-f5e2-front-load.html",
-        "kb-f5e2-top-load.html",
-        "kb-f5e2-laundry-tower.html",
+    resolved = {m.document.doc_id for m in intake.plan(corpus, tmp_path) if m.document}
+    assert resolved == {
+        "kb-f5e2-front-load",
+        "kb-f5e2-top-load",
+        "kb-f5e2-laundry-tower",
     }
 
 

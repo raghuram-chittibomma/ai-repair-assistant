@@ -44,9 +44,14 @@ provenance:
   local_filename: W11395614.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
-  instances: []
+  canonical_sha256: 77c13529782a8d552e245a1c0922b7ef5dd87dfbb8487722682d82c43428d0f6
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: a3765d7fb273df06467e739c21015437c3ecc372deec562da6064408810d62e1
+      bytes: 845163
+      acquired_from: oem_public_pdf
+      page_count: 3
+      pdf_producer: Microsoft® Word 2013
 
 corpus:
   role: distractor

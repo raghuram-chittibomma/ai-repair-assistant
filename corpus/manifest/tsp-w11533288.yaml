@@ -39,9 +39,14 @@ provenance:
   local_filename: W11533288A.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
-  instances: []
+  canonical_sha256: 5c23bf173b8169dc15fc56b1f95ac06c92010dc11d0b51cf3a766e10f267f74e
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 705569ee93372303dda1884548066a58be267930d84dad9dc2169bcdab816921
+      bytes: 254486
+      acquired_from: oem_public_pdf
+      page_count: 1
+      pdf_producer: Skia/PDF m89
 
 corpus:
   role: distractor

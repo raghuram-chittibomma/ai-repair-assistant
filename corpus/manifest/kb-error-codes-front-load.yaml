@@ -53,7 +53,10 @@ identity:
   content_volatile: true
   canonical_sha256: null
   canonicalizer: null
-  instances: []
+  instances:
+    - sha256: e433f5913e9b05f55e604b0d322ca7fe2a3c900130cd3436c73ef7337eccd653
+      bytes: 6148614
+      acquired_from: oem_public_html
 
 corpus:
   role: applicable

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import click
 
-from . import identity
+from . import identity, pinning
 from . import manifest as manifest_mod
 from .applicability import Appliance, document_applies
 
@@ -405,13 +405,20 @@ def pin(write: bool) -> None:
             click.secho("  no text layer detected - this looks like a scan", fg="yellow")
 
         if write:
-            data = doc.data
-            data.setdefault("identity", {}).setdefault("instances", []).append(instance)
             canonical = identity.canonical_sha256(path)
-            if canonical:
-                data["identity"]["canonical_sha256"] = canonical
-                data["identity"]["canonicalizer"] = identity.canonicalizer_version()
-            doc.path.write_text(yaml_dump(data), encoding="utf-8")
+            try:
+                pinning.pin_file(
+                    doc.path,
+                    instance=instance,
+                    canonical_sha256=canonical,
+                    canonicalizer=identity.canonicalizer_version() if canonical else None,
+                )
+            except pinning.PinError as exc:
+                raise click.ClickException(
+                    f"{doc.path.name}: {exc}. Pinning edits the identity block in place "
+                    "to preserve the surrounding commentary, so that block must be present "
+                    "and conventionally formatted."
+                ) from exc
         pinned += 1
 
     if not pinned:
