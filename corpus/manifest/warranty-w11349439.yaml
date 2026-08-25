@@ -1,0 +1,48 @@
+doc_id: warranty-w11349439
+publication_number: W11349439
+revision: A
+title: Front Load Washer Warranty
+doc_type: warranty
+languages: [en-US]
+
+authority:
+  tier: owner_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Acquired from the Whirlpool manuals package as warranty-w11349439-revA.pdf.
+  local_filename: W11349439A.pdf
+
+identity:
+  canonical_sha256: 028bdefee2eb9afda13ddc5cd9ab9fe889204639f870d900c026cdfcf680621c
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: d29091494fdbefbf9868ffd6bc33298bcf0ce740580b85bcd947c8588621570f
+      bytes: 174839
+      acquired_from: oem_public_pdf
+      page_count: 16
+      pdf_producer: PDFlib+PDI 9.0.7p3 (C++/Win64)
+
+corpus:
+  role: supporting
+  rationale: >-
+    Warranty terms only. Useful as a negative control for repair questions and
+    as a positive control when the user asks what coverage applies.

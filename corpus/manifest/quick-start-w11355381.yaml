@@ -1,6 +1,6 @@
 doc_id: quick-start-w11355381
 publication_number: W11355381
-revision: null
+revision: A
 title: Front Load Washer Quick Start Guide
 doc_type: quick_start_guide
 languages: [en-US, fr-CA]
@@ -28,14 +28,19 @@ provenance:
   license: LicenseRef-Whirlpool-Proprietary
   redistributable: false
   access_notes: >-
-    Named in the literature package of parts list W11320547 Rev C. Single-sourced
-    publication number; confirm on acquisition.
-  local_filename: W11355381.pdf
+    Named in the literature package of parts list W11320547 Rev C. Acquired as
+    Rev A (also marks Spanish twin W11355377A-SP on the same sheet).
+  local_filename: W11355381A.pdf
 
 identity:
-  canonical_sha256: null
-  canonicalizer: null
-  instances: []
+  canonical_sha256: 60025f7937363ac6805be2d77d03dc09825b3333d69a452e3613401505620c68
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 1b52e0ab8f210bf3f2877fb4e334b1aeecbcb231f48d0644124892c7f5c2eb4c
+      bytes: 653007
+      acquired_from: oem_public_pdf
+      page_count: 2
+      pdf_producer: PDFlib+PDI 9.1.2p4 (C++/Win64)
 
 corpus:
   role: supporting

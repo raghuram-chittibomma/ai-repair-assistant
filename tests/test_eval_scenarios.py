@@ -77,16 +77,25 @@ def test_every_family_explains_why_it_exists(seeds):
 
 
 def test_cited_documents_exist_in_the_manifest(seeds, corpus):
-    """A scenario must not reference a document the corpus does not describe."""
+    """A scenario must not reference a document the corpus does not describe.
+
+    Excluded entries count: a scenario can name a known gap (status
+    needs_document) without pretending the file is held.
+    """
     known = {d.doc_id for d in corpus.documents}
     known |= {d.publication_number for d in corpus.documents if d.publication_number}
+    known |= {
+        e["publication_number"]
+        for e in corpus.excluded
+        if e.get("publication_number")
+    }
 
     for family, scenario in _all_scenarios(seeds):
         for key in CITATION_KEYS:
             for reference in scenario.get(key) or []:
                 assert reference in known, (
                     f"{family['id']}/{scenario['id']}: {key} names {reference!r}, "
-                    "which is not in the manifest"
+                    "which is not in the manifest or exclusion list"
                 )
 
 
@@ -94,9 +103,12 @@ def test_positive_citations_actually_apply_to_the_stated_appliance(seeds, corpus
     """`must_cite` must be consistent with the manifest's own applicability data.
 
     Catches the subtle authoring error of demanding a citation that the
-    applicability rules would correctly exclude.
+    applicability rules would correctly exclude. Scenarios waiting on an
+    unacquired document are skipped — there is nothing to apply yet.
     """
     for family, scenario in _all_scenarios(seeds):
+        if scenario.get("status") == "needs_document":
+            continue
         appliance_spec = scenario.get("appliance")
         if not appliance_spec:
             continue

@@ -152,7 +152,7 @@ families:
       manifest relationship reveals it.
     scenarios:
       - id: superseded-owners-manual
-        status: ready
+        status: needs_document
         question: What does the owner's manual say about cleaning the washer?
         appliance: {model: WFW5620HW0}
         must_cite: [W11355369]
@@ -161,6 +161,10 @@ families:
           The current manual. The superseded guide genuinely applies to this
           model, so this cannot be resolved by applicability filtering alone.
         ground_truth: W11156985A is superseded_by W11355369 in the manifest.
+        note: >-
+          W11355369 was not obtained before acquisition closed; it remains in
+          _excluded.yaml. The held side of the relationship (W11156985) is
+          present. Re-enable when the current owner's manual is acquired.
 
       - id: tech-sheet-revision-choice
         status: needs_document

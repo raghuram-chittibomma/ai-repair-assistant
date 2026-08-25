@@ -102,3 +102,49 @@ excluded:
       Any part number the system cites from the parts list may be obsolete. This
       is a live product risk for Phase 6 grounded answers, not merely a corpus
       gap, and is recorded as an evaluation scenario.
+
+  # --- Acquisition closed (2026-08-25): remaining primary targets not found ---
+
+  - publication_number: W11355369
+    revision: null
+    title: Front Load Washer Owner's Manual
+    reason: not_publicly_available
+    evidence: >-
+      Named as the current owner's manual superseding W11156985. Revisions A–D
+      attested in the wild. The superseded use-and-care (W11156985 Rev A) is held.
+    searched: >-
+      Whirlpool manuals page for WFW5620HW; literature package search. Not among
+      the documents obtained before acquisition closed.
+    impact: >-
+      Owner-literature supersession (new publication number, not a letter bump)
+      can still be modelled from the held W11156985 side and the excluded target.
+      Scenarios that require citing the current owner's manual stay blocked.
+
+  - publication_number: W11356840
+    revision: null
+    title: Energy Guide - WFW5620HW
+    reason: not_publicly_available
+    evidence: >-
+      Named in parts list W11320547 Rev C literature package. A nearby
+      publication W11356849 was acquired (image-only energy label) but is a
+      different number and must not be filed as this document.
+    searched: Manuals package; parts-list cross-reference.
+    impact: >-
+      Low. The role was a negative-control for retrieval; the dimension guide and
+      warranty now cover similar supporting-document checks.
+
+  - publication_number: W11243716
+    revision: null
+    title: Wiring Diagram - WFW5620HW0
+    reason: not_publicly_available
+    evidence: >-
+      Named in parts list W11320547 Rev C literature package; also ships
+      physically inside the appliance.
+    searched: >-
+      Manuals package; public CDN patterns. Not obtained before acquisition
+      closed. ServiceMatters Limited Access and the in-machine copy remain
+      possible routes if acquisition reopens.
+    impact: >-
+      Connector- and harness-level questions that need the diagram cannot be
+      grounded. Tech sheets carry some connector designations as a partial
+      substitute.

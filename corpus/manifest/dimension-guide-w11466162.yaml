@@ -1,0 +1,49 @@
+doc_id: dimension-guide-w11466162
+publication_number: W11466162
+revision: A
+title: Detailed Planning Dimensions - Front Load Washer
+doc_type: dimension_guide
+languages: [en-US]
+
+authority:
+  tier: owner_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2020
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Acquired from the Whirlpool manuals package as dimension-guide-w11466162-reva.pdf.
+  local_filename: W11466162A.pdf
+
+identity:
+  canonical_sha256: 1d26a0f864e799ef54bb5a5ad985a53660873df5cd339af9cb4dfab7d948802d
+  canonicalizer: pikepdf-10.12.0/qpdf-12.3.2
+  instances:
+    - sha256: 5bb4dc0286feb17fdfefd4e76d68d8e8ffadcff3ec6214f28d36b2d1d142c837
+      bytes: 857544
+      acquired_from: oem_public_pdf
+      page_count: 15
+      pdf_producer: Adobe PDF Library 15.0
+
+corpus:
+  role: supporting
+  rationale: >-
+    Installation planning dimensions with no diagnostic content. Like the energy
+    guide, it is a low-cost check that retrieval does not surface irrelevant
+    owner literature for a fault question.

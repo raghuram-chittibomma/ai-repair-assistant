@@ -108,11 +108,11 @@ def test_unidentifiable_file_is_reported_not_guessed(tmp_path, corpus):
 def test_revision_conflict_blocks_filing(tmp_path, corpus):
     """Filing Rev C as the manifest's revision-less entry corrupts identity.
 
-    The manifest says W11355369 has no recorded revision. A download that turns
-    out to be Rev C must stop and ask, not be filed under a name that implies we
-    know something we do not.
+    TSP W11395614 has no recorded revision. A download that turns out to be
+    Rev C must stop and ask, not be filed under a name that implies we know
+    something we do not.
     """
-    _pdf_with_text(tmp_path / "W11355369C_owners_manual.pdf", "W11355369C")
+    _pdf_with_text(tmp_path / "W11395614C.pdf", "W11395614C")
     (match,) = intake.plan(corpus, tmp_path)
     assert match.document is not None
     assert match.revision_conflict
@@ -162,7 +162,7 @@ def test_a_bulletin_is_not_mistaken_for_the_manual_it_corrects(tmp_path, corpus)
 
 def test_two_unrelated_candidates_stay_ambiguous(tmp_path, corpus):
     """The citation rule must not resolve a genuine ambiguity by coin toss."""
-    _pdf_with_text(tmp_path / "unclear.pdf", "W11356840 and W11355381 both appear here")
+    _pdf_with_text(tmp_path / "unclear.pdf", "W11366248 and W11349439 both appear here")
 
     (match,) = intake.plan(corpus, tmp_path)
     assert match.document is None
