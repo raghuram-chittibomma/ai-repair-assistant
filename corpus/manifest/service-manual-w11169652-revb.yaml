@@ -57,8 +57,13 @@ relationships:
     target: W11375982
     locator: "Test #1: ACU Power Check, Step 10"
     note: >-
-      The bulletin that forced this revision. Rev B carries the corrected Step 10
-      text; Rev A does not, which is the measurable delta between them.
+      The bulletin that forced the ServiceMatters revision. Measured finding:
+      page 44 Step 10 text in the held Rev A (CDN) and held Rev B copies is the
+      same corrected wording (rapid blink, then 0.5s on / 0.5s off). The public
+      Rev A artefact appears to have been quietly updated without a letter bump,
+      so the A/B delta for this passage is not present in the held pair. The
+      bulletin remains the authoritative correction statement; do not assume Rev A
+      is wrong just because the bulletin says a revision was needed.
 
 provenance:
   # CDN slug uses W11699652 (one digit off the publication number). Internal

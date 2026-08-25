@@ -34,11 +34,13 @@ families:
           power check?
         appliance: {model: WFW5620HW0}
         must_cite: [W11375982]
-        must_not_cite_as_current: [W11169652]
         expect: >-
           The corrected behaviour (rapid blink then 0.5s on / 0.5s off), citing
-          either the service pointer or Rev B of the service manual — both carry
-          the corrected text. Rev A must not be cited as current on this point.
+          the service pointer and/or the service manual. Both held revisions of
+          the manual already carry the corrected Step 10 text on page 44 — the
+          public Rev A CDN copy appears to have been quietly updated — so
+          citing Rev A is not an error on this point. The bulletin remains the
+          clearest statement that a correction occurred.
         ground_truth: >-
           W11375982 states there is incorrect information in W11169652 at
           "Test #1: ACU Power Check, Step 10" and prints the corrected text.
@@ -48,17 +50,19 @@ families:
           microcontroller - replace the ACU. Not blinking slowly within 30
           seconds of power-up means the microcontroller is not responding -
           replace the ACU. Blinking slowly during operation means the ACU is
-          probably fine and the fault lies elsewhere. Rev B of the service
-          manual incorporates the same correction.
+          probably fine and the fault lies elsewhere. Measured on acquisition:
+          the same corrected wording appears on page 44 of both held Rev A and
+          Rev B PDFs.
         grading_note: >-
           Three gradeable facts, and the third is the one that matters: a slow
           blink is a *pass*, so an answer that reports it as a fault inverts the
           diagnosis and sends a technician to replace a working control board.
           Grade the direction of the conclusion, not just the presence of the
-          timings. Citing Rev A as current fails even if the timings are right.
+          timings. Do not fail an answer for citing held Rev A — that copy already
+          matches the bulletin.
         fails_if: >-
-          The answer quotes the manual's original Step 10, or cites both without
-          indicating which one wins.
+          The answer reports a slow blink as a fault, or invents pre-correction
+          wording that is not in any held document.
 
   # -------------------------------------------------------------------------
   - id: applicability-serial-range
