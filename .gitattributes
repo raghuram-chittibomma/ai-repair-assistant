@@ -1,0 +1,17 @@
+# Shell scripts must keep LF endings regardless of platform. A CRLF shebang
+# (`#!/bin/sh\r`) is not a valid interpreter path and the hook silently fails.
+.githooks/** text eol=lf
+*.sh text eol=lf
+
+# Manifest and config files are read by tools on every platform; keep them LF
+# so hashes and diffs do not depend on who checked them out.
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+
+# Documents are never committed, but if one ever slips past the guards it must
+# not be corrupted by line-ending translation on the way in.
+*.pdf binary
