@@ -35,9 +35,11 @@ class Candidate:
     revision: str | None = None
     text_sample: str = ""
 
+    declared_locations: set[str] = field(default_factory=set)
+
     @property
-    def is_html(self) -> bool:
-        return self.path.suffix.lower() in {".html", ".htm"}
+    def is_web_archive(self) -> bool:
+        return self.path.suffix.lower() in {".html", ".htm", ".mhtml", ".mht"}
 
 
 def _from_filename(name: str) -> tuple[set[str], str | None]:
@@ -101,13 +103,32 @@ def inspect_download(path: Path) -> Candidate:
         candidate.publication_numbers |= pdf_numbers
         candidate.revision = candidate.revision or pdf_revision
         candidate.text_sample = sample
-    elif candidate.is_html:
-        try:
-            candidate.text_sample = path.read_text(encoding="utf-8", errors="replace")[:200_000]
-        except OSError:
-            candidate.text_sample = ""
+    elif candidate.is_web_archive:
+        candidate.text_sample, candidate.declared_locations = _web_archive_signals(path)
 
     return candidate
+
+
+# MHTML archives declare the page they captured in a MIME header. This is the
+# most reliable identifier available for a saved article -- more so than a
+# canonical <link>, since it cannot be altered by page scripts.
+_LOCATION_RE = re.compile(r"^(?:Snapshot-)?Content-Location:\s*(\S+)", re.IGNORECASE | re.MULTILINE)
+
+
+def _web_archive_signals(path: Path) -> tuple[str, set[str]]:
+    """Text sample and declared source URLs from a saved page or MHTML archive."""
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace")[:400_000]
+    except OSError:
+        return "", set()
+
+    # MHTML bodies are quoted-printable, which wraps long lines with a trailing
+    # '=' soft break. A URL split across two lines will not match a substring
+    # search unless those are rejoined first.
+    unwrapped = re.sub(r"=\r?\n", "", raw)
+
+    locations = {m.group(1).rstrip('">;,') for m in _LOCATION_RE.finditer(raw)}
+    return unwrapped[:200_000], locations
 
 
 @dataclass
@@ -124,50 +145,65 @@ class Match:
         return self.document.local_filename if self.document else None
 
 
-def _html_match(candidate: Candidate, documents) -> tuple[object | None, str]:
-    """Match a saved article by the URL or title embedded in the HTML.
+def _normalise_url(url: str) -> str:
+    from urllib.parse import unquote
 
-    A browser-saved MindTouch page contains its own canonical URL, which is the
-    most reliable signal available and survives the page being re-titled.
+    return unquote(url or "").rstrip("/").lower()
+
+
+def _web_archive_match(candidate: Candidate, documents) -> tuple[object | None, str]:
+    """Match a saved article to a manifest entry.
+
+    Three signals in decreasing order of trustworthiness: the URL the archive
+    declares it captured, the source path appearing anywhere in the file, and
+    finally the title. Title matching is last because the three F5E2 articles
+    have titles differing only in a space and a hyphen -- relying on it would
+    file all three over each other and destroy the corpus's sharpest
+    applicability case.
     """
-    haystack = f"{candidate.path.name}\n{candidate.text_sample}".lower()
+    declared = {_normalise_url(u) for u in candidate.declared_locations}
 
     for document in documents:
-        url = (document.provenance.get("source_url") or "").lower()
+        url = _normalise_url(document.provenance.get("source_url"))
+        if url and url in declared:
+            return document, "archive declares it captured this exact URL"
+
+    haystack = _normalise_url(f"{candidate.path.name}\n{candidate.text_sample}")
+    for document in documents:
+        url = _normalise_url(document.provenance.get("source_url"))
         if not url:
             continue
-        # Compare on the path tail, since the saved copy may reference the page
-        # by a relative or differently-escaped URL.
-        tail = url.rstrip("/").split("/")[-1]
+        # The last two path segments, which is enough to separate the three
+        # F5E2 articles while tolerating a differently-escaped prefix.
+        tail = "/".join(url.split("/")[-2:])
         if tail and tail in haystack:
-            return document, f"HTML contains its source path {tail!r}"
-        from urllib.parse import unquote
-
-        if (plain := unquote(tail)) and plain.lower() in haystack:
-            return document, f"HTML contains its source path {plain!r}"
+            return document, f"file contains its source path {tail!r}"
 
     for document in documents:
         title = document.title.split("(")[0].strip().lower()
         if len(title) > 12 and title in haystack:
-            return document, f"HTML title matches {document.title!r}"
+            return document, f"title matches {document.title!r}"
 
-    return None, "no source URL or title in the saved HTML matched any manifest entry"
+    return None, "no declared URL, source path or title matched any manifest entry"
+
+
+ACCEPTED_SUFFIXES = frozenset({".pdf", ".html", ".htm", ".mhtml", ".mht"})
 
 
 def plan(manifest, source_dir: Path) -> list[Match]:
     """Decide where each downloaded file should go. Moves nothing."""
-    html_docs = [d for d in manifest.documents if d.local_filename.endswith(".html")]
+    archive_docs = [d for d in manifest.documents if not d.local_filename.endswith(".pdf")]
     pdf_docs = [d for d in manifest.documents if d.local_filename.endswith(".pdf")]
 
     matches: list[Match] = []
     for path in sorted(source_dir.iterdir()):
-        if not path.is_file() or path.suffix.lower() not in {".pdf", ".html", ".htm"}:
+        if not path.is_file() or path.suffix.lower() not in ACCEPTED_SUFFIXES:
             continue
 
         candidate = inspect_download(path)
 
-        if candidate.is_html:
-            document, reason = _html_match(candidate, html_docs)
+        if candidate.is_web_archive:
+            document, reason = _web_archive_match(candidate, archive_docs)
             matches.append(Match(candidate, document, reason))
             continue
 

@@ -42,13 +42,14 @@ provenance:
   access_notes: >-
     Public HTML. Save from your browser. Do not crawl: Whirlpool's Terms of Use
     prohibit automated retrieval regardless of the permissive robots.txt.
-  local_filename: kb-error-codes-front-load.html
+  local_filename: kb-error-codes-front-load.mhtml
 
 identity:
-  # Browser-saved MindTouch HTML is not byte-reproducible: it embeds session
-  # tokens, render timestamps and analytics tags, and differs between browsers
-  # and between two loads of an unchanged page. Verification reports drift
-  # rather than corruption. Normalised snapshotting is a Phase 3 deliverable.
+  # Saved as MHTML, a single-file archive with every asset inlined. Not
+  # byte-reproducible: it carries session tokens, render timestamps, analytics
+  # tags and the assets themselves, so two saves of an unchanged page differ.
+  # Verification reports drift, not corruption. Bodies are quoted-printable,
+  # so Phase 2 must MIME-decode before parsing; Phase 3 normalises snapshots.
   content_volatile: true
   canonical_sha256: null
   canonicalizer: null

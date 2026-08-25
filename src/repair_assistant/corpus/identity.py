@@ -76,8 +76,11 @@ def _pdf_facts(path: Path) -> tuple[int | None, str | None, bool | None]:
 
     producer = None
     try:
-        if reader.metadata:
-            producer = reader.metadata.producer
+        if reader.metadata and reader.metadata.producer:
+            # pypdf returns PDF string objects that subclass str but are not
+            # plain str, and PyYAML refuses to serialise them. Coerce here so
+            # the manifest writer never sees a library-specific type.
+            producer = str(reader.metadata.producer).strip() or None
     except Exception:
         producer = None
 
