@@ -62,7 +62,16 @@ relationships:
     note: The bulletin states the tech sheets for the listed models were also wrong.
 
 provenance:
-  source_url: https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-w11375982.pdf
+  # Revised to the form that actually worked for the other two service pointers:
+  # the digitalassets host with the /_jcr_content/renditions/original suffix. The
+  # previous guess used that host without the suffix, a combination nothing in
+  # the corpus has ever demonstrated. Still a pattern, but now an informed one.
+  #
+  # Two variables defeat guessing here. The date folder is the publication month
+  # as filed, which need not match the document's own date, and the slug's case
+  # is inconsistent across the corpus -- W11395614 is filed uppercase while
+  # W11533288 is lowercase. See ACQUISITION.md for the candidates to try.
+  source_url: https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-w11375982.pdf/_jcr_content/renditions/original
   url_status: pattern
   access_method: oem_public_pdf
   license: LicenseRef-Whirlpool-Proprietary

@@ -40,7 +40,10 @@ relationships:
 
 provenance:
   source_url: https://www.whirlpool.com/content/dam/global/documents/201901/tech-sheet-w11156989-reva.pdf
-  url_status: pattern
+  # Promoted from pattern to confirmed: this URL was constructed by analogy with
+  # W11320651's and it resolved, delivering a document whose internal part
+  # marking is W11156989A as predicted.
+  url_status: confirmed
   access_method: oem_public_pdf
   license: LicenseRef-Whirlpool-Proprietary
   redistributable: false

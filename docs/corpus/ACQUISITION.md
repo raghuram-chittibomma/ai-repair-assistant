@@ -41,6 +41,23 @@ Both hosts serve the same paths; the second also accepts an
 `/_jcr_content/renditions/original` suffix. No authentication. Open the URL in a normal
 browser — scripted clients are blocked by the WAF.
 
+**What the successful acquisitions actually showed.** Five URLs in this file were guesses
+when it was written; four resolved. The forms that worked, and are therefore worth copying:
+
+| Document type | Host | Suffix | Example slug |
+| --- | --- | --- | --- |
+| Service manual, tech sheet | `whirlpool.com` | none | `service-manual-w11169652-reva-27in-front-load-washers` |
+| Service pointer | `whirlpooldigitalassets.com` | `/_jcr_content/renditions/original` | `service-pointer-w11533288-reva` |
+
+Three variables defeat naive guessing, so vary them deliberately:
+
+- **The date folder is the filing month, not the document's own date.** W11533288 is dated
+  2021-03 and filed under `202110`.
+- **Slug case is inconsistent.** `service-pointer-W11395614` is filed uppercase;
+  `service-pointer-w11533288-reva` is lowercase. Try both.
+- **The revision suffix is sometimes present and sometimes not,** and its style varies:
+  `-reva` on the service manual, `-rev-b` on the tech sheet.
+
 ### ServiceMatters Limited Access — fallback only
 
 <https://www.servicematters.com/> → "Limited Access" → enter the complete model number.
@@ -73,8 +90,8 @@ browser to snapshot one. Do not crawl the site.
 | --- | --- | --- | --- | --- |
 | W11169652 | A | Service manual (L-97) | `W11169652A.pdf` | **confirmed** [CDN 201905](https://www.whirlpool.com/content/dam/global/documents/201905/service-manual-w11169652-reva-27in-front-load-washers.pdf) |
 | W11320651 | B | Tech sheet | `W11320651B.pdf` | **confirmed** [CDN 201905](https://www.whirlpool.com/content/dam/global/documents/201905/tech-sheet-w11320651-rev-b.pdf) |
-| W11156989 | A | Tech sheet | `W11156989A.pdf` | **pattern** `201901/tech-sheet-w11156989-reva.pdf`; ServiceMatters as fallback |
-| W11375982 | — | Service pointer | `W11375982.pdf` | **pattern** `201906/service-pointer-w11375982.pdf` |
+| W11156989 | A | Tech sheet | `W11156989A.pdf` | **confirmed** [CDN 201901](https://www.whirlpool.com/content/dam/global/documents/201901/tech-sheet-w11156989-reva.pdf) — was a pattern guess, and it resolved |
+| W11375982 | — | Service pointer | `W11375982.pdf` | **pattern, still not found** — see below |
 | W11320547 | C | Repair parts list | `W11320547C.pdf` | **search** — parts list for `WFW5620HW0` |
 | W11355369 | ? | Owner's manual | `W11355369.pdf` | **search** — manuals page, `WFW5620HW` |
 | W11156977 | ? | Installation instructions | `W11156977.pdf` | **search** — manuals page |
@@ -88,6 +105,35 @@ know which one you will get. **Read the revision letter off the document and rec
 revision is part of logical identity, so `W11355369C.pdf` must be distinguishable from
 `W11355369A.pdf`, and both the manifest `revision` field and `local_filename` need
 updating once known.
+
+### W11375982 — the one that matters most
+
+This is the highest-value outstanding document. It is the corpus's central precedence
+case: a two-page bulletin that overrides a named passage of the 94-page service manual for
+the anchor model. Without it, the `precedence-bulletin-over-manual` scenario family cannot
+be evaluated against a real document, and that family is the main reason this corpus exists.
+
+Candidates to try in a browser, in this order. The first applies the service-pointer form
+that worked for the two pointers already held; the rest vary the three fields that are
+known to be inconsistent.
+
+```
+https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-w11375982.pdf/_jcr_content/renditions/original
+https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-W11375982.pdf/_jcr_content/renditions/original
+https://www.whirlpooldigitalassets.com/content/dam/global/documents/201907/service-pointer-w11375982.pdf/_jcr_content/renditions/original
+https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-w11375982-reva.pdf/_jcr_content/renditions/original
+https://www.whirlpool.com/content/dam/global/documents/201906/service-pointer-w11375982.pdf
+```
+
+If none resolve, a web search for `"W11375982"` alone is worth trying: W11766193 was found
+on an iFixit mirror rather than the CDN, and third-party appliance-parts sites mirror
+service pointers routinely. Record the real host in `provenance.source_url` if so — a
+mirror is a legitimate provenance, an inaccurate one is not.
+
+Failing that, ServiceMatters Limited Access under `WFW5620HW0`, with the confidentiality
+consequence noted above. If it cannot be obtained at all, move it to `_excluded.yaml` with
+the routes attempted, and demote the scenario family that depends on it — the correction
+text is quoted in the study, but a quotation is not a citable source.
 
 ## Applicability contrast — deliberately NOT applicable to WFW5620HW0
 
