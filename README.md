@@ -8,11 +8,10 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 1 of 10.** This repository currently contains the corpus layer only —
-> a manifest describing the manufacturer documents, a verifier, a corpus study, and a
-> registry of candidate evaluation scenarios. There is no retrieval, no embedding, no
-> database, and no model integration yet. Those arrive in later phases, each gated on
-> evidence from the phase before it.
+> **Status: Phase 2 of 10.** Corpus layer is in place. Parsing/chunking is selected by
+> bake-off (`repair-corpus bench-parse`); production extract uses pdfplumber and writes
+> gitignored chunks under `corpus/parsed/`. Retrieval, embeddings, Postgres, and model
+> integration arrive in later phases.
 
 ---
 
@@ -60,6 +59,10 @@ repair-corpus verify                  # hash and check against the manifest
 repair-corpus pin --write             # record hashes for newly acquired files
 repair-corpus show W11375982          # full metadata for one document
 repair-corpus applies --model WFW5620HW0
+
+repair-corpus bench-parse             # re-score extractors against parsing fixtures
+repair-corpus parse tech-sheet-w11320651
+repair-corpus parse --all             # chunks under corpus/parsed/ (gitignored)
 ```
 
 `repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
@@ -105,6 +108,7 @@ tests/                   deterministic tests
   ServiceMatters confidentiality, why there is no downloader
 - [Acquisition guide](docs/corpus/ACQUISITION.md) — how to obtain each document
 - [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is actually in these documents
+- [Parsing bake-off](evals/parsing/results/scorecard.md) — extractor scores; decision in ADR-0007
 - [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker policy; real host/ports in gitignored local file
 - [Architecture decision records](docs/adr/) — the reasoning behind each significant choice
 

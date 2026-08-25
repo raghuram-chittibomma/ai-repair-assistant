@@ -18,6 +18,12 @@ supersedes an earlier draft of this project's acquisition design.
 | [0004](0004-applicability-and-precedence.md) | Applicability and precedence are structured data | A correct instruction for the wrong machine is still wrong, and that must be decidable rather than inferred |
 | [0005](0005-copyright-separation-and-licence.md) | Three-way copyright separation, Apache-2.0, SPDX, enforced in CI | Free access under right-to-repair law is not a redistribution licence |
 
+## Phase 2 — Parsing
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0007](0007-parser-and-chunker.md) | pdfplumber + structured table-row chunking; pypdf fixed-size is the failing control | Tech-sheet error table and F6E1 binding measured in bake-off |
+
 ## Infrastructure
 
 | ADR | Decision | Driver |

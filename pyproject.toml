@@ -16,11 +16,11 @@ dependencies = [
     "pyyaml>=6.0.2",
     "jsonschema>=4.23.0",
     "click>=8.1.7",
-    # PDF libraries are used for metadata and canonicalisation only.
-    # Content extraction is deliberately deferred to Phase 2, where the parser
-    # is selected on benchmark evidence rather than by default.
     "pypdf>=6.0,<7",
     "pikepdf>=9.0,<11",
+    # Phase 2 extractors — selected by bake-off (see ADR-0007 / evals/parsing).
+    "pdfplumber>=0.11,<0.12",
+    "pymupdf>=1.24,<1.29",
 ]
 
 [project.optional-dependencies]

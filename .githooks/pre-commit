@@ -11,8 +11,8 @@ set -eu
 # corpus/documents/README.md is the one tracked file in that tree: it tells a
 # fresh clone what belongs there. Everything else in it is a document artefact.
 blocked=$(git diff --cached --name-only --diff-filter=AM \
-    | grep -Ei '\.(pdf|docx?)$|^corpus/(documents|_staging|snapshots)/' \
-    | grep -v '^corpus/documents/README\.md$' \
+    | grep -Ei '\.(pdf|docx?)$|^corpus/(documents|_staging|snapshots|parsed)/' \
+    | grep -Ev '^corpus/(documents|parsed)/README\.md$' \
     || true)
 
 if [ -n "$blocked" ]; then

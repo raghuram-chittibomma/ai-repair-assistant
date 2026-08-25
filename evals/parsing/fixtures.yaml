@@ -1,0 +1,109 @@
+# Parsing bake-off fixtures. Expectations only — no document bytes.
+# Documents are resolved via the corpus manifest + local corpus/documents/.
+
+version: 1
+
+# Frozen from pdfplumber table extraction of W11320651B (English error table).
+# Reviewed against CORPUS_STUDY.md; F6E1 is the orphaned-by-naive-extraction case.
+error_codes_w11320651b:
+  - F0E1
+  - F0E2
+  - F0E4
+  - F0E5
+  - F1E1
+  - F1E2
+  - F3E1
+  - F3E2
+  - F3E5
+  - F3E6
+  - F4E1
+  - F4E2
+  - F5E2
+  - F5E3
+  - F5E4
+  - F6E1
+  - F6E2
+  - F6E3
+  - F7E2
+  - F7E8
+  - F7E9
+  - F8E1
+  - F8E3
+  - F9E1
+
+# Codes that must carry remedy/test text in the SAME chunk metadata binding.
+must_bind:
+  F6E1:
+    must_contain_any:
+      - "No communication from the HMI"
+      - "Human-Machine Interface"
+      - "Test #2"
+      - "TEST #2"
+  F8E1:
+    must_contain_any:
+      - "Valve"
+      - "TEST #6"
+      - "Test #6"
+
+fixtures:
+  - id: error-codes-bound
+    document: tech-sheet-w11320651
+    local_filename: W11320651B.pdf
+    asserts:
+      - type: codes_present
+        codes_from: error_codes_w11320651b
+        min_ratio: 0.9
+      - type: codes_bound
+        bindings_from: must_bind
+
+  - id: pua-list-markers
+    document: tech-sheet-w11320651
+    local_filename: W11320651B.pdf
+    asserts:
+      - type: pua_mapped
+        min_markers_raw: 100
+        max_unmapped_pua_ratio: 0.05
+
+  - id: near-dup-stable
+    documents:
+      - tech-sheet-w11156989
+      - tech-sheet-w11320651
+    local_filenames:
+      - W11156989A.pdf
+      - W11320651B.pdf
+    # Pages that measured byte-identical after whitespace norm in CORPUS_STUDY §7
+    identical_pages: [4, 5, 6, 7, 8, 9, 10, 11]
+    asserts:
+      - type: identical_page_chunk_hashes
+
+  - id: reflow-not-delta
+    documents:
+      - tech-sheet-w11156989
+      - tech-sheet-w11320651
+    local_filenames:
+      - W11156989A.pdf
+      - W11320651B.pdf
+    page: 3
+    phrase: "Voltage checks must be made"
+    asserts:
+      - type: phrase_present_both
+      - type: content_hash_equal_for_phrase_chunk
+
+  - id: tsp-trilingual
+    document: tsp-w11375982
+    local_filename: W11375982.pdf
+    asserts:
+      - type: languages_present
+        languages: [en, fr, es]
+      - type: phrase_present
+        phrase: "0.5s on"
+
+  - id: mhtml-decode
+    document: kb-f5e2-front-load
+    local_filename: kb-f5e2-front-load.mhtml
+    asserts:
+      - type: mhtml_body
+        must_contain_any:
+          - "F5"
+          - "door"
+          - "lock"

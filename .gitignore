@@ -6,10 +6,12 @@
 corpus/documents/*
 corpus/_staging/
 corpus/snapshots/
+corpus/parsed/
 
 # The directory itself is tracked, via its README only, so a fresh clone shows
 # where documents go instead of leaving the user to guess.
 !corpus/documents/README.md
+!corpus/parsed/README.md
 
 # Belt and braces: no document artefact should ever enter history, wherever
 # it happens to be sitting. The pre-commit hook in .githooks/ enforces this

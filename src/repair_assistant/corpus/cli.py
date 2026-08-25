@@ -427,6 +427,98 @@ def pin(write: bool) -> None:
         click.echo(f"\n{pinned} document(s) would be pinned. Re-run with --write to apply.")
 
 
+@main.command("bench-parse")
+@click.option(
+    "--extractor",
+    "extractors",
+    multiple=True,
+    help="Extractor to score (repeatable). Default: pypdf, pdfplumber, pymupdf.",
+)
+@click.option(
+    "--write/--no-write",
+    default=True,
+    help="Write evals/parsing/results/scorecard.md",
+)
+def bench_parse(extractors: tuple[str, ...], write: bool) -> None:
+    """Score extractor+chunker candidates against parsing fixtures."""
+    from repair_assistant.parsing import bench
+
+    results = bench.run_bakeoff(extractors=list(extractors) or None)
+    card = bench.scorecard_markdown(results)
+    click.echo(card)
+
+    if write:
+        corpus = _load()
+        out = corpus.root / "evals" / "parsing" / "results"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "scorecard.md").write_text(card, encoding="utf-8", newline="\n")
+        click.echo(f"Wrote {out / 'scorecard.md'}")
+
+    hard = {"error-codes-bound", "pua-list-markers"}
+    structured = [
+        r
+        for r in results
+        if r.extractor != "pypdf" and r.fixture_id in hard and not r.skipped
+    ]
+    baseline = [
+        r
+        for r in results
+        if r.extractor == "pypdf" and r.fixture_id in hard and not r.skipped
+    ]
+    if baseline and any(r.passed for r in baseline if r.fixture_id == "error-codes-bound"):
+        click.secho(
+            "warning: pypdf baseline unexpectedly passed error-codes-bound",
+            fg="yellow",
+        )
+    if structured and not any(
+        r.passed for r in structured if r.fixture_id == "error-codes-bound"
+    ):
+        raise click.ClickException(
+            "no structured extractor passed error-codes-bound; see scorecard"
+        )
+
+
+@main.command("parse")
+@click.argument("doc_id", required=False)
+@click.option("--all", "parse_all", is_flag=True, help="Parse every held document.")
+@click.option(
+    "--extractor",
+    default="pdfplumber",
+    show_default=True,
+    help="Extractor for PDFs (see ADR-0007).",
+)
+def parse_cmd(doc_id: str | None, parse_all: bool, extractor: str) -> None:
+    """Extract and chunk documents into corpus/parsed/<doc_id>/chunks.jsonl."""
+    from repair_assistant.parsing import write as parse_write
+
+    corpus = _load()
+    if parse_all == bool(doc_id):
+        raise click.ClickException("pass a doc_id or --all")
+
+    targets = (
+        list(corpus.documents)
+        if parse_all
+        else [d for d in corpus.documents if d.doc_id == doc_id or d.publication_number == doc_id]
+    )
+    if not targets:
+        raise click.ClickException(f"nothing in the manifest matches {doc_id!r}")
+
+    written = 0
+    for document in targets:
+        path = corpus.documents_dir / document.local_filename
+        if not path.is_file():
+            _echo_status("missing", document.citation, document.local_filename)
+            continue
+        try:
+            out = parse_write.parse_document(document, extractor_name=extractor)
+        except Exception as exc:
+            _echo_status("mismatch", document.citation, str(exc))
+            continue
+        _echo_status("ok", document.citation, str(out.relative_to(corpus.root)))
+        written += 1
+    click.echo(f"Wrote chunks for {written} document(s).")
+
+
 def yaml_dump(data: dict) -> str:
     import yaml
 
