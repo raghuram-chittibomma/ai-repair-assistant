@@ -1,0 +1,60 @@
+doc_id: tsp-w11395614
+publication_number: W11395614
+revision: null
+title: Whirlpool 24in Front Load Washer - Door Locked, Won't Run
+doc_type: technical_service_pointer
+languages: [en-US, fr-CA, es-US]
+
+authority:
+  tier: bulletin
+  action_required: mandatory
+
+applicability:
+  brands: [Whirlpool]
+  platform: null
+  # 24-inch compact platform, NOT the 27-inch L-97 platform of the anchor model.
+  product_category: front_load_washer_24in
+  regions: [US, CA]
+  # Note these carry explicit engineering digits and no wildcard: applicability
+  # is narrower than the base model, not broader.
+  models:
+    - WFW3090GW2
+    - WFW3090JW0
+    - WFW5090JW0
+  serial_ranges:
+    - model: WFW3090GW2
+      start: CF81500000
+      end: CF84510000
+    - model: WFW3090JW0
+      start: CF90830000
+      end: CF90840000
+    - model: WFW5090JW0
+      start: CF90320000
+      end: CF90327000
+
+temporal:
+  publication_date: 2019-10
+
+provenance:
+  source_url: https://www.whirlpooldigitalassets.com/content/dam/global/documents/201910/service-pointer-W11395614.pdf/_jcr_content/renditions/original
+  url_status: confirmed
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: W11395614.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: distractor
+  rationale: >-
+    Present precisely because it is wrong for the anchor model. It is a Whirlpool
+    front-load washer bulletin describing a door that locks but will not start,
+    tumble or spin - which is close to how a WFW5620HW0 owner would describe a
+    real symptom - yet it applies only to 24-inch models within three explicit
+    serial ranges. Retrieving it for a WFW5620HW0 question is a failure regardless
+    of semantic similarity. Provides the corpus's only concrete serial-range
+    boundaries, so it also anchors the serial containment tests.

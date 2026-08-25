@@ -1,0 +1,53 @@
+doc_id: tsp-w11533288
+publication_number: W11533288
+revision: A
+title: Commercial Front Load Washer - F27 Fault Improvements
+doc_type: technical_service_pointer
+languages: [en-US]
+
+authority:
+  tier: bulletin
+  action_required: informational
+
+applicability:
+  brands: [Maytag, Whirlpool]
+  platform: null
+  product_category: commercial_front_load_washer
+  regions: [US, CA]
+  models:
+    - MHN33PDCWW2
+    - MHN33PRCWW2
+    - MHN33PDCXW2
+    - CHW9150GW1
+    - CHW9160GW1
+  serial_ranges:
+    - start: CX10xxxx
+      end: CX27xxxx
+  # The distinguishing feature of this bulletin: applicability turns on firmware
+  # version, not only on model or serial. SC.02 exhibits the fault; SC.03 fixes it.
+  software_versions: ["SC.02", "SC.03"]
+
+temporal:
+  publication_date: 2021-03
+
+provenance:
+  source_url: https://www.whirlpooldigitalassets.com/content/dam/global/documents/202110/service-pointer-w11533288-reva.pdf/_jcr_content/renditions/original
+  url_status: confirmed
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: W11533288A.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: distractor
+  rationale: >-
+    Introduces a software-version applicability axis that no other document in
+    the corpus exercises, and does so on a commercial platform that must never be
+    matched to a residential WFW5620HW0. Also a useful case where the correct
+    remedy depends on a property of the appliance the user cannot see without
+    being told how to look it up.

@@ -1,0 +1,50 @@
+doc_id: kb-f5e2-laundry-tower
+publication_number: null
+source_identifier: "mindtouch:Laundry/Stacked_Laundry_Center/Laundry_Tower/Error_Codes/Washer/F5E2"
+revision: null
+title: F5E2 Error Code (Laundry Tower)
+doc_type: knowledge_article
+languages: [en-US]
+
+authority:
+  tier: support_article
+
+applicability:
+  brands: [Whirlpool]
+  platform: null
+  product_category: stacked_laundry_center
+  regions: [US]
+  models:
+    - WET*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019-12-14
+
+provenance:
+  source_url: https://producthelp.whirlpool.com/Laundry/Stacked_Laundry_Center/Laundry_Tower/Error_Codes/Washer/F5E2_Error_Code
+  url_status: confirmed
+  access_method: oem_public_html
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: kb-f5e2-laundry-tower.html
+
+identity:
+  # Browser-saved MindTouch HTML is not byte-reproducible: it embeds session
+  # tokens, render timestamps and analytics tags, and differs between browsers
+  # and between two loads of an unchanged page. Verification reports drift
+  # rather than corruption. Normalised snapshotting is a Phase 3 deliverable.
+  content_volatile: true
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: distractor
+  rationale: >-
+    The third member of the F5E2 set. Attributes the code to a door switch and
+    ends with "If the error code returns, schedule service". Included because two
+    distractors are meaningfully harder than one: a system can accidentally get a
+    binary choice right, and three-way disambiguation exposes whether category
+    filtering is actually happening or a coin was flipped.

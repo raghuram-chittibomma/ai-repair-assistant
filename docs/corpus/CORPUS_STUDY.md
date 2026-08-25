@@ -1,0 +1,272 @@
+# Corpus Study
+
+What is actually inside these documents, and what that implies for the phases
+that follow. This is the "deeply understood" half of Phase 1, and the direct
+input to the Phase 2 parser selection.
+
+## Status of this study
+
+| Document | Examined | Basis |
+| --- | --- | --- |
+| W11320651 Rev B — Tech Sheet | **Yes, in detail** | Full text extraction obtained during research and analysed below |
+| W11169652 Rev A — Service Manual | Partially | Structure known from the tech sheet's cross-references and the TSP that corrects it |
+| W11375982 — Service Pointer | Structure only | Format is standardised across the service pointers examined |
+| Everything else | Not yet | Awaiting acquisition; see [ACQUISITION.md](ACQUISITION.md) |
+
+The tech sheet is the right document to have studied first: it is the densest,
+the most structurally hostile, and the one the retrieval system will lean on
+hardest. Findings from it already determine several Phase 2 decisions.
+
+Sections below marked **pending** are placeholders with the specific questions to
+answer, not empty headings. Fill them in as documents arrive rather than
+inventing content.
+
+---
+
+## 1. W11320651 Rev B — Tech Sheet (examined)
+
+**28 pages, dual-language (English/French), embedded text layer, no OCR needed.**
+Internal part marking reads `W11320651B`, dated `04/19`.
+
+### Declared structure
+
+Its own table of contents, which is a reliable map of the document:
+
+| Section | Pages |
+| --- | --- |
+| Whirlpool Control Panel | 2 |
+| Diagnostic Guide | 3 |
+| Service Diagnostic Mode | 3 |
+| Human-Machine Interface Test | 4 |
+| Software Version Display | 4 |
+| Quick Diagnostics Test | 5 |
+| Fault/Error Codes | 7–9 |
+| Troubleshooting Guide | 10–11 |
+| Test Procedures | 12 |
+| Manually Unlocking the Door | 24 |
+| Component Removal | 25 |
+| Wiring Diagrams | 26–27 |
+
+Structures present: a model/feature matrix, a fault/error code table, a
+step-by-step diagnostic sequence table with estimated durations, numbered test
+procedures with measured resistance and voltage values, ESD and live-voltage
+safety warning blocks, connector and pin references, and two pages of wiring
+diagrams.
+
+### Cross-reference density
+
+The document is a graph, not a linear text. The error-code table almost never
+contains a remedy; it contains a **pointer** to one:
+
+> `F5E2  Lock failure.  See TEST #4: Door Lock System, page 15.`
+>
+> `F3E2  Wash NTC open or shorted.  See TEST #10a: Wash Temperature Sensor, page 19.`
+>
+> `F1E2  MCU over- or under-voltage error.  Check household voltage. See TEST #3: Motor Circuit, page 15.`
+
+`TEST #1: ACU Power Check, page 12` alone is referenced from at least five
+different error codes. The Quick Diagnostics Test table does the same thing,
+routing each of twelve steps to a numbered test.
+
+**Implication for Phase 2 and Phase 4:** retrieving the chunk that contains
+`F5E2` returns the string "see TEST #4", which is not an answer. Either chunks
+must carry their referenced procedures, or retrieval must follow intra-document
+references as a second hop. A naive top-k chunk retriever will confidently
+return a pointer and call it a diagnosis. This is the single most consequential
+structural finding in the corpus.
+
+### Naive text extraction fails on this document
+
+This is the evidence the Phase 2 parser bake-off exists to address. It is not a
+prediction; it is an observation from an actual extraction of this file.
+
+**The same error-code table extracts four different ways within two pages.**
+
+*Four rows collapsed into one line, with the header glued to the front and all
+column boundaries gone:*
+
+```
+Error Code Problem Checks & Tests F0E1 Load in drum during Clean Washer cycle.
+Run Clean Washer cycle only with an empty drum. F0E2 Oversuds Excessive suds in
+washer. ... F0E4 High temp error, wash cycle. ... F0E5 Off Balance Load. ...
+```
+
+*A code separated from its remedy, whose line then continues into the whole of
+the following row:*
+
+```
+F1E1
+
+Main relay open or shorted. Main relay issue. Replace ACU. See TEST #1: ACU
+Power Check, page 12. F1E2 MCU over- or under-voltage error. ...
+```
+
+*One row split across three blank-line-separated blocks:*
+
+```
+F3E1
+
+Pressure sensor signal missing or out of range.
+
+See TEST #7: Water Level Sensor, page 17.
+```
+
+*And a run of rows that extract cleanly, one per line:*
+
+```
+F5E2 Lock failure. See TEST #4: Door Lock System, page 15.
+F5E3 Unlock failure. See TEST #4: Door Lock System, page 15.
+```
+
+Why this matters concretely: in the F6E1 case the extracted text produces a
+block reading `No communication from the HMI detected by ACU. See Test #2:
+Human-Machine Interface (HMI), page 14.` **that does not contain the string
+`F6E1` anywhere.** A user typing the exact error code shown on their machine
+cannot retrieve it by keyword, and an embedding of that block has no signal
+tying it to the code either. The failure is silent: the system returns
+something plausible rather than nothing.
+
+Figure labels degrade differently. Control panel artwork extracts as
+letter-spaced fragments — `h o ld`, `C y c le`, and isolated characters `W`,
+`H`, `A` — which become meaningless tokens in any index.
+
+**Conclusions carried into Phase 2:**
+
+1. Text-only extraction is disqualified for tech sheets. Layout-aware or
+   table-aware extraction is mandatory, and this document is the benchmark.
+2. Chunking must not use blank lines or fixed sizes as boundaries. Both split
+   error codes from their remedies here, demonstrably.
+3. Every chunk derived from a table row must carry its error code as structured
+   metadata, not rely on the code being present in the chunk text.
+4. Extraction quality needs a test, not an eyeball. A workable one: assert that
+   all ~40 error codes are recoverable and each is bound to its remedy text.
+
+### A wrinkle worth recording
+
+The source contains its own typo: `The was function is still operable` for
+"wash", in the F3E5 row. Exact-match retrieval and any test asserting verbatim
+strings must tolerate manufacturer typos. Do not silently "correct" source text
+during ingestion — it would break hash-based verification and citation fidelity.
+
+---
+
+## 2. W11169652 Rev A — Service Manual (partially examined)
+
+**Pending acquisition.** Known: it is job aid **L-97**, covers 23 base models
+across five brands, and contains a section `Test #1: ACU Power Check` whose
+Step 10 is wrong (see below).
+
+Questions to answer on acquisition:
+
+- Page count and whether the text layer is embedded throughout or scanned in the
+  diagram sections
+- Heading hierarchy depth, and whether headings are recoverable structurally or
+  only by font size
+- How the 23-model applicability is stated — a table, a list, or prose — and its
+  verbatim wording
+- Whether theory-of-operation prose and step-by-step procedures are visually
+  distinguishable to a parser, since they need different chunking
+- The exact original wording of Test #1 Step 10, for the precedence evaluation
+
+---
+
+## 3. W11375982 — Technical Service Pointer (structure known)
+
+Two pages, trilingual. Service pointers share a rigid format that is far easier
+to parse than the tech sheets, and they carry the highest-value metadata in the
+corpus:
+
+- A **models** block, listing base models without engineering digits
+- A **serial numbers** block — here, the words "All Serial Numbers"
+- An **action required** field, `informational` in this case
+- A body naming the document it corrects and the precise location within it
+
+The correction is stated explicitly enough to evaluate against:
+
+> There is incorrect service information in the Service Manual and Tech Sheets
+> regarding the ACU diagnostic LED, at *Test #1: ACU Power Check, Step 10*.
+
+Because the bulletin prints the corrected text, the ground truth for the
+precedence scenario is knowable **without** obtaining the revised manual — which
+is fortunate, since that revision could not be located.
+
+**Implication:** service pointers should be parsed with a format-specific
+extractor rather than the general PDF pipeline. Their metadata blocks are
+regular, and getting `models` and `serial ranges` out of them correctly is worth
+more to answer quality than anything else per page in this corpus.
+
+---
+
+## 4. Knowledge-base articles (structure known, not yet snapshotted)
+
+Short HTML, consistent MindTouch template, consumer register. Three properties
+matter:
+
+- **They defer.** The master error-code article states: "These may not be all
+  Error Codes that will show for your model. See your Owner's Manual for the
+  Error Codes for your specific model." The manufacturer is stating a precedence
+  rule outright, and the corpus should honour it rather than infer its own.
+- **They are near-duplicates across product categories.** The three F5E2
+  articles share whole sentences verbatim while applying to different appliances.
+- **They have public revision histories.** This is the corpus's only source of
+  genuine, dated manufacturer content changes, and therefore the natural fixture
+  for Phase 3 incremental ingestion.
+
+---
+
+## 5. Cross-cutting findings
+
+### Authority and relevance point in different directions
+
+The clearest case in the corpus: for the ACU diagnostic LED question, the
+*most* relevant-looking document by any similarity measure is the 100-plus-page
+service manual, and it is **wrong**. The correct source is a two-page
+informational bulletin. Any ranking that does not model authority explicitly
+will get this backwards.
+
+The corpus contains at least four distinct precedence rules, three of them
+stated by the manufacturer rather than inferred:
+
+1. Bulletin corrects service manual (W11375982 → W11169652, at a named step)
+2. Owner's manual overrides generic knowledge articles (stated in the article)
+3. Product-supplied wiring diagram overrides the manual's own (stated in the
+   manual, which calls its diagram "typical" and "for training only")
+4. Newer publication supersedes older (W11355369 replaces W11156985)
+
+### Applicability is expressed on six independent axes
+
+Observed across the real documents: base model, engineering digit, platform,
+serial range, effective-date window, and software version. Any one of them can
+exclude a document that matches on all the others. This is why the manifest
+models them as separate fields rather than as free text.
+
+### Applicability breadth varies by two orders of magnitude
+
+From `WFW5620HW0` alone (parts list W11320547 Rev C) to 23 base models across
+five brands and all serial numbers (service manual W11169652). Both are correct.
+A retrieval system tuned on either extreme will mishandle the other.
+
+### Part numbers in the corpus are already stale
+
+Parts list W11320547 Rev C is current as of August 2020. At least three of its
+part numbers have since superseded: door lock `W10804741` → `W11565030`,
+pressure switch `W11125159` → `W11316246`, control panel `W11294803` →
+`W11319991`. No first-party supersession source was found.
+
+This is a product risk, not merely a corpus gap: a grounded, correctly-cited,
+verifiably-sourced answer can still send someone to buy a part that no longer
+exists. Phase 6 must either qualify part numbers or decline to state them as
+current. Recorded in `_excluded.yaml` and as an evaluation scenario.
+
+---
+
+## 6. What this study determines for later phases
+
+| Phase | Determined by this study |
+| --- | --- |
+| 2 — Parsing | Text-only extraction is disqualified. The tech sheet is the benchmark document, and the error-code table is the pass/fail test. |
+| 2 — Chunking | Blank-line and fixed-size boundaries are disqualified. Error codes must be structured metadata on the chunk, not merely text within it. |
+| 3 — Ingestion | The KB article revision histories are the only genuine manufacturer revision fixtures available. The revised service manual could not be obtained. |
+| 4 — Retrieval | Must filter on applicability before ranking, and must follow intra-document cross-references. Similarity alone provably fails on the F5E2 triple and the ACU LED case. |
+| 5 — Precedence | Four real precedence rules exist, three stated by the manufacturer. Model them as data. |
+| 6 — Answers | Must abstain on part-number currency. Must distinguish owner-safe from technician-only procedures: the tech sheet opens "For Technicians only" and involves live-voltage measurement. |

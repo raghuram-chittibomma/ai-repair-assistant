@@ -1,0 +1,59 @@
+doc_id: wiring-diagram-w11243716
+publication_number: W11243716
+revision: null
+title: Wiring Diagram - WFW5620HW0
+doc_type: wiring_diagram
+languages: [en-US]
+
+authority:
+  tier: service_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW0
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019
+
+relationships:
+  - type: related
+    target: W11169652
+    note: >-
+      The service manual warns that its own wiring diagram is typical and for
+      training only, and directs the technician to the diagram supplied with the
+      product. That is an explicit, manufacturer-stated precedence rule between
+      two documents in this corpus.
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    No public URL confirmed. Search first; a copy of this diagram also ships
+    physically inside the appliance. ServiceMatters Limited Access is the
+    fallback - accepting those terms includes a confidentiality obligation, so
+    switch access_method to servicematters_limited_access if that is how it was
+    actually obtained.
+  local_filename: W11243716.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: applicable
+  rationale: >-
+    Named in the parts list literature package for the anchor model. Valuable
+    because the service manual explicitly subordinates its own wiring diagram to
+    this one, giving the corpus a precedence rule that the manufacturer states
+    outright rather than one we infer. Also a pure-diagram document, which is a
+    hard case for any parsing and chunking strategy.

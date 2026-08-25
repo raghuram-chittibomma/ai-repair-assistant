@@ -1,0 +1,85 @@
+doc_id: tsp-w11375982
+publication_number: W11375982
+revision: null
+title: 27in Front Load Washer - ACU Diagnostic LED Correction
+doc_type: technical_service_pointer
+languages: [en-US, fr-CA, es-US]
+
+authority:
+  tier: bulletin
+  action_required: informational
+
+applicability:
+  brands: [Whirlpool, Maytag, Amana, Inglis]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+    - WFW560CHW*
+    - WFW6620HC*
+    - WFW6620HW*
+    - WFW8620HC*
+    - WFW8620HW*
+    - WFW862CHC*
+    - WFW9620HBK*
+    - WFW9620HC*
+    - WFW9620HW*
+    - MHW5630HC*
+    - MHW5630HW*
+    - MHW6630HC*
+    - MHW6630HW*
+    - MHW8630HC*
+    - MHW8630HW*
+    - 7MMHW6621HC*
+    - 7MMHW6621HW*
+    - 7MWFW5622HW*
+    - 7MWFW6621HC*
+    - 7MWFW6622HW*
+    - NFW5800HW*
+    - IFW5900HW*
+  serial_ranges:
+    # Verbatim: "All Serial Numbers". Deliberately unrestricted, which makes this
+    # a clean positive control against the serial-bounded pointers in the corpus.
+    - scope: all
+
+temporal:
+  publication_date: 2019-06
+
+relationships:
+  - type: corrects
+    target: W11169652
+    locator: "Test #1: ACU Power Check, Step 10"
+    note: >-
+      Corrects the described behaviour of the ACU status LED. The bulletin prints
+      the corrected Step 10 text verbatim, so the correct answer is knowable
+      without obtaining the revised manual.
+  - type: corrects
+    target: W11156989
+    note: The bulletin states the tech sheets for the listed models were also wrong.
+  - type: corrects
+    target: W11320651
+    note: The bulletin states the tech sheets for the listed models were also wrong.
+
+provenance:
+  source_url: https://www.whirlpooldigitalassets.com/content/dam/global/documents/201906/service-pointer-w11375982.pdf
+  url_status: pattern
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: W11375982.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: applicable
+  rationale: >-
+    The corpus's central precedence case. A two-page informational bulletin that
+    overrides a specific passage of a 100-plus-page service manual for the anchor
+    model. Any system that ranks by semantic similarity alone will prefer the
+    manual, and be wrong. Also demonstrates that a document can carry maximum
+    applicability breadth (all serial numbers, 23 models) and still be narrow in
+    what it asserts.

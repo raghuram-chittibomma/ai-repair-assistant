@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------------------
+# Manufacturer documents are copyrighted and are never committed.
+# See docs/CORPUS_LICENSING.md. The manifest under corpus/manifest/ describes
+# these files; the bytes themselves stay on the machine that acquired them.
+# ---------------------------------------------------------------------------
+corpus/documents/*
+corpus/_staging/
+corpus/snapshots/
+
+# The directory itself is tracked, via its README only, so a fresh clone shows
+# where documents go instead of leaving the user to guess.
+!corpus/documents/README.md
+
+# Belt and braces: no document artefact should ever enter history, wherever
+# it happens to be sitting. The pre-commit hook in .githooks/ enforces this
+# too, because a .gitignore alone does not stop `git add -f`.
+*.pdf
+*.PDF
+*.doc
+*.docx
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

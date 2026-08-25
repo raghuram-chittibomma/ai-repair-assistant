@@ -1,0 +1,53 @@
+doc_id: kb-f5e2-top-load
+publication_number: null
+source_identifier: "mindtouch:Laundry/Washers/Top_Load_Washer/Error_Codes/F5E2"
+revision: null
+title: F5E2 - Error Code (Top Load Washer)
+doc_type: knowledge_article
+languages: [en-US]
+
+authority:
+  tier: support_article
+
+applicability:
+  brands: [Whirlpool]
+  platform: null
+  # The whole point of this entry. Same brand, same code, same wording style,
+  # different product category - and therefore inapplicable to the anchor model.
+  product_category: top_load_washer
+  regions: [US]
+  models:
+    - WTW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019-12-14
+
+provenance:
+  source_url: https://producthelp.whirlpool.com/Laundry/Washers/Top_Load_Washer/Error_Codes_or_Flashing_Lights/%22F%22_Codes/F5E2_-_Error_Code
+  url_status: confirmed
+  access_method: oem_public_html
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: kb-f5e2-top-load.html
+
+identity:
+  # Browser-saved MindTouch HTML is not byte-reproducible: it embeds session
+  # tokens, render timestamps and analytics tags, and differs between browsers
+  # and between two loads of an unchanged page. Verification reports drift
+  # rather than corruption. Normalised snapshotting is a Phase 3 deliverable.
+  content_volatile: true
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: distractor
+  rationale: >-
+    Describes F5E2 as a LID lock obstruction, because top-load washers have lids
+    rather than doors. Lexically almost indistinguishable from the front-load
+    article - it shares whole sentences verbatim, including the reset
+    instruction - so neither keyword nor embedding similarity can separate them.
+    Only structured product-category metadata can. That is precisely the failure
+    mode this corpus exists to measure.

@@ -1,0 +1,60 @@
+doc_id: kb-f7e1-front-load
+publication_number: null
+source_identifier: "mindtouch:19944"
+revision: null
+title: What is an F7 E1 Error Code on a Front Load Washer
+doc_type: knowledge_article
+languages: [en-US]
+
+authority:
+  tier: support_article
+
+applicability:
+  brands: [Whirlpool, Maytag]
+  platform: null
+  product_category: front_load_washer
+  regions: [US]
+  models:
+    - WFW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019-12-14
+  last_modified: "2025-10-16"
+
+relationships:
+  - type: references
+    target: W11156977
+    note: >-
+      Root cause is an installation fault - shipping bolts and plastic spacers
+      left in place - so answering correctly requires the installation
+      instructions, not only the error-code table.
+
+provenance:
+  source_url: https://producthelp.whirlpool.com/Laundry/Washers/Product_Info/Washer_Product_Assistance/What_is_an_F7_E1_Error_Code_on_a_Front_Load_Washer
+  url_status: confirmed
+  access_method: oem_public_html
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: kb-f7e1-front-load.html
+
+identity:
+  # Browser-saved MindTouch HTML is not byte-reproducible: it embeds session
+  # tokens, render timestamps and analytics tags, and differs between browsers
+  # and between two loads of an unchanged page. Verification reports drift
+  # rather than corruption. Normalised snapshotting is a Phase 3 deliverable.
+  content_volatile: true
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: applicable
+  rationale: >-
+    A multi-hop case. The stated symptom is a motor speed sensing error, which
+    reads like a component failure, but the documented cause is that all four
+    shipping bolts were not removed at installation. Answering it well requires
+    combining this article, the tech sheet's TEST #3, and the installation
+    instructions - so it tests whether retrieval can assemble evidence across
+    document types rather than returning one good chunk.

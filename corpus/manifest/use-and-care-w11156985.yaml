@@ -1,0 +1,58 @@
+doc_id: use-and-care-w11156985
+publication_number: W11156985
+revision: A
+title: Front Load Washer Use & Care Guide (superseded)
+doc_type: owners_manual
+languages: [en-US]
+
+authority:
+  tier: owner_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019
+
+relationships:
+  - type: superseded_by
+    target: W11355369
+    note: >-
+      Replaced by a different publication number, not a revision bump. A system
+      that treats publication numbers as independent documents will happily cite
+      this stale guide as current.
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Superseded literature is rarely still on the public manuals page, so this is
+    the least likely of the set to be found publicly. ServiceMatters Limited
+    Access is the fallback - accepting those terms includes a confidentiality
+    obligation, so switch access_method to servicematters_limited_access if that
+    is how it was actually obtained.
+  local_filename: W11156985A.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: distractor
+  rationale: >-
+    A genuinely applicable document for the anchor model that is nonetheless the
+    wrong one to cite, because a newer publication replaced it. Tests supersession
+    reasoning in the case where the superseding document does not share the
+    predecessor's publication number, which revision-letter comparison alone
+    cannot detect.

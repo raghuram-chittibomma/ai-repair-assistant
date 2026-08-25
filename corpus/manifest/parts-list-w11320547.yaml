@@ -1,0 +1,61 @@
+doc_id: parts-list-w11320547
+publication_number: W11320547
+revision: C
+title: Repair Parts List - Automatic Washer WFW5620HW0 (White)
+doc_type: parts_list
+languages: [en-US]
+
+authority:
+  tier: service_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  # Note the unusually narrow scope: exactly one base model AND one engineering
+  # digit. No wildcard. This is the most precisely scoped document in the corpus
+  # and the counterexample to the 23-model service manual.
+  models:
+    - WFW5620HW0
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2020-08-21
+
+relationships:
+  - type: supersedes
+    target: W11320547
+    target_revision: B
+    note: A genuine Rev A/B/C chain on the anchor model. Earlier revisions not located.
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    No public URL confirmed. Search for the parts list for model WFW5620HW0
+    first. ServiceMatters Limited Access is the fallback - accepting those terms
+    includes a confidentiality obligation, so switch access_method to
+    servicematters_limited_access if that is how it was actually obtained.
+  local_filename: W11320547C.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: applicable
+  rationale: >-
+    Supplies exploded views and part numbers, and enumerates the literature
+    package for the anchor model. It also carries a known hazard that the corpus
+    must represent honestly: its part numbers are current as of 2020 and several
+    have since superseded (door lock W10804741 now supersedes to W11565030,
+    pressure switch W11125159 to W11316246, control panel W11294803 to
+    W11319991). Grounding a part recommendation solely in this document produces
+    a confidently wrong answer, and no first-party supersession feed was found.
+    Tracked as an evaluation scenario and a Phase 6 risk.

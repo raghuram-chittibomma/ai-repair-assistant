@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ai-repair-assistant/corpus/manifest-schema.json",
+  "title": "Repair corpus document manifest entry",
+  "description": "Describes one manufacturer document by factual identifiers only. Contains no substantive excerpt of the document. Field naming borrows Dublin Core where a term exists; fixity and rights borrow PREMIS structure.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "doc_id",
+    "publication_number",
+    "title",
+    "doc_type",
+    "applicability",
+    "provenance",
+    "identity",
+    "corpus"
+  ],
+  "allOf": [
+    {
+      "$comment": "A document with no publication number must be identifiable some other way, or it cannot be cited or deduplicated.",
+      "if": { "properties": { "publication_number": { "type": "null" } } },
+      "then": {
+        "properties": {
+          "provenance": { "required": ["source_url"] }
+        },
+        "required": ["source_identifier"]
+      }
+    }
+  ],
+  "properties": {
+    "doc_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Stable slug, unique within the corpus. Used as a filename and a relationship target."
+    },
+    "publication_number": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]?[0-9]{4,10}$",
+      "description": "Layer 1 of identity: the manufacturer's publication number, without the revision letter. This is the logical key for published literature. It is a fact and is stable across every source. Null for knowledge-base articles, which carry no publication number; those are keyed on source_url instead."
+    },
+    "source_identifier": {
+      "type": "string",
+      "description": "Stable identifier in a non-publication namespace, e.g. a MindTouch page id or GUID for a knowledge-base article. Kept separate from publication_number so the two namespaces are never conflated."
+    },
+    "revision": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]$",
+      "description": "Revision letter as a separate field. Whirlpool appends it to the publication number inside the document (W11320651B) but the two are distinct concepts and must be comparable independently."
+    },
+    "title": { "type": "string", "minLength": 3 },
+
+    "doc_type": {
+      "enum": [
+        "service_manual",
+        "tech_sheet",
+        "technical_service_pointer",
+        "owners_manual",
+        "installation_instructions",
+        "quick_start_guide",
+        "energy_guide",
+        "wiring_diagram",
+        "parts_list",
+        "knowledge_article"
+      ]
+    },
+
+    "languages": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z]{2}(-[A-Z]{2})?$" },
+      "default": ["en-US"]
+    },
+
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How much weight this document carries, independent of how well it matches a query.",
+      "properties": {
+        "tier": {
+          "enum": ["bulletin", "service_literature", "owner_literature", "support_article"],
+          "description": "Coarse precedence tier. A bulletin may correct service literature; a support article never overrides either."
+        },
+        "action_required": {
+          "enum": ["mandatory", "informational"],
+          "description": "Whirlpool service pointers carry this field explicitly."
+        },
+        "s_code": {
+          "type": "string",
+          "description": "Whirlpool service campaign code, where present (e.g. S153EB). Implies warranty coverage within a serial range."
+        }
+      }
+    },
+
+    "applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Which appliances this document actually governs. A document may be highly relevant to a query and still be inapplicable to the user's machine.",
+      "required": ["models"],
+      "properties": {
+        "brands": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "models": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9A-Z]+\\*?$",
+            "description": "Base model, optionally suffixed with '*' meaning any engineering digit. Whirlpool's own pointers use this convention and call the trailing character the 'engineering digit'. Matching is many-to-many: one document commonly covers 20+ base models."
+          }
+        },
+        "platform": {
+          "type": ["string", "null"],
+          "description": "Manufacturer platform or job-aid handle, e.g. 'L-97' for the 27in front-load washers."
+        },
+        "serial_ranges": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["scope"],
+                "properties": {
+                  "scope": { "const": "all" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["start", "end"],
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "Serial ranges are frequently scoped per model within a single document."
+                  },
+                  "start": { "type": "string", "pattern": "^[A-Z]{1,2}[0-9A-Z][0-9]{2}[0-9xX]{1,6}$" },
+                  "end": { "type": "string", "pattern": "^[A-Z]{1,2}[0-9A-Z][0-9]{2}[0-9xX]{1,6}$" }
+                }
+              }
+            ]
+          }
+        },
+        "effective_dates": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Some pointers apply only within a date window, separate from serial range.",
+          "properties": {
+            "start": { "type": "string", "format": "date" },
+            "end": { "type": "string", "format": "date" }
+          }
+        },
+        "software_versions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Firmware-keyed applicability, e.g. SC.02 vs SC.03. A real axis distinct from serial range."
+        },
+        "regions": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z]{2}$" }
+        },
+        "product_category": {
+          "type": "string",
+          "description": "Guards against near-identical documents from the wrong category, e.g. the top-load F5E2 article versus the front-load one."
+        }
+      }
+    },
+
+    "temporal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "publication_date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}(-[0-9]{2}(-[0-9]{2})?)?$",
+          "description": "Month precision is common and honest; do not invent a day."
+        },
+        "last_modified": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}" }
+      }
+    },
+
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "target"],
+        "properties": {
+          "type": {
+            "enum": ["corrects", "corrected_by", "supersedes", "superseded_by", "references", "related"],
+            "description": "'corrects' is distinct from 'supersedes': a bulletin corrects one passage of a manual that otherwise remains authoritative."
+          },
+          "target": {
+            "type": "string",
+            "description": "Publication number of the related document. Referential integrity is checked against the manifest and the exclusion list."
+          },
+          "target_revision": { "type": ["string", "null"], "pattern": "^[A-Z]$" },
+          "locator": {
+            "type": "string",
+            "description": "Where in the target the relationship applies, e.g. 'Test #1: ACU Power Check, Step 10'."
+          },
+          "note": { "type": "string" }
+        }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["access_method", "license", "redistributable"],
+      "properties": {
+        "source_url": { "type": ["string", "null"], "format": "uri" },
+        "url_status": {
+          "enum": ["confirmed", "pattern", "search"],
+          "description": "confirmed = content retrieved and read; pattern = built from the CDN convention, unverified; search = must be located by model number."
+        },
+        "access_method": {
+          "enum": [
+            "oem_public_pdf",
+            "oem_public_html",
+            "servicematters_limited_access",
+            "shipped_with_appliance",
+            "user_supplied"
+          ]
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX licence expression. Manufacturer documents must use a LicenseRef-* identifier or NOASSERTION. CI fails the build if a redistributable identifier appears here."
+        },
+        "redistributable": {
+          "type": "boolean",
+          "description": "Must be false for every manufacturer document. Present as an explicit assertion rather than an implicit assumption."
+        },
+        "access_notes": {
+          "type": "string",
+          "description": "Obligations attaching to this acquisition route, e.g. the ServiceMatters confidentiality clause."
+        },
+        "local_filename": {
+          "type": "string",
+          "description": "Filename expected under corpus/documents/ once the user has acquired the document."
+        }
+      }
+    },
+
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Layers 2 and 3 of identity. Layer 1 is publication_number + revision above.",
+      "properties": {
+        "canonical_sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Layer 2: SHA-256 over qpdf-normalised bytes with metadata stripped. Identifies an edition across sources."
+        },
+        "canonicalizer": {
+          "type": ["string", "null"],
+          "description": "Toolchain that produced canonical_sha256. Recorded because canonical hashes are only reproducible within a toolchain version."
+        },
+        "content_volatile": {
+          "type": "boolean",
+          "default": false,
+          "description": "True when the acquired bytes are not reproducible across acquisitions, so a hash change does not imply corruption or a content change. Browser-saved HTML is the case in this corpus: MindTouch pages embed session tokens, render timestamps and analytics tags, and differ between browsers and between two loads of an unchanged page. Verification reports drift rather than failure for these, because reporting corruption that did not happen is worse than reporting nothing."
+        },
+        "instances": {
+          "type": "array",
+          "description": "Layer 3: raw bytes as actually held. This is a LIST because the same logical document legitimately differs byte-for-byte between sources. PDF byte hashes are unstable by design: the trailer /ID is seeded partly on file path and size, so re-saving changes the hash without changing content.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sha256"],
+            "properties": {
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "bytes": { "type": "integer", "minimum": 1 },
+              "page_count": { "type": "integer", "minimum": 1 },
+              "acquired_from": { "type": "string" },
+              "acquired_at": { "type": "string", "format": "date" },
+              "pdf_producer": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "rationale"],
+      "properties": {
+        "role": {
+          "enum": ["applicable", "distractor", "supporting"],
+          "description": "'distractor' documents are in the corpus deliberately because they are plausible but wrong for the anchor model. Retrieving one is a measurable failure."
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Why this document earns a place in a deliberately small corpus."
+        }
+      }
+    }
+  }
+}

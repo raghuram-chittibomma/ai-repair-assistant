@@ -1,0 +1,63 @@
+doc_id: tsp-w11766193
+publication_number: W11766193
+revision: B
+title: Top Load Washer & Stacked Laundry - F3E1 Pressure Sensor Error or Drain Pump Running Continuously
+doc_type: technical_service_pointer
+languages: [en-US]
+
+authority:
+  tier: bulletin
+  action_required: mandatory
+  s_code: S153EB
+
+applicability:
+  brands: [Whirlpool, Maytag]
+  platform: null
+  product_category: top_load_washer
+  regions: [US, CA]
+  models:
+    - WTW4816FW*
+  serial_ranges:
+    - start: CC01xxxxx
+      end: CD05xxxxx
+    - start: MC01xxxxx
+      end: MD05xxxxx
+  effective_dates:
+    start: "2025-02-12"
+    end: "2025-12-31"
+
+temporal:
+  publication_date: 2025-03
+
+relationships:
+  - type: supersedes
+    target: W11766193
+    target_revision: A
+    note: >-
+      Service pointers are themselves revised. Precedence reasoning cannot assume
+      bulletins are terminal.
+
+provenance:
+  source_url: https://www.ifixit.com/Document/x3h1Ydc4A1mQDVZM/service-pointer-w11766193-revb.pdf
+  url_status: confirmed
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Located via a third-party mirror during research. Prefer ServiceMatters or
+    the Whirlpool asset CDN if the document can be found there.
+  local_filename: W11766193B.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: distractor
+  rationale: >-
+    The richest applicability schema exemplar found: it carries a service campaign
+    S-code, an effective-date window, two serial ranges, and engineering-digit
+    wildcards simultaneously, and it is itself a Rev B. It validates that the
+    manifest schema can express every applicability axis Whirlpool actually uses.
+    It is a top-load bulletin and so must never match the anchor model.

@@ -1,0 +1,114 @@
+# AI Repair Assistant
+
+An open-source, self-hostable assistant that helps diagnose and troubleshoot household
+appliances using authoritative manufacturer documentation, with grounded answers and
+traceable citations.
+
+Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H family,
+anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
+many understood superficially.
+
+> **Status: Phase 1 of 10.** This repository currently contains the corpus layer only —
+> a manifest describing the manufacturer documents, a verifier, a corpus study, and a
+> registry of candidate evaluation scenarios. There is no retrieval, no embedding, no
+> database, and no model integration yet. Those arrive in later phases, each gated on
+> evidence from the phase before it.
+
+---
+
+## The one thing to understand first
+
+**This repository contains no manufacturer documents, and never will.**
+
+Whirlpool service manuals, tech sheets, and service pointers are copyrighted. This project
+commits a *manifest* that describes each document — publication number, revision, model
+applicability, serial ranges, source, and cryptographic hash — and ships a tool that tells
+you what is missing and verifies what you have. You acquire the documents yourself.
+
+This follows the same pattern as Nixpkgs `requireFile` and MAME's software lists. See
+[docs/CORPUS_LICENSING.md](docs/CORPUS_LICENSING.md) for the full reasoning, including why
+the project ships no downloader.
+
+---
+
+## Quick start
+
+```bash
+pip install -e ".[dev]"
+git config core.hooksPath .githooks   # refuses to commit document artefacts
+
+repair-corpus status                  # what the corpus needs and what you have
+```
+
+On a fresh clone every document will be reported as missing, with instructions:
+
+```
+missing   service_manual            W11169652 Rev A   27in Front-Load Washers (L-97)
+          how to obtain: oem_public_pdf
+          https://www.whirlpool.com/content/dam/global/documents/201905/...
+          save as: corpus/documents/W11169652A.pdf
+```
+
+Once you have downloaded documents into `corpus/documents/`:
+
+```bash
+repair-corpus verify                  # hash and check against the manifest
+repair-corpus show W11375982          # full metadata for one document
+repair-corpus export --format croissant > corpus.jsonld
+```
+
+`repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
+
+---
+
+## Why applicability is the hard part
+
+A repair instruction can be perfectly correct and still be wrong for your machine. The
+corpus is built to make that failure mode visible and testable.
+
+Two real examples from this corpus:
+
+- **Technical Service Pointer W11375982** exists specifically to say that service manual
+  W11169652 contains *incorrect information* at "Test #1: ACU Power Check, Step 10". The
+  manual is the more detailed, more authoritative-looking document. The bulletin is right
+  and the manual is wrong. Relevance and authority are not the same thing.
+- **TSP W11395614** is a highly relevant-sounding front-load washer bulletin about a door
+  that locks but will not run. It applies to 24-inch models within serial range
+  `CF81500000`–`CF84510000`. For a WFW5620HW0 it is simply the wrong document, and
+  retrieving it would be a failure no matter how well it matches semantically.
+
+The manifest therefore models model applicability, engineering-digit wildcards, serial
+ranges, document revisions, and precedence relationships as first-class data.
+
+---
+
+## Repository layout
+
+```
+corpus/manifest/         document manifest (committed)
+corpus/documents/        acquired PDFs (gitignored, never committed)
+docs/adr/                architecture decision records
+docs/corpus/             corpus study and acquisition guide
+evals/scenarios/         candidate evaluation scenarios
+src/repair_assistant/    application code
+tests/                   deterministic tests
+```
+
+## Documentation
+
+- [Corpus licensing and acquisition](docs/CORPUS_LICENSING.md) — copyright, terms of use,
+  ServiceMatters confidentiality, why there is no downloader
+- [Acquisition guide](docs/corpus/ACQUISITION.md) — how to obtain each document
+- [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is actually in these documents
+- [Architecture decision records](docs/adr/) — the reasoning behind each significant choice
+
+## Fixed technology constraints
+
+Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are predetermined for this
+project. None of them are required in Phase 1, and none have been introduced yet —
+PostgreSQL arrives with incremental ingestion in Phase 3.
+
+## Licence
+
+Application code and project metadata: Apache-2.0. Manufacturer documentation remains the
+copyright of its respective owners and is not distributed here.

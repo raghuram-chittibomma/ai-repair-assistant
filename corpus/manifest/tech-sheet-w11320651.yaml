@@ -1,0 +1,65 @@
+doc_id: tech-sheet-w11320651
+publication_number: W11320651
+revision: B
+title: Tech Sheet - 27in Front-Load Washer (multi-model)
+doc_type: tech_sheet
+languages: [en-US, fr-CA]
+
+authority:
+  tier: service_literature
+
+applicability:
+  brands: [Whirlpool, Inglis]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  # Read from the model/feature matrix inside the document itself. See the open
+  # question in docs/corpus/ACQUISITION.md: appearing in a feature matrix is not
+  # conclusive proof of being the designated tech sheet for a model.
+  models:
+    - IFW5900H*
+    - CFW4084HW*
+    - WFW560CH*
+    - WFW5620H*
+    - WFW6620H*
+    - WFW8620HW*
+    - WFW8620CH*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019-04
+
+relationships:
+  - type: corrected_by
+    target: W11375982
+    locator: ACU diagnostic LED
+  - type: supersedes
+    target: W11320651
+    target_revision: A
+    note: A Rev A necessarily preceded this Rev B. No public artefact located.
+
+provenance:
+  source_url: https://www.whirlpool.com/content/dam/global/documents/201905/tech-sheet-w11320651-rev-b.pdf
+  url_status: confirmed
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: W11320651B.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  # Internal part marking reads "W11320651B 04/19"; 28 pages per its own table of
+  # contents. Recorded here as expectations to check on acquisition, not as
+  # verified fixity: no instance has been hashed yet.
+  instances: []
+
+corpus:
+  role: applicable
+  rationale: >-
+    The densest diagnostic document in the corpus: fault/error code tables,
+    service diagnostic mode, component test procedures with measured values, and
+    two pages of wiring diagrams in 28 pages. It is also the hardest parsing
+    target, and naive text extraction of it demonstrably fails - which makes it
+    the primary benchmark document for the Phase 2 parser comparison.

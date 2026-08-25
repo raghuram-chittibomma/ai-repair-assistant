@@ -1,0 +1,27 @@
+#!/bin/sh
+# Reject any attempt to commit a manufacturer document artefact.
+#
+# .gitignore is advisory: `git add -f` bypasses it. This hook is the actual
+# guarantee that copyrighted manufacturer documentation never enters history.
+#
+# Install with:  git config core.hooksPath .githooks
+
+set -eu
+
+# corpus/documents/README.md is the one tracked file in that tree: it tells a
+# fresh clone what belongs there. Everything else in it is a document artefact.
+blocked=$(git diff --cached --name-only --diff-filter=AM \
+    | grep -Ei '\.(pdf|docx?)$|^corpus/(documents|_staging|snapshots)/' \
+    | grep -v '^corpus/documents/README\.md$' \
+    || true)
+
+if [ -n "$blocked" ]; then
+    echo "pre-commit: refusing to commit manufacturer document artefacts." >&2
+    echo >&2
+    echo "$blocked" | sed 's/^/    /' >&2
+    echo >&2
+    echo "Manufacturer documentation is copyrighted and must not be redistributed" >&2
+    echo "through this repository. Describe the document in corpus/manifest/ instead." >&2
+    echo "See docs/CORPUS_LICENSING.md." >&2
+    exit 1
+fi

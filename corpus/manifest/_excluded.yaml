@@ -1,0 +1,106 @@
+# Documents known to exist but not present in the corpus.
+#
+# Recorded so that gaps are visible rather than silently absent. An empty spot
+# in a corpus is indistinguishable from a document that was never known about,
+# and that difference matters when reasoning about whether evidence is missing
+# or simply does not exist.
+#
+# Entries here are valid targets for manifest `relationships`, so referential
+# integrity checks pass without pretending we hold the document.
+
+excluded:
+
+  - publication_number: W11169652
+    revision: B
+    title: Whirlpool & Maytag 27in Front-Load Washers Service Manual (revised)
+    reason: not_publicly_available
+    evidence: >-
+      TSP W11375982 (June 2019) states "The Service Manual and Tech Sheets on
+      Service Matters have been revised." A post-Rev-A edition therefore exists.
+    searched: >-
+      Whirlpool asset CDN under the verified URL pattern; general web search.
+      No artefact located. Likely obtainable only through ServiceMatters.
+    impact: >-
+      This is the highest-value missing document in the corpus. A genuine Rev A
+      to Rev B pair of the same large manual is exactly the fixture Phase 3
+      needs to prove that unchanged sections are not reprocessed. Its absence is
+      partially mitigated: W11375982 prints the corrected Test #1 Step 10 text
+      verbatim, so a ground-truth delta can be constructed for that one passage
+      without holding Rev B.
+
+  - publication_number: W11156989
+    revision: B
+    title: Tech Sheet - Whirlpool WFW5620HW Front-Load Washer (revised)
+    reason: not_publicly_available
+    evidence: >-
+      Same statement in W11375982, which says the tech sheets for the listed
+      models were revised alongside the service manual.
+    searched: Whirlpool asset CDN URL patterns for 2019 upload months; web search.
+    impact: Would give a second, smaller revision pair covering the same correction.
+
+  - publication_number: W11320651
+    revision: A
+    title: Tech Sheet - 27in Front-Load Washer (multi-model), first revision
+    reason: not_publicly_available
+    evidence: >-
+      Rev B exists and is held, and its internal part marking reads W11320651B.
+      A Rev A necessarily preceded it.
+    searched: >-
+      Tried the verified CDN pattern with -rev-a in the same 201905 upload folder
+      as Rev B; not retrievable. Note the upload folder changes between revisions,
+      so absence from 201905 is not proof of non-existence.
+    impact: Would give a tech-sheet revision pair on the platform's densest document.
+
+  - publication_number: W11320547
+    revision: A
+    title: Repair Parts List - WFW5620HW0, first revision
+    reason: not_publicly_available
+    evidence: Rev C is held and is explicitly marked "Rev. C", implying A and B.
+    searched: Parts catalogues and web search surface only Rev C.
+    impact: >-
+      Would allow testing revision handling on a document scoped to a single
+      engineering digit, and would show how part numbers changed across
+      revisions - directly relevant to the part supersession problem.
+
+  - publication_number: W11320547
+    revision: B
+    title: Repair Parts List - WFW5620HW0, second revision
+    reason: not_publicly_available
+    evidence: Implied by Rev C.
+    searched: As above.
+    impact: As above.
+
+  - publication_number: null
+    source_identifier: "servicematters:technical-service-pointers"
+    title: Complete index of Technical Service Pointers for the L-97 platform
+    reason: requires_authenticated_access
+    evidence: >-
+      Every service pointer footer states "ALL POINTERS ONLINE:
+      https://www.servicematters.com/". Individual pointer PDFs are reachable on
+      the public asset CDN if the publication number and upload month are already
+      known, but the index is not public.
+    searched: >-
+      serviceconnections.org returns a sign-in wall restricted to authorised
+      commercial laundry distributors. No public catalogue was found.
+    impact: >-
+      We cannot know whether additional pointers apply to the WFW5620H family.
+      Only W11375982 was found. The corpus may therefore be missing applicable
+      bulletins, and no amount of searching can prove otherwise. Any precedence
+      evaluation built on this corpus must be read with that caveat.
+
+  - publication_number: null
+    source_identifier: "whirlpool:part-supersession-data"
+    title: Authoritative part supersession mapping
+    reason: no_first_party_source_found
+    evidence: >-
+      Comparison of parts list W11320547 Rev C against current catalogue data
+      shows numerous substitutions (W10804741 -> W11565030, W11125159 ->
+      W11316246, W11294803 -> W11319991).
+    searched: >-
+      No first-party Whirlpool supersession feed or document was located.
+      Third-party parts retailers expose this data but are not authoritative and
+      are not in scope for this corpus.
+    impact: >-
+      Any part number the system cites from the parts list may be obsolete. This
+      is a live product risk for Phase 6 grounded answers, not merely a corpus
+      gap, and is recorded as an evaluation scenario.

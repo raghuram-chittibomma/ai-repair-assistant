@@ -1,0 +1,359 @@
+# Candidate evaluation scenarios discovered from the real corpus.
+#
+# These are RECORDED in Phase 1 and IMPLEMENTED in later phases. Every one of
+# them comes from a property the actual documents have, not from imagining what
+# might be hard. Where a scenario asserts a fact, `ground_truth` names the
+# document it comes from so a reviewer can check it.
+#
+# `status` is one of:
+#   ready            - ground truth is known and the scenario can be written now
+#   needs_document   - ground truth requires a document not yet acquired
+#   needs_authoring  - the exact question and expected answer still need writing
+#
+# Deliberately NOT included: anything requiring a judgement about repair safety
+# that the corpus cannot support, and anything whose answer we merely believe.
+
+version: 1
+anchor_model: WFW5620HW0
+
+families:
+
+  # -------------------------------------------------------------------------
+  - id: precedence-bulletin-over-manual
+    title: A bulletin overrides the service manual
+    why: >-
+      The corpus's central case. The most relevant-looking document by any
+      similarity measure is a 100-plus-page service manual, and for this one
+      question it is wrong. A two-page informational bulletin is right.
+      Any ranking that does not model authority explicitly fails here.
+    scenarios:
+      - id: acu-led-step-10
+        status: ready
+        question: >-
+          On a WFW5620HW0, what should the ACU diagnostic LED do during the ACU
+          power check?
+        appliance: {model: WFW5620HW0}
+        must_cite: [W11375982]
+        must_not_cite_as_current: [W11169652]
+        expect: >-
+          The corrected behaviour from the service pointer, together with an
+          explicit statement that the service manual's Test #1 Step 10 is
+          superseded on this point.
+        ground_truth: >-
+          W11375982 states there is incorrect information in W11169652 at
+          "Test #1: ACU Power Check, Step 10" and prints the corrected text.
+        fails_if: >-
+          The answer quotes the manual's original Step 10, or cites both without
+          indicating which one wins.
+
+  # -------------------------------------------------------------------------
+  - id: applicability-serial-range
+    title: Serial-range exclusion
+    why: >-
+      W11395614 is a Whirlpool front-load washer bulletin about a door that
+      locks but will not run - close to how an owner of the anchor model would
+      describe a real symptom. It applies only to 24-inch models inside three
+      explicit serial ranges.
+    scenarios:
+      - id: door-locks-wont-run-wrong-platform
+        status: ready
+        question: My Whirlpool front load washer locks the door but won't start.
+        appliance: {model: WFW5620HW0}
+        must_not_cite: [W11395614]
+        expect: >-
+          Guidance drawn from documents that apply to the 27-inch platform.
+        ground_truth: >-
+          W11395614 lists WFW3090GW2 (CF81500000-CF84510000), WFW3090JW0
+          (CF90830000-CF90840000) and WFW5090JW0 (CF90320000-CF90327000).
+        fails_if: The 24-inch bulletin is cited for a 27-inch machine.
+
+      - id: serial-inside-range
+        status: ready
+        question: Does the door-lock service pointer apply to my machine?
+        appliance: {model: WFW3090GW2, serial: CF83000000, model_introduced: 2018}
+        must_cite: [W11395614]
+        expect: Yes, with the serial range quoted as the reason.
+
+      - id: serial-outside-range
+        status: ready
+        question: Does the door-lock service pointer apply to my machine?
+        appliance: {model: WFW3090GW2, serial: CF84900000, model_introduced: 2018}
+        must_not_cite: [W11395614]
+        expect: >-
+          No - correct model, but built in week 49 of 2018, past the end of the
+          documented range.
+
+      - id: serial-unknown-must-ask
+        status: ready
+        question: Does the door-lock service pointer apply to my machine?
+        appliance: {model: WFW3090GW2}
+        expect: >-
+          Ask for the serial number rather than assuming. The document is
+          serial-scoped and the answer genuinely depends on it.
+        fails_if: Either "yes" or "no" is asserted without the serial.
+
+  # -------------------------------------------------------------------------
+  - id: applicability-product-category
+    title: Near-identical documents from the wrong product category
+    why: >-
+      Three F5E2 articles share whole sentences verbatim and differ only in
+      which appliance they describe. Neither keyword nor embedding similarity
+      can separate them; only structured category metadata can.
+    scenarios:
+      - id: f5e2-three-way
+        status: ready
+        question: What does F5 E2 mean on my washer?
+        appliance: {model: WFW5620HW0}
+        must_cite: [kb-f5e2-front-load]
+        must_not_cite: [kb-f5e2-top-load, kb-f5e2-laundry-tower]
+        expect: >-
+          The front-load answer, describing a door lock failure rather than a
+          lid lock obstruction.
+        fails_if: >-
+          The answer mentions a lid, or blends remedies from more than one of
+          the three articles.
+
+      - id: f5e2-technician-depth
+        status: needs_document
+        question: >-
+          F5 E2 on a WFW5620HW0 - the door will not lock. What should I check?
+        appliance: {model: WFW5620HW0}
+        must_cite: [W11320651]
+        expect: >-
+          The tech sheet's TEST #4 Door Lock System procedure, not the consumer
+          article's "close the door and cycle power". Tests whether the system
+          matches depth of answer to the depth of the question.
+
+  # -------------------------------------------------------------------------
+  - id: precedence-revision-and-supersession
+    title: Revision precedence and supersession
+    why: >-
+      Two distinct mechanisms that must not be conflated. A revision letter
+      bump (W11320547 Rev A/B/C) is visible from the identifier. Replacement by
+      a new publication number (W11156985 to W11355369) is not, and only the
+      manifest relationship reveals it.
+    scenarios:
+      - id: superseded-owners-manual
+        status: ready
+        question: What does the owner's manual say about cleaning the washer?
+        appliance: {model: WFW5620HW0}
+        must_cite: [W11355369]
+        must_not_cite_as_current: [W11156985]
+        expect: >-
+          The current manual. The superseded guide genuinely applies to this
+          model, so this cannot be resolved by applicability filtering alone.
+        ground_truth: W11156985A is superseded_by W11355369 in the manifest.
+
+      - id: tech-sheet-revision-choice
+        status: needs_document
+        question: Which tech sheet applies to a WFW5620HW0?
+        appliance: {model: WFW5620HW0}
+        expect: >-
+          The later or model-designated sheet, with the reasoning stated.
+        blocked_by: >-
+          Unresolved: whether W11320651 Rev B supersedes W11156989 Rev A or
+          coexists with it. See docs/corpus/ACQUISITION.md.
+
+  # -------------------------------------------------------------------------
+  - id: staleness-part-numbers
+    title: Part numbers that were correct and are no longer
+    why: >-
+      A grounded, correctly-cited, verifiably-sourced answer can still be wrong
+      in the world. The parts list is authentic and current as of 2020; at least
+      three of its part numbers have since superseded, and no first-party
+      supersession source exists.
+    scenarios:
+      - id: door-lock-part-number
+        status: ready
+        question: What is the part number for the door lock on a WFW5620HW0?
+        appliance: {model: WFW5620HW0}
+        expect: >-
+          Cite W10804741 from W11320547 Rev C, AND qualify it: the parts list
+          dates from August 2020 and part numbers supersede over time, so it
+          should be confirmed against a current catalogue.
+        ground_truth: W10804741 now supersedes to W11565030.
+        fails_if: >-
+          W10804741 is stated as the current part number with no qualification.
+        note: >-
+          This is the corpus's clearest example of correct grounding producing a
+          wrong outcome, and the strongest argument for confidence being about
+          the world rather than about the retrieval.
+
+  # -------------------------------------------------------------------------
+  - id: retrieval-exact-identifier
+    title: Exact identifier retrieval
+    why: >-
+      Users type identifiers verbatim: error codes, publication numbers,
+      connector designations. Dense retrieval is weak on these, and the tech
+      sheet extraction problem makes it worse - some codes are separated from
+      their remedy text entirely.
+    scenarios:
+      - id: error-code-lookup
+        status: ready
+        question: What is F8E1?
+        appliance: {model: WFW5620HW0}
+        expect: Valve failure, routing to TEST #6 Water Inlet Valves.
+        ground_truth: "W11320651B: 'F8E1 Valve failure. See TEST #6: Water Inlet Valves, page 16.'"
+
+      - id: error-code-orphaned-by-extraction
+        status: ready
+        question: What is F6E1?
+        appliance: {model: WFW5620HW0}
+        expect: No communication from the HMI detected by ACU; see TEST #2.
+        ground_truth: "W11320651B fault code table."
+        note: >-
+          Deliberately chosen as the hard case. Naive extraction of this row
+          produces a text block containing the remedy but NOT the string 'F6E1',
+          so neither keyword nor vector search can find it. If this scenario
+          passes, the parsing and chunking chosen in Phase 2 actually worked.
+
+      - id: publication-number-lookup
+        status: ready
+        question: What is W11375982?
+        expect: >-
+          Identify it as the June 2019 service pointer correcting the ACU
+          diagnostic LED information.
+
+      - id: connector-designation
+        status: needs_document
+        question: What connects to J36 on the ACU?
+        appliance: {model: WFW5620HW0}
+        expect: >-
+          Resolved from the wiring diagram or tech sheet. Short alphanumeric
+          designators are the worst case for embedding-based retrieval.
+
+  # -------------------------------------------------------------------------
+  - id: retrieval-cross-reference
+    title: Following intra-document cross-references
+    why: >-
+      The tech sheet's error-code table almost never contains a remedy; it
+      contains a pointer to one. TEST #1 alone is referenced from at least five
+      codes. Returning the pointer is not an answer.
+    scenarios:
+      - id: code-to-procedure-hop
+        status: needs_document
+        question: I have F3E2 on my WFW5620HW0. What do I do?
+        appliance: {model: WFW5620HW0}
+        expect: >-
+          The content of TEST #10a Wash Temperature Sensor, including its
+          measured values - not the sentence "See TEST #10a, page 19".
+        fails_if: The answer terminates at the cross-reference.
+
+  # -------------------------------------------------------------------------
+  - id: conversational-symptom
+    title: Symptom described in the user's words
+    why: >-
+      Real users do not report error codes. They report behaviour, and the same
+      behaviour can be a trivial setting or a failed control board.
+    scenarios:
+      - id: unresponsive-control-panel
+        status: ready
+        question: >-
+          My washer powers on but the control panel doesn't respond to any
+          buttons.
+        appliance: {model: WFW5620HW0}
+        expect: >-
+          Distinguish Control Lock (LOC, a user-activated setting with a trivial
+          remedy) from an HMI or ACU fault, and check the cheap and safe
+          explanation first.
+        fails_if: >-
+          Board replacement is recommended before Control Lock is ruled out.
+
+      - id: installation-fault-not-component-fault
+        status: ready
+        question: >-
+          My new washer shakes violently and shows F7 E1 during the spin cycle.
+        appliance: {model: WFW5620HW0}
+        must_cite: [W11156977]
+        expect: >-
+          Shipping bolts not removed at installation - not a motor failure,
+          despite F7 E1 reading as a motor speed sensing error.
+        note: >-
+          Multi-hop: requires the KB article, the tech sheet's TEST #3, and the
+          installation instructions together. Tests whether evidence can be
+          assembled across document types.
+
+  # -------------------------------------------------------------------------
+  - id: applicability-engineering-digit
+    title: Engineering-digit ambiguity
+    why: >-
+      Users read the model off a sticker and frequently omit or mistype the
+      trailing digit. Documents vary in whether they scope to a base model or a
+      single engineering digit, so the digit sometimes matters and sometimes
+      does not.
+    scenarios:
+      - id: model-without-engineering-digit
+        status: ready
+        question: What service manual covers a WFW5620HW?
+        appliance: {model: WFW5620HW}
+        must_cite: [W11169652]
+        expect: >-
+          Answer normally. The service manual is scoped to the base model, so
+          the missing digit changes nothing.
+
+      - id: digit-sensitive-document
+        status: ready
+        question: What is the parts list for my WFW5620HW?
+        appliance: {model: WFW5620HW}
+        expect: >-
+          Note that W11320547 Rev C is scoped to WFW5620HW0 specifically, and
+          ask for the full model number before relying on its part numbers.
+        ground_truth: >-
+          W11320547 Rev C applicability is exactly ["WFW5620HW0"], the narrowest
+          in the corpus.
+
+      - id: adjacent-base-model-must-not-match
+        status: ready
+        question: Does the service manual cover a WFW5622HW0?
+        appliance: {model: WFW5622HW0}
+        expect: >-
+          Handle the distinction correctly. WFW5622HW differs from WFW5620HW by
+          one character but is a different base model; 7MWFW5622HW is what
+          appears in the L-97 list, not WFW5622HW.
+
+  # -------------------------------------------------------------------------
+  - id: abstention
+    title: Questions the corpus genuinely cannot answer
+    why: >-
+      A system that always answers cannot be trusted when it does. Abstention
+      needs to be measured directly, and the corpus's real gaps supply honest
+      cases rather than contrived ones.
+    scenarios:
+      - id: out-of-corpus-appliance
+        status: ready
+        question: Why is my Samsung dishwasher not draining?
+        expect: State that the corpus covers Whirlpool washers only. No citation.
+
+      - id: out-of-corpus-model
+        status: ready
+        question: What does F5 E2 mean on my Whirlpool WTW5000DW top load washer?
+        appliance: {model: WTW5000DW0}
+        expect: >-
+          Decline, or answer only from a document that genuinely covers top-load
+          washers, being explicit that this model is outside the corpus.
+        note: >-
+          Harder than it looks: a top-load F5E2 article IS in the corpus as a
+          distractor. Citing it would be relevant and applicable-by-category yet
+          still outside the corpus's stated scope.
+
+      - id: known-gap-revised-manual
+        status: ready
+        question: What does revision B of the service manual say about the ACU LED?
+        expect: >-
+          State that the revised manual is known to exist but was not
+          obtainable, and give the correction from W11375982 instead.
+        ground_truth: Recorded in corpus/manifest/_excluded.yaml.
+        note: >-
+          Tests whether a recorded gap becomes a useful answer rather than a
+          silence or a fabrication.
+
+      - id: unanswerable-within-scope
+        status: needs_authoring
+        question: >-
+          A plausible WFW5620HW0 repair question that none of the 20 documents
+          addresses.
+        expect: Say so plainly rather than assembling a confident non-answer.
+        note: >-
+          Author this only after every document is acquired and studied.
+          Choosing it before then risks picking something the corpus can in fact
+          answer, which would silently invert the test.

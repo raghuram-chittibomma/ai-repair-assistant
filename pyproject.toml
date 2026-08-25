@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-repair-assistant"
+version = "0.1.0"
+description = "Grounded AI repair assistant for household appliances, built on authoritative manufacturer documentation."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["appliance-repair", "rag", "retrieval", "whirlpool", "corpus"]
+
+dependencies = [
+    "pyyaml>=6.0.2",
+    "jsonschema>=4.23.0",
+    "click>=8.1.7",
+    # PDF libraries are used for metadata and canonicalisation only.
+    # Content extraction is deliberately deferred to Phase 2, where the parser
+    # is selected on benchmark evidence rather than by default.
+    "pypdf>=6.0,<7",
+    "pikepdf>=9.0,<11",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.7.0",
+]
+
+[project.scripts]
+repair-corpus = "repair_assistant.corpus.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/repair_assistant"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

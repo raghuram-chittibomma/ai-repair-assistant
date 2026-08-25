@@ -1,0 +1,52 @@
+doc_id: kb-drain-pump-filter
+publication_number: null
+source_identifier: "mindtouch:Laundry/Washers/Front_Load_Washers/Cleaning_the_Drain_Pump_Filter"
+revision: null
+title: Cleaning the Drain Pump Filter
+doc_type: knowledge_article
+languages: [en-US]
+
+authority:
+  tier: support_article
+
+applicability:
+  brands: [Whirlpool]
+  platform: null
+  product_category: front_load_washer
+  regions: [US]
+  models:
+    - WFW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019-12-14
+
+provenance:
+  source_url: https://producthelp.whirlpool.com/Laundry/Washers/Front_Load_Washers/Wash_Performance_or_Clothing_Results/Cleaning_and_Maintenance/Cleaning_the_Drain_Pump_Filter
+  url_status: confirmed
+  access_method: oem_public_html
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: kb-drain-pump-filter.html
+
+identity:
+  # Browser-saved MindTouch HTML is not byte-reproducible: it embeds session
+  # tokens, render timestamps and analytics tags, and differs between browsers
+  # and between two loads of an unchanged page. Verification reports drift
+  # rather than corruption. Normalised snapshotting is a Phase 3 deliverable.
+  content_volatile: true
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: applicable
+  rationale: >-
+    A numbered physical procedure a general user can safely perform, and a common
+    real remedy for F9 E1 long-drain complaints. Two properties make it valuable
+    beyond its content: it is procedural rather than referential, so it exercises
+    step-boundary-aware chunking, and it branches on a physical variant ("models
+    with storage drawer" versus without) rather than on model number - an
+    applicability axis that cannot be resolved from the model string alone and
+    requires asking the user.

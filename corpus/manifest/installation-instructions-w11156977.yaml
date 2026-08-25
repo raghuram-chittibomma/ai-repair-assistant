@@ -1,0 +1,47 @@
+doc_id: installation-instructions-w11156977
+publication_number: W11156977
+revision: null
+title: Front Load Washer Installation Instructions
+doc_type: installation_instructions
+languages: [en-US, fr-CA]
+
+authority:
+  tier: owner_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Whirlpool manuals page, search WFW5620HW. Rev A and Rev B are both attested;
+    record which one you obtain.
+  local_filename: W11156977.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: applicable
+  rationale: >-
+    Several real faults on this platform are installation faults, not component
+    failures: shipping bolts left in place cause the F7 E1 motor speed error, and
+    drain hose height and insertion depth drive F9 E1 long-drain and siphoning
+    complaints. Diagnosing those correctly requires installation content, so the
+    corpus would have a genuine hole without it.

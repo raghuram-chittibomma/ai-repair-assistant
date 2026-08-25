@@ -1,0 +1,46 @@
+doc_id: quick-start-w11355381
+publication_number: W11355381
+revision: null
+title: Front Load Washer Quick Start Guide
+doc_type: quick_start_guide
+languages: [en-US, fr-CA]
+
+authority:
+  tier: owner_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2020
+
+provenance:
+  source_url: null
+  url_status: search
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  access_notes: >-
+    Named in the literature package of parts list W11320547 Rev C. Single-sourced
+    publication number; confirm on acquisition.
+  local_filename: W11355381.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: supporting
+  rationale: >-
+    A very short, highly condensed document covering the same ground as the
+    owner's manual. Useful as a length and density outlier: chunking strategies
+    tuned on 100-page manuals often behave badly on two-page documents, and this
+    is the corpus's cheapest way to notice that.

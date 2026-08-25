@@ -1,0 +1,86 @@
+doc_id: service-manual-w11169652
+publication_number: W11169652
+revision: A
+title: Whirlpool & Maytag 27in Front-Load Washers Service Manual (job aid L-97)
+doc_type: service_manual
+languages: [en-US]
+
+authority:
+  tier: service_literature
+
+applicability:
+  brands: [Whirlpool, Maytag, Amana, Inglis]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  # 23 base models across five brands, listed in the manual and restated
+  # authoritatively by TSP W11375982. Whirlpool lists them WITHOUT engineering
+  # digits, so every digit of every base model is covered: '*' is not a guess.
+  models:
+    - WFW5620HW*
+    - WFW560CHW*
+    - WFW6620HC*
+    - WFW6620HW*
+    - WFW8620HC*
+    - WFW8620HW*
+    - WFW862CHC*
+    - WFW9620HBK*
+    - WFW9620HC*
+    - WFW9620HW*
+    - MHW5630HC*
+    - MHW5630HW*
+    - MHW6630HC*
+    - MHW6630HW*
+    - MHW8630HC*
+    - MHW8630HW*
+    - 7MMHW6621HC*
+    - 7MMHW6621HW*
+    - 7MWFW5622HW*
+    - 7MWFW6621HC*
+    - 7MWFW6622HW*
+    - NFW5800HW*
+    - IFW5900HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2019-05
+
+relationships:
+  # The single most important edge in this corpus. A later bulletin declares a
+  # specific passage of this manual wrong. The manual remains authoritative
+  # everywhere else, which is why this is 'corrected_by' and not 'superseded_by'.
+  - type: corrected_by
+    target: W11375982
+    locator: "Test #1: ACU Power Check, Step 10"
+    note: >-
+      TSP W11375982 (June 2019) states there is incorrect service information in
+      this manual regarding the ACU diagnostic LED, and prints the corrected text.
+  - type: superseded_by
+    target: W11169652
+    target_revision: B
+    note: >-
+      W11375982 states the service manual "ha[s] been revised" on ServiceMatters.
+      A post-Rev-A edition therefore exists but no public artefact was located.
+      See corpus/manifest/_excluded.yaml.
+
+provenance:
+  source_url: https://www.whirlpool.com/content/dam/global/documents/201905/service-manual-w11169652-reva-27in-front-load-washers.pdf
+  url_status: confirmed
+  access_method: oem_public_pdf
+  license: LicenseRef-Whirlpool-Proprietary
+  redistributable: false
+  local_filename: W11169652A.pdf
+
+identity:
+  canonical_sha256: null
+  canonicalizer: null
+  instances: []
+
+corpus:
+  role: applicable
+  rationale: >-
+    The primary service document for the anchor model. Supplies theory of
+    operation, component access, test procedures and wiring, and is the document
+    that a later bulletin partially corrects, which makes it the anchor of the
+    precedence evaluation.
