@@ -19,11 +19,13 @@ not on PATH.
 | Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` | stdout scorecard |
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
+| Promote failure | `promote-eval --run … --scenario ID` | prior run JSON | — | YAML draft (optional `--write` into grading overlay) |
 
 Hard corpus scenarios live in `evals/scenarios/candidates.yaml` (`status: ready`).
 Deterministic overlays for the candidate bench are in
-`evals/qa/candidates-grading.yaml`. Prose `fails_if` / `expect` fields remain for
-human review unless an overlay encodes them.
+`evals/qa/candidates-grading.yaml`. Prose `fails_if` / `expect` fields are still
+authoritative for humans; pass `--judge` to have an LLM grade them after the
+deterministic gate (ADR-0019).
 
 ---
 
@@ -43,6 +45,9 @@ python -m repair_assistant.corpus.cli bench-retrieve --write
 # Needs OpenAI as well
 python -m repair_assistant.corpus.cli bench-qa --write
 python -m repair_assistant.corpus.cli bench-candidates --write
+
+# Optional: also LLM-judge prose expect/fails_if (extra OpenAI cost)
+python -m repair_assistant.corpus.cli bench-candidates --write --judge
 ```
 
 Optional: re-run a single scenario
@@ -50,6 +55,22 @@ Optional: re-run a single scenario
 ```powershell
 python -m repair_assistant.corpus.cli bench-qa --write --scenario acu-led-step-10
 python -m repair_assistant.corpus.cli bench-candidates --write --scenario installation-fault-not-component-fault
+```
+
+### Promote a failure into a grading draft
+
+After a failed `--write` run, draft an overlay stub for review (does **not**
+become a live gate until you move keys out of `.draft`):
+
+```powershell
+python -m repair_assistant.corpus.cli promote-eval `
+  --run evals/qa/results/runs/candidates-YYYYMMDDTHHMMSSZ.json `
+  --scenario some-failed-id
+
+# optional: nest under candidates-grading.yaml → scenarios.<id>.draft
+python -m repair_assistant.corpus.cli promote-eval `
+  --run evals/qa/results/runs/candidates-YYYYMMDDTHHMMSSZ.json `
+  --scenario some-failed-id --write
 ```
 
 ---
@@ -100,8 +121,7 @@ leave `LANGFUSE_*` keys empty to disable tracing.
 ## Out of scope (for now)
 
 - CI / scheduled live benches (OpenAI cost and LAN DB dependency)
-- LLM-as-judge for prose `fails_if` rules
 - Dedicated multi-turn diagnose harness beyond the one smoke diagnose case
-- Auto-wiring production failures into fixtures (add scenarios by hand when useful)
+- Auto-merging promoted drafts into live overlay keys (always human review)
 
-See ADR-0015 and ADR-0017 for how the Q&A and candidate benches were introduced.
+See ADR-0015, ADR-0017, and ADR-0019 for Q&A benches, candidates, and judge/promote.

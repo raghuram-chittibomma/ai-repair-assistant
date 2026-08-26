@@ -903,7 +903,12 @@ def diagnose_cmd(
 @main.command("bench-qa")
 @click.option("--write/--no-write", default=False, help="Write scorecard and JSON run log.")
 @click.option("--scenario", "scenario_ids", multiple=True, help="Run only these scenario id(s).")
-def bench_qa_cmd(write: bool, scenario_ids: tuple[str, ...]) -> None:
+@click.option(
+    "--judge/--no-judge",
+    default=False,
+    help="After deterministic grading, LLM-judge prose expect/fails_if (extra OpenAI cost).",
+)
+def bench_qa_cmd(write: bool, scenario_ids: tuple[str, ...], judge: bool) -> None:
     """Run live Q&A smoke scenarios (needs DB + OPENAI_API_KEY)."""
     from datetime import UTC, datetime
 
@@ -919,7 +924,7 @@ def bench_qa_cmd(write: bool, scenario_ids: tuple[str, ...]) -> None:
     ids = set(scenario_ids) if scenario_ids else None
     with Database(url) as db:
         try:
-            results = run_smoke_bench(db, scenario_ids=ids)
+            results = run_smoke_bench(db, scenario_ids=ids, use_judge=judge)
         except RuntimeError as exc:
             raise click.ClickException(str(exc)) from exc
 
@@ -944,7 +949,12 @@ def bench_qa_cmd(write: bool, scenario_ids: tuple[str, ...]) -> None:
 @main.command("bench-candidates")
 @click.option("--write/--no-write", default=False, help="Write scorecard and JSON run log.")
 @click.option("--scenario", "scenario_ids", multiple=True, help="Run only these scenario id(s).")
-def bench_candidates_cmd(write: bool, scenario_ids: tuple[str, ...]) -> None:
+@click.option(
+    "--judge/--no-judge",
+    default=False,
+    help="After deterministic grading, LLM-judge prose expect/fails_if (extra OpenAI cost).",
+)
+def bench_candidates_cmd(write: bool, scenario_ids: tuple[str, ...], judge: bool) -> None:
     """Run live ask() against ready evals/scenarios/candidates.yaml (needs DB + OpenAI)."""
     from datetime import UTC, datetime
 
@@ -965,7 +975,7 @@ def bench_candidates_cmd(write: bool, scenario_ids: tuple[str, ...]) -> None:
     ids = set(scenario_ids) if scenario_ids else None
     with Database(url) as db:
         try:
-            results = run_candidates_bench(db, scenario_ids=ids)
+            results = run_candidates_bench(db, scenario_ids=ids, use_judge=judge)
         except RuntimeError as exc:
             raise click.ClickException(str(exc)) from exc
 
@@ -985,6 +995,40 @@ def bench_candidates_cmd(write: bool, scenario_ids: tuple[str, ...]) -> None:
 
     if any(not r.passed for r in results):
         raise click.ClickException("one or more candidate scenarios failed; see scorecard")
+
+
+@main.command("promote-eval")
+@click.option(
+    "--run",
+    "run_path",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=True,
+    help="Path to a bench JSON run log under evals/qa/results/runs/.",
+)
+@click.option("--scenario", "scenario_id", required=True, help="Failed scenario id to promote.")
+@click.option(
+    "--write/--no-write",
+    default=False,
+    help="Write draft under candidates-grading.yaml scenarios.<id>.draft.",
+)
+@click.option("--force", is_flag=True, help="Replace an existing draft for this scenario.")
+def promote_eval_cmd(run_path: Path, scenario_id: str, write: bool, force: bool) -> None:
+    """Draft a grading-overlay stub from a failed bench run (manual review)."""
+    from repair_assistant.eval.promote import promote_failure
+
+    try:
+        text, written = promote_failure(
+            Path(run_path),
+            scenario_id,
+            write=write,
+            force=force,
+        )
+    except (KeyError, ValueError, FileExistsError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(text)
+    if written is not None:
+        click.echo(f"Wrote draft under {written} → scenarios.{scenario_id}.draft")
+        click.echo("Review the draft, promote useful keys to the live overlay, then delete .draft.")
 
 
 @main.command("bench-safety")

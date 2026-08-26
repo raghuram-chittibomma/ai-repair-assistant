@@ -12,6 +12,7 @@ import yaml
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.eval.grading import grade_answer
+from repair_assistant.eval.llm_judge import JudgeClient, grade_with_optional_judge
 from repair_assistant.eval.qa_bench import QAScenarioResult, _cite_keys, write_run_log
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.generate import ask
@@ -91,6 +92,8 @@ def run_candidates_bench(
     candidates_path: Path | None = None,
     grading_path: Path | None = None,
     scenario_ids: set[str] | None = None,
+    use_judge: bool = False,
+    judge_llm: JudgeClient | None = None,
 ) -> list[CandidateBenchResult]:
     data = load_candidates(candidates_path)
     grading = load_grading_overlay(grading_path)
@@ -109,11 +112,14 @@ def run_candidates_bench(
         )
         elapsed = int((time.perf_counter() - start) * 1000)
         cite_keys = _cite_keys(outcome.citations)
-        passed, detail = grade_answer(
+        passed, detail = grade_with_optional_judge(
             scenario,
             answer=outcome.answer,
             citations=cite_keys,
             abstained=outcome.abstained,
+            use_judge=use_judge,
+            llm=judge_llm,
+            deterministic_grade=grade_answer,
         )
         results.append(
             CandidateBenchResult(

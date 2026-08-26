@@ -15,6 +15,7 @@ from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.diagnostic.session import DiagnosticSession
 from repair_assistant.eval.grading import grade_answer
+from repair_assistant.eval.llm_judge import JudgeClient, grade_with_optional_judge
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.context import Citation
 from repair_assistant.qa.generate import ask
@@ -78,7 +79,14 @@ def _appliance(scenario: dict[str, Any]) -> Appliance | None:
     return Appliance(model=model, serial=app.get("serial"))
 
 
-def _run_ask(db: Database, corpus, scenario: dict[str, Any]) -> QAScenarioResult:
+def _run_ask(
+    db: Database,
+    corpus,
+    scenario: dict[str, Any],
+    *,
+    use_judge: bool = False,
+    judge_llm: JudgeClient | None = None,
+) -> QAScenarioResult:
     start = time.perf_counter()
     outcome = ask(
         db,
@@ -97,18 +105,28 @@ def _run_ask(db: Database, corpus, scenario: dict[str, Any]) -> QAScenarioResult
         citations=cite_keys,
         duration_ms=elapsed,
     )
-    passed, detail = grade_answer(
+    passed, detail = grade_with_optional_judge(
         scenario,
         answer=result.answer,
         citations=result.citations,
         abstained=result.abstained,
+        use_judge=use_judge,
+        llm=judge_llm,
+        deterministic_grade=grade_answer,
     )
     result.passed = passed
     result.detail = detail
     return result
 
 
-def _run_diagnose(db: Database, corpus, scenario: dict[str, Any]) -> QAScenarioResult:
+def _run_diagnose(
+    db: Database,
+    corpus,
+    scenario: dict[str, Any],
+    *,
+    use_judge: bool = False,
+    judge_llm: JudgeClient | None = None,
+) -> QAScenarioResult:
     start = time.perf_counter()
     session = DiagnosticSession(corpus, appliance=_appliance(scenario))
     turns: list[TurnRecord] = []
@@ -147,11 +165,14 @@ def _run_diagnose(db: Database, corpus, scenario: dict[str, Any]) -> QAScenarioR
         turns=turns,
         duration_ms=elapsed,
     )
-    passed, detail = grade_answer(
+    passed, detail = grade_with_optional_judge(
         scenario,
         answer=result.answer,
         citations=result.citations,
         abstained=result.abstained,
+        use_judge=use_judge,
+        llm=judge_llm,
+        deterministic_grade=grade_answer,
     )
     result.passed = passed
     result.detail = detail
@@ -163,6 +184,8 @@ def run_smoke_bench(
     *,
     scenarios_path: Path | None = None,
     scenario_ids: set[str] | None = None,
+    use_judge: bool = False,
+    judge_llm: JudgeClient | None = None,
 ) -> list[QAScenarioResult]:
     data = load_smoke_scenarios(scenarios_path)
     corpus = manifest_mod.load()
@@ -171,9 +194,13 @@ def run_smoke_bench(
         if scenario_ids and scenario["id"] not in scenario_ids:
             continue
         if scenario.get("command") == "diagnose":
-            results.append(_run_diagnose(db, corpus, scenario))
+            results.append(
+                _run_diagnose(db, corpus, scenario, use_judge=use_judge, judge_llm=judge_llm)
+            )
         else:
-            results.append(_run_ask(db, corpus, scenario))
+            results.append(
+                _run_ask(db, corpus, scenario, use_judge=use_judge, judge_llm=judge_llm)
+            )
     return results
 
 

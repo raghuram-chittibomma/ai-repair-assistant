@@ -68,6 +68,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0015](0015-qa-eval-logging.md) | `bench-qa` smoke runner; deterministic grader; JSON run logs | Charter Phase 9 (incremental) |
 | [0018](0018-langfuse-observability.md) | Self-hosted Langfuse (MIT); opt-in SDK traces; not LangSmith | Charter Phase 9; OSS + D8 |
+| [0019](0019-llm-judge-promote.md) | Opt-in `--judge` for prose expect/fails_if; `promote-eval` drafts | Charter Phase 9 maturity |
 
 ## Phase 9 — Product hardening
 
