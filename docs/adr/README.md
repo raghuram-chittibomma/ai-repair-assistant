@@ -43,7 +43,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0010](0010-retrieval-applicability.md) | Over-fetch vectors; filter by applicability; light boosts (**interim default**) | W11395614 / W11375982 cases |
 | [0011](0011-retrieval-bakeoff.md) | Bake-off confirms ADR-0010; lexical/hybrid not adopted yet | D4 experiments; F5E2 KB gap |
-| [0020](0020-hybrid-retrieval-retest.md) | Hybrid re-tested on 9 hard fixtures; full-text arm costs precision, default kept | `ts_rank_cd` has no IDF; boosts shown load-bearing |
+| [0020](0020-hybrid-retrieval-retest.md) | Hybrid re-tested; default kept at **14/14** hard (product-class gate + synthetics) | Full-text arm still costs precision; boosts more load-bearing |
 
 ## Phase 5 — Grounded Q&A
 
