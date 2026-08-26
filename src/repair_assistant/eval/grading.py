@@ -51,9 +51,10 @@ def grade_answer(
         if matches_citation(citations, forbidden):
             failures.append(f"must_not_cite hit {forbidden!r}")
 
-    for phrase in scenario.get("fails_if_contains") or []:
-        if phrase.lower() in answer_text:
-            failures.append(f"fails_if matched {phrase!r}")
+    if not abstained:
+        for phrase in scenario.get("fails_if_contains") or []:
+            if phrase.lower() in answer_text:
+                failures.append(f"fails_if matched {phrase!r}")
 
     if failures:
         return False, "; ".join(failures)

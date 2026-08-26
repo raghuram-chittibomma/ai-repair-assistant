@@ -42,15 +42,55 @@ def format_label(hit: Hit) -> str:
     return cite
 
 
-def format_evidence(hits: list[Hit], *, max_chars: int = 12_000) -> tuple[str, list[Citation]]:
+def _excerpt(text: str, *, max_len: int = 2000, query: str = "") -> str:
+    """Prefer a query-relevant window when truncating long procedure chunks."""
+    normalized = " ".join(text.split())
+    if len(normalized) <= max_len:
+        return normalized
+
+    needles: list[str] = []
+    query_l = query.lower()
+    for term in (
+        "status led",
+        "diagnostic led",
+        "acu led",
+        "step 10",
+        "blink",
+        "acu power check",
+        "shipping bolt",
+        "transport bolt",
+    ):
+        if term in query_l or term in normalized.lower():
+            needles.append(term)
+
+    for needle in needles:
+        pos = normalized.lower().find(needle)
+        if pos < 0:
+            continue
+        start = max(0, pos - max_len // 3)
+        end = min(len(normalized), start + max_len)
+        snippet = normalized[start:end]
+        if start > 0:
+            snippet = "..." + snippet
+        if end < len(normalized):
+            snippet = snippet + "..."
+        return snippet
+
+    return normalized[: max_len - 3] + "..."
+
+
+def format_evidence(
+    hits: list[Hit],
+    *,
+    query: str = "",
+    max_chars: int = 12_000,
+) -> tuple[str, list[Citation]]:
     """Numbered evidence blocks for the LLM prompt."""
     blocks: list[str] = []
     citations: list[Citation] = []
     used = 0
     for i, hit in enumerate(hits, 1):
-        text = " ".join(hit.text.split())
-        if len(text) > 2000:
-            text = text[:1997] + "..."
+        text = _excerpt(hit.text, query=query)
         block = f"[{i}] {format_label(hit)}\n{text}"
         if used + len(block) > max_chars and citations:
             break

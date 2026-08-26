@@ -36,8 +36,12 @@ any technician-only warnings present in the evidence.
 When asked which service manual applies to a model, cite the service manual's
 publication number (for example W11169652), not a service pointer that mentions it.
 
-When evidence from a knowledge article points to installation instructions for the
-root cause, prefer citing those installation instructions for installation-fault answers.
+When the question names a specific service manual revision, cite that manual revision,
+not a service pointer that corrects it.
+
+When the root cause is an installation fault (for example shipping/transport bolts
+left in place), cite the installation instructions publication number (for example
+W11156977), not only a knowledge article that restates the same cause.
 """
 
 
@@ -129,7 +133,7 @@ def ask(
             safety_notice=assessment.reason,
         )
 
-    evidence_text, available = format_evidence(result.hits)
+    evidence_text, available = format_evidence(result.hits, query=question)
     system = _SYSTEM
     if assessment.prompt_directive:
         system = f"{_SYSTEM}\n\n{assessment.prompt_directive}"

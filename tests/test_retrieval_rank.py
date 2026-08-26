@@ -276,3 +276,74 @@ def test_installation_query_boosts_referenced_install_guide() -> None:
     )
     pubs = [h.publication_number for h in ranked]
     assert pubs[0] == "W11156977"
+    # KB may still appear, but must not outrank the install guide.
+    assert ranked[0].final_score >= next(
+        h.final_score for h in ranked if h.doc_id == "kb-f7e1-front-load"
+    )
+
+
+def test_revision_manual_query_prefers_matching_rev_over_tsp() -> None:
+    manual = _doc(
+        "service-manual-w11169652-revb",
+        {
+            "doc_id": "service-manual-w11169652-revb",
+            "title": "Service Manual",
+            "doc_type": "service_manual",
+            "publication_number": "W11169652",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "service_literature"},
+            "applicability": {
+                "models": ["WFW5620HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+        },
+    )
+    bulletin = _doc(
+        "tsp-w11375982",
+        {
+            "doc_id": "tsp-w11375982",
+            "title": "TSP",
+            "doc_type": "technical_service_pointer",
+            "publication_number": "W11375982",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "service_pointer"},
+            "applicability": {
+                "models": ["WFW5620HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+            "relationships": [{"type": "corrects", "target": "W11169652"}],
+        },
+    )
+    manifest = Manifest(documents=[manual, bulletin])
+    hits = [
+        {
+            "doc_id": "tsp-w11375982",
+            "chunk_id": "a",
+            "text": "incorrect information in W11169652 Test #1 ACU power check step 10",
+            "page": 1,
+            "kind": "prose",
+            "error_codes": [],
+            "publication_number": "W11375982",
+            "revision": None,
+            "score": 0.94,
+        },
+        {
+            "doc_id": "service-manual-w11169652-revb",
+            "chunk_id": "b",
+            "text": "ACU diagnostic LED blinks rapidly then 0.5s on / 0.5s off",
+            "page": 44,
+            "kind": "procedure",
+            "error_codes": [],
+            "publication_number": "W11169652",
+            "revision": "B",
+            "score": 0.90,
+        },
+    ]
+    ranked = filter_and_rank(
+        hits,
+        manifest,
+        Appliance(model="WFW5620HW0"),
+        limit=5,
+        query="What does revision B of the service manual say about the ACU LED?",
+    )
+    assert ranked[0].doc_id == "service-manual-w11169652-revb"

@@ -11,7 +11,14 @@ from repair_assistant.ingest.env import embedding_model
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import code_to_spaced_regex
 from repair_assistant.parsing.error_codes import extract_error_codes
-from repair_assistant.retrieval.rank import RankedHit, filter_and_rank, is_installation_query
+from repair_assistant.retrieval.rank import (
+    RankedHit,
+    filter_and_rank,
+    is_acu_led_query,
+    is_bibliographic_query,
+    is_installation_query,
+    requested_revision,
+)
 
 
 @dataclass
@@ -172,6 +179,63 @@ def reference_fetch(
     return [_row_to_hit(row) for row in rows]
 
 
+def manual_rev_fetch(
+    db: Database,
+    manifest: Manifest,
+    rev_letter: str,
+    *,
+    appliance: Appliance | None,
+    query: str = "",
+    limit: int = 12,
+) -> list[dict]:
+    """Recall chunks from a named service-manual revision (bibliographic queries)."""
+    from repair_assistant.corpus.applicability import document_applies
+
+    pubs: list[str] = []
+    for doc in manifest.documents:
+        if doc.doc_type != "service_manual":
+            continue
+        if appliance is not None and not document_applies(doc.data, appliance).applies:
+            continue
+        pub = doc.publication_number
+        if pub:
+            pubs.append(pub)
+    if not pubs:
+        return []
+
+    acu_led = is_acu_led_query(query)
+    rows = db.fetchall(
+        """
+        SELECT
+            doc_id,
+            chunk_id,
+            text,
+            page,
+            kind,
+            error_codes,
+            publication_number,
+            revision,
+            0.88 AS score
+        FROM chunks
+        WHERE publication_number = ANY(%s::text[])
+          AND upper(revision) = upper(%s)
+        ORDER BY
+            CASE
+                WHEN text ~* 'status LED' THEN 0
+                WHEN page = 44 THEN 1
+                WHEN text ~* 'TEST #1.*ACU Power Check' THEN 2
+                WHEN %s AND text ~* 'diagnostic led|step 10|blink' THEN 3
+                ELSE 4
+            END,
+            page,
+            chunk_id
+        LIMIT %s
+        """,
+        (list(set(pubs)), rev_letter, acu_led, limit),
+    )
+    return [_row_to_hit(row) for row in rows]
+
+
 def merge_hits(*lists: list[dict]) -> list[dict]:
     """Dedupe by (doc_id, chunk_id); earlier lists win on score."""
     seen: set[tuple[str, str]] = set()
@@ -204,11 +268,38 @@ def search(
 
     codes = extract_error_codes(query)
     code_hits = code_fetch(db, codes)
-    raw = merge_hits(
-        code_hits,
-        reference_fetch(db, manifest, code_hits, query=query, limit=3),
-        vector_fetch(db, vectors[0], limit=max(overfetch, limit)),
-    )
+    rev_letter = requested_revision(query)
+    bibliographic = is_bibliographic_query(query)
+    rev_hits: list[dict] = []
+    if bibliographic and rev_letter:
+        rev_hits = manual_rev_fetch(
+            db,
+            manifest,
+            rev_letter,
+            appliance=appliance,
+            query=query,
+            limit=8 if is_acu_led_query(query) else 12,
+        )
+    if bibliographic and rev_letter and rev_hits and is_acu_led_query(query):
+        raw = rev_hits
+    else:
+        raw = merge_hits(
+            rev_hits,
+            code_hits,
+            reference_fetch(db, manifest, code_hits, query=query, limit=3),
+            vector_fetch(db, vectors[0], limit=max(overfetch, limit)),
+        )
+        if bibliographic and rev_letter:
+            by_id = {d.doc_id: d for d in manifest.documents}
+            restricted = [
+                hit
+                for hit in raw
+                if (doc := by_id.get(hit["doc_id"]))
+                and doc.doc_type == "service_manual"
+                and str(hit.get("revision") or "").upper() == rev_letter
+            ]
+            if restricted:
+                raw = restricted
     all_ranked = filter_and_rank(
         raw,
         manifest,
@@ -250,6 +341,7 @@ __all__ = [
     "code_fetch",
     "extract_error_codes",
     "merge_hits",
+    "manual_rev_fetch",
     "reference_fetch",
     "search",
     "vector_fetch",

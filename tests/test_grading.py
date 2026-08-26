@@ -37,6 +37,17 @@ def test_fails_if_contains() -> None:
     assert "fails_if" in detail
 
 
+def test_fails_if_skipped_when_abstained() -> None:
+    scenario = {"fails_if_contains": ["samsung"], "expect_abstain": True}
+    passed, detail = grade_answer(
+        scenario,
+        answer="ABSTAIN: No evidence for Samsung dishwasher draining.",
+        citations=[],
+        abstained=True,
+    )
+    assert passed, detail
+
+
 def test_grade_scenario_adapter() -> None:
     result = QAScenarioResult(
         scenario_id="x",

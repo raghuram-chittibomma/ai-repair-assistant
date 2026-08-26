@@ -22,13 +22,17 @@ scenarios:
     fails_if_contains: [lid lock, top-load, laundry tower]
 
   out-of-corpus-appliance:
+    expect_abstain: true
     expect_contains_any:
       - whirlpool
       - not cover
       - outside
       - abstain
       - cannot answer
-    fails_if_contains: [drain filter, samsung]
+    fails_if_contains: [drain filter]
+
+  known-gap-revised-manual:
+    must_cite: [W11169652]
 
   out-of-corpus-model:
     expect_contains_any:

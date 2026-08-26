@@ -17,6 +17,8 @@ _INSTALLATION = re.compile(
     r"shakes?|shaking|violently)\b",
     re.I,
 )
+_REVISION = re.compile(r"\brevision\s+([A-Z])\b", re.I)
+_ACU_LED = re.compile(r"\bacu\b.*\bled\b|\bled\b.*\bacu\b", re.I)
 
 
 def is_bibliographic_query(query: str) -> bool:
@@ -27,6 +29,17 @@ def is_bibliographic_query(query: str) -> bool:
 def is_installation_query(query: str) -> bool:
     """Symptoms that often trace to installation faults rather than components."""
     return bool(_INSTALLATION.search(query))
+
+
+def requested_revision(query: str) -> str | None:
+    """Revision letter when the query names a specific manual revision."""
+    match = _REVISION.search(query)
+    return match.group(1).upper() if match else None
+
+
+def is_acu_led_query(query: str) -> bool:
+    """Procedural intent about the ACU status/diagnostic LED, not drum light."""
+    return bool(_ACU_LED.search(query))
 
 
 @dataclass(frozen=True)
@@ -91,6 +104,8 @@ def filter_and_rank(
     bibliographic = is_bibliographic_query(query)
     installation = is_installation_query(query)
     ref_targets = _reference_targets(hits, by_id)
+    rev_letter = requested_revision(query) if bibliographic else None
+    acu_led = is_acu_led_query(query)
 
     ranked: list[RankedHit] = []
     for hit in hits:
@@ -121,6 +136,16 @@ def filter_and_rank(
                         break
             if doc.doc_type == "service_manual" and bibliographic:
                 boost += 0.15
+                rev = hit.get("revision")
+                if rev_letter and rev and str(rev).upper() == rev_letter:
+                    boost += 0.25
+            if bibliographic and doc.doc_type in {
+                "technical_service_pointer",
+                "service_pointer",
+            }:
+                boost -= 0.12
+                if rev_letter:
+                    boost -= 0.18
             if doc.doc_type == "installation_instructions" and installation:
                 boost += 0.12
             tier = (doc.data.get("authority") or {}).get("tier")
@@ -135,16 +160,34 @@ def filter_and_rank(
                 if doc is not None and doc.doc_type == "installation_instructions":
                     boost += 0.15
 
+        if acu_led:
+            text = hit.get("text") or ""
+            if re.search(r"drum light", text, re.I):
+                boost -= 0.20
+            if re.search(
+                r"(status led|diagnostic led|step 10|0\.5.*0\.5|blinks? (rapidly|slowly))",
+                text,
+                re.I,
+            ):
+                boost += 0.30
+            if re.search(r"TEST #1.*ACU Power Check", text, re.I):
+                boost += 0.15
+
         codes = [str(c).upper() for c in (hit.get("error_codes") or [])]
         kind = hit.get("kind") or ""
         if query_codes and query_codes.intersection(codes):
-            boost += 0.15
-            if set(codes) <= query_codes or len(set(codes)) <= 2:
-                boost += 0.25
-            if kind == "article":
-                boost += 0.1
-            if doc is not None and doc.doc_type == "knowledge_article":
-                boost += 0.2
+            # On installation-fault queries, keep KB/code recall but do not let
+            # article boosts bury the referenced installation instructions.
+            if installation and doc is not None and doc.doc_type == "knowledge_article":
+                boost += 0.05
+            else:
+                boost += 0.15
+                if set(codes) <= query_codes or len(set(codes)) <= 2:
+                    boost += 0.25
+                if kind == "article":
+                    boost += 0.1
+                if doc is not None and doc.doc_type == "knowledge_article":
+                    boost += 0.2
 
         ranked.append(
             RankedHit(
@@ -169,11 +212,13 @@ def filter_and_rank(
 
 def _diverse_top(ranked: list[RankedHit], limit: int, *, max_per_doc: int = 2) -> list[RankedHit]:
     """Keep top scores while preventing one document from filling the entire window."""
+    doc_ids = {h.doc_id for h in ranked}
+    per_doc_cap = limit if len(doc_ids) == 1 else max_per_doc
     out: list[RankedHit] = []
     counts: dict[str, int] = {}
     for hit in ranked:
         n = counts.get(hit.doc_id, 0)
-        if n >= max_per_doc:
+        if n >= per_doc_cap:
             continue
         out.append(hit)
         counts[hit.doc_id] = n + 1
