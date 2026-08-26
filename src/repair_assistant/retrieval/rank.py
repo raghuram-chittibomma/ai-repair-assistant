@@ -19,6 +19,16 @@ _INSTALLATION = re.compile(
 )
 _REVISION = re.compile(r"\brevision\s+([A-Z])\b", re.I)
 _ACU_LED = re.compile(r"\bacu\b.*\bled\b|\bled\b.*\bacu\b", re.I)
+# Whirlpool-family publication numbers as they appear in questions ("…of W11320651").
+_PUBLICATION = re.compile(r"\b(W\d{8})\b", re.I)
+_TECHNICIAN_DEPTH = re.compile(
+    r"\b("
+    r"what should i check|how (?:do|should) i (?:test|diagnose|check)|"
+    r"test\s*#\s*\d|service (?:mode|procedure)|technician|"
+    r"door will not lock|won'?t lock|will not lock"
+    r")\b",
+    re.I,
+)
 
 
 def is_bibliographic_query(query: str) -> bool:
@@ -40,6 +50,22 @@ def requested_revision(query: str) -> str | None:
 def is_acu_led_query(query: str) -> bool:
     """Procedural intent about the ACU status/diagnostic LED, not drum light."""
     return bool(_ACU_LED.search(query))
+
+
+def queried_publications(query: str) -> set[str]:
+    """Publication numbers explicitly named as documents in the query.
+
+    Whirlpool part numbers also look like ``W`` + 8 digits (e.g. W10804741).
+    Those must not trigger publication filtering — only document references.
+    """
+    if re.search(r"\bpart\s*(?:number|#|no\.?)\b", query, re.I):
+        return set()
+    return {m.group(1).upper() for m in _PUBLICATION.finditer(query)}
+
+
+def is_technician_depth_query(query: str) -> bool:
+    """Technician / diagnostic intent — prefer service literature over consumer KB."""
+    return bool(_TECHNICIAN_DEPTH.search(query))
 
 
 @dataclass(frozen=True)
@@ -76,6 +102,10 @@ def _is_correcting_doc(doc: Document) -> bool:
     return doc.doc_type in {"technical_service_pointer", "service_pointer"}
 
 
+def _is_superseded_doc(doc: Document) -> bool:
+    return any(rel.get("type") == "superseded_by" for rel in doc.relationships())
+
+
 def _reference_targets(hits: list[dict], by_id: dict[str, Document]) -> set[str]:
     """Publication numbers cited by KB articles already in the candidate pool."""
     targets: set[str] = set()
@@ -106,6 +136,8 @@ def filter_and_rank(
     ref_targets = _reference_targets(hits, by_id)
     rev_letter = requested_revision(query) if bibliographic else None
     acu_led = is_acu_led_query(query)
+    named_pubs = queried_publications(query)
+    technician = is_technician_depth_query(query)
 
     ranked: list[RankedHit] = []
     for hit in hits:
@@ -134,6 +166,9 @@ def filter_and_rank(
                     if rel.get("type") in {"corrects", "supersedes", "overrides"}:
                         boost += 0.08
                         break
+                # Prefer the current publication when a superseded twin also applies.
+                if _is_superseded_doc(doc):
+                    boost -= 0.25
             if doc.doc_type == "service_manual" and bibliographic:
                 boost += 0.15
                 rev = hit.get("revision")
@@ -151,8 +186,18 @@ def filter_and_rank(
             tier = (doc.data.get("authority") or {}).get("tier")
             if tier in {"service_literature", "service_pointer", "technical_service_pointer"}:
                 boost += 0.02
+            if technician and doc.doc_type in {"tech_sheet", "service_manual"}:
+                boost += 0.30
+            if technician and doc.doc_type == "knowledge_article":
+                boost -= 0.45
 
         pub = hit.get("publication_number")
+        if named_pubs:
+            if pub and str(pub).upper() in named_pubs:
+                boost += 0.45
+            elif pub:
+                # Query named a specific publication — demote near-duplicate twins.
+                boost -= 0.35
         if ref_targets and pub and str(pub) in ref_targets:
             boost += 0.25
             if installation and query_codes:
@@ -180,6 +225,10 @@ def filter_and_rank(
             # article boosts bury the referenced installation instructions.
             if installation and doc is not None and doc.doc_type == "knowledge_article":
                 boost += 0.05
+            elif technician and doc is not None and doc.doc_type == "knowledge_article":
+                # Keep exact-code recall for KB, but without the depth boosts that
+                # bury tech sheets on "what should I check?" questions.
+                boost += 0.05
             else:
                 boost += 0.15
                 if set(codes) <= query_codes or len(set(codes)) <= 2:
@@ -205,6 +254,17 @@ def filter_and_rank(
                 authority_boost=boost,
             )
         )
+
+    # Query named a specific publication and we found it — drop near-duplicate
+    # twins and unrelated pubs rather than relying on soft demotion alone.
+    if named_pubs:
+        matched = [
+            h
+            for h in ranked
+            if h.publication_number and str(h.publication_number).upper() in named_pubs
+        ]
+        if matched:
+            ranked = matched
 
     ranked.sort(key=lambda h: h.final_score, reverse=True)
     return _diverse_top(ranked, limit)

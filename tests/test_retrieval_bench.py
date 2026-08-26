@@ -149,3 +149,29 @@ def test_query_literals_extracts_mixed_alphanumerics() -> None:
 def test_query_literals_skips_pure_words_and_numbers() -> None:
     assert query_literals("my washer shakes during the spin cycle") == []
     assert query_literals("check pin 3 and pin 12") == []
+
+
+def test_synthetic_pack_loads_and_stays_namespaced() -> None:
+    from repair_assistant.retrieval.synthetic import (
+        is_synthetic_doc_id,
+        is_synthetic_hit,
+        load_synthetic_documents,
+        merge_manifest_with_synthetic,
+    )
+    from repair_assistant.corpus import manifest as manifest_mod
+
+    docs = load_synthetic_documents()
+    assert docs
+    assert all(is_synthetic_doc_id(d.doc_id) for d in docs)
+    assert all(str(d.publication_number).startswith("SYNTH-") for d in docs)
+    assert all(d.role == "synthetic_eval" for d in docs)
+
+    merged = merge_manifest_with_synthetic(manifest_mod.load())
+    synth_ids = {d.doc_id for d in docs}
+    real_ids = {d.doc_id for d in manifest_mod.load().documents}
+    assert synth_ids.isdisjoint(real_ids)
+    assert synth_ids <= {d.doc_id for d in merged.documents}
+
+    assert is_synthetic_hit({"doc_id": "synth-owners-manual-v1", "publication_number": "SYNTH-UC-100"})
+    assert not is_synthetic_hit({"doc_id": "service-manual-w11169652", "publication_number": "W11169652"})
+

@@ -130,6 +130,19 @@ adopted. Note that `bench-retrieve` measures retrieval cores only:
 `run_strategy` omits the `connector_fetch` / `reference_fetch` /
 `manual_rev_fetch` recalls that `search()` uses in production.
 
+### Synthetic eval documents
+
+When a product-class IR case is blocked on a missing OEM PDF (e.g. current
+owner's manual supersession), the bake-off may use **synthetic** docs under
+`evals/retrieval/synthetic/`:
+
+- `doc_id` always starts with `synth-`; publication numbers with `SYNTH-`
+- Never stored under `corpus/documents/` or `corpus/manifest/`
+- Upserted only by `bench-retrieve`; production `search()` drops them
+- Fixtures that use them set `source: synthetic`
+
+Do not treat synthetic pubs as real literature in docs or demos.
+
 ### Live traces (optional Langfuse)
 
 Self-hosted Langfuse can record `ask` / `diagnose` runs for inspection

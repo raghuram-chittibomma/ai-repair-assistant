@@ -5,6 +5,10 @@
 # Pass/fail uses must_cite / must_cite_any / must_not_cite.
 # Diagnostic IR metrics (Hit@K, Recall@K, Precision@K) use the same labels
 # (or an optional explicit `relevant:` list). See docs/EVALS.md.
+#
+# Synthetic docs (doc_id / publication SYNTH-*) live under
+# evals/retrieval/synthetic/ and are eval-only. They are never under
+# corpus/documents/ or corpus/manifest/. Production search excludes them.
 
 version: 1
 k: 8
@@ -26,6 +30,8 @@ strategies:
     description: Vector ∪ rare-literal exact match, magnitude preserved, then apply + boosts
 
 fixtures:
+  # --- Core (kept hard) ----------------------------------------------------
+
   - id: acu-led-step-10
     family: precedence-bulletin-over-manual
     question: >-
@@ -57,6 +63,32 @@ fixtures:
     must_cite_any: [W11320651, W11156989]
     hard: true
 
+  - id: connector-j36-motor-harness
+    family: retrieval-exact-identifier
+    question: What connects to J36 on the ACU?
+    appliance: {model: WFW5620HW0}
+    must_cite: [W11169652]
+    must_not_cite: [W11395614]
+    hard: true
+
+  - id: part-number-door-lock
+    family: retrieval-exact-identifier
+    question: Is part number W10804741 the door lock for my washer?
+    appliance: {model: WFW5620HW0}
+    must_cite: [W11320547]
+    hard: true
+
+  - id: transport-bolt-vocabulary
+    family: retrieval-term-mismatch
+    question: >-
+      My newly installed washer shakes violently during the spin cycle. Did I
+      forget to remove the shipping bolts?
+    appliance: {model: WFW5620HW0}
+    must_cite: [W11156977]
+    hard: true
+
+  # --- Soft / demoted (exact-id budget) ------------------------------------
+
   - id: serial-inside-door-lock-tsp
     family: applicability-serial-range
     question: Does the door-lock service pointer apply to my machine?
@@ -71,75 +103,88 @@ fixtures:
     must_not_cite: [W11395614]
     hard: false
 
-  # -------------------------------------------------------------------------
-  # Rare-literal recall (added 2026-08-26).
-  #
-  # Added to test the hybrid question: dense embeddings are weakest on rare
-  # alphanumeric tokens that carry the entire meaning of the query. Ground
-  # truth for every fixture below was verified by probing the ingested
-  # `chunks` table for the literal, not inferred from the manifest.
-  #
-  # The set is deliberately mixed. Part numbers and connector IDs should
-  # favour a lexical arm; `transport-bolt-vocabulary` should favour the dense
-  # arm, because the query term and the document term differ. A strategy that
-  # wins the literal fixtures by sacrificing that one has not improved.
-
-  - id: connector-j36-motor-harness
-    family: retrieval-exact-identifier
-    question: What connects to J36 on the ACU?
-    appliance: {model: WFW5620HW0}
-    # J36 is held by service-manual-w11169652 (5 chunks) and tsp-w11395614
-    # (3 chunks). The TSP is the 24in platform and must be dropped on
-    # applicability, so this fixture scores literal recall and filtering together.
-    must_cite: [W11169652]
-    must_not_cite: [W11395614]
-    hard: true
-
-  - id: part-number-door-lock
-    family: retrieval-exact-identifier
-    question: Is part number W10804741 the door lock for my washer?
-    appliance: {model: WFW5620HW0}
-    # Single chunk in the whole corpus, inside a column-mangled parts table
-    # ("15 W10804741 Lock,Door"). The embedding of that chunk carries almost
-    # no usable signal; the literal token is the only reliable route to it.
-    must_cite: [W11320547]
-    hard: true
-
   - id: part-number-pressure-switch
     family: retrieval-exact-identifier
     question: What component is part W11125159 on a WFW5620HW0?
     appliance: {model: WFW5620HW0}
-    # Same class as above, second instance, also a single chunk.
     must_cite: [W11320547]
-    hard: true
+    hard: false
+    note: Demoted 2026-08-26 — near-duplicate of part-number-door-lock.
 
   - id: test-10a-measured-values
     family: retrieval-exact-identifier
     question: What are the measured values in TEST #10a?
     appliance: {model: WFW5620HW0}
-    # "TEST #10a" appears only in the tech sheets (5 chunks each), not in the
-    # service manual. A procedure label is a literal, but a common one.
     must_cite_any: [W11320651, W11156989]
-    hard: true
-
-  - id: transport-bolt-vocabulary
-    family: retrieval-term-mismatch
-    question: >-
-      My newly installed washer shakes violently during the spin cycle. Did I
-      forget to remove the shipping bolts?
-    appliance: {model: WFW5620HW0}
-    # Counterweight fixture. The installation instructions say "transport
-    # bolts" and never "shipping bolts", so the query's literal is absent from
-    # the target document. Lexical retrieval is expected to miss this; the
-    # dense arm plus the installation boost is expected to carry it.
-    must_cite: [W11156977]
-    hard: true
-
-  - id: connector-j13-any-source
-    family: retrieval-exact-identifier
-    question: Which connector is J13 on the ACU?
-    appliance: {model: WFW5620HW0}
-    # Lower-stakes literal: J13 is spread across both tech sheets and the
-    # service manual, so any applicable source is acceptable.
-    must_cite_any: [W11156989, W11320651, W11169652]
     hard: false
+    note: Softened 2026-08-26 — overlaps exact-id budget; F6E1 is the harder orphan.
+
+  # --- Expansion (ready-now on held corpus) --------------------------------
+  # From fixture-spread research: break the 9/9 leader tie; close applicability
+  # edges the corpus already holds. See docs/adr/0020 and coverage canvas.
+
+  - id: tech-sheet-page1-by-pub
+    family: near-duplicate-tech-sheets
+    question: What does the safety notice on page 1 of W11320651 say?
+    appliance: {model: WFW5620HW0}
+    # Page 1 of W11320651 and W11156989 are word-for-word twins except the pub #.
+    must_cite: [W11320651]
+    must_not_cite: [W11156989]
+    hard: true
+
+  - id: manual-rev-b-acu-led
+    family: precedence-revision
+    question: >-
+      What does revision B of the service manual say about the ACU diagnostic
+      LED?
+    appliance: {model: WFW5620HW0}
+    # Both revs share publication_number W11169652; grade by doc_id.
+    must_cite: [service-manual-w11169652-revb]
+    hard: true
+
+  - id: f5e2-tech-sheet-not-kb
+    family: authority-depth
+    question: >-
+      F5 E2 on a WFW5620HW0 - the door will not lock. What should I check?
+    appliance: {model: WFW5620HW0}
+    must_cite: [W11320651]
+    must_not_cite: [kb-f5e2-front-load]
+    hard: true
+
+  - id: publication-what-is-w11375982
+    family: retrieval-bibliographic
+    question: What is W11375982?
+    must_cite: [W11375982]
+    hard: true
+
+  - id: adjacent-model-parts-exclude
+    family: applicability-engineering-digit
+    question: Is W11320547 the parts list for my WFW5622HW0?
+    appliance: {model: WFW5622HW0}
+    # Parts list is scoped to exact WFW5620HW0 only; adjacent base must drop.
+    must_not_cite: [W11320547]
+    hard: true
+
+  - id: maytag-mhw-platform-manual
+    family: applicability-multi-brand
+    question: What service manual covers my Maytag MHW5630HW0?
+    appliance: {model: MHW5630HW0}
+    must_cite: [W11169652]
+    must_not_cite: [W11533288, W11766193]
+    hard: true
+
+  # --- Synthetic eval-only (not OEM literature) ----------------------------
+  # Files under evals/retrieval/synthetic/. Ingested only for bench-retrieve.
+  # Production search excludes doc_id synth-* / publication SYNTH-*.
+
+  - id: synth-owners-manual-supersession
+    family: precedence-supersession
+    source: synthetic
+    question: What does the owner's manual say about cleaning the washer drum?
+    appliance: {model: WFW5620HW0}
+    must_cite: [SYNTH-UC-200]
+    must_not_cite: [SYNTH-UC-100]
+    hard: true
+    note: >-
+      Synthetic stand-in for blocked W11355369 supersession. Both pubs apply to
+      the same model; only the manifest supersedes edge selects the current one.

@@ -1,0 +1,44 @@
+doc_id: synth-owners-manual-v1
+publication_number: SYNTH-UC-100
+revision: A
+title: "[SYNTHETIC] Owner's Manual — cleaning (superseded)"
+doc_type: use_and_care
+languages: [en-US]
+
+authority:
+  tier: owner_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2018
+
+relationships:
+  - type: superseded_by
+    target: SYNTH-UC-200
+    note: Eval-only stand-in for W11156985 → W11355369.
+
+provenance:
+  source_url: null
+  url_status: synthetic
+  access_method: synthetic_eval
+  license: LicenseRef-Eval-Synthetic
+  redistributable: true
+  local_filename: owners-manual-v1.txt
+  access_notes: >-
+    SYNTHETIC. Not OEM content. Used only by bench-retrieve for supersession IR.
+
+corpus:
+  role: synthetic_eval
+  rationale: >-
+    Both this and SYNTH-UC-200 apply to WFW5620HW0. Applicability filtering
+    alone cannot drop the superseded manual; ranking must use the supersedes
+    edge. Mirrors blocked scenario superseded-owners-manual.

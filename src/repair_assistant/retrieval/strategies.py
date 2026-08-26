@@ -143,9 +143,10 @@ def _apply_only(
     return kept[:limit]
 
 
-def lexical_fetch(db: Database, query: str, *, limit: int) -> list[dict]:
+def lexical_fetch(db: Database, query: str, *, limit: int, include_synthetic: bool = True) -> list[dict]:
+    synth_clause = "" if include_synthetic else "AND doc_id NOT LIKE 'synth-%%'"
     rows = db.fetchall(
-        """
+        f"""
         SELECT
             doc_id,
             chunk_id,
@@ -162,6 +163,7 @@ def lexical_fetch(db: Database, query: str, *, limit: int) -> list[dict]:
         FROM chunks
         WHERE to_tsvector('english', coalesce(text, ''))
               @@ plainto_tsquery('english', %s)
+          {synth_clause}
         ORDER BY score DESC
         LIMIT %s
         """,
@@ -293,13 +295,16 @@ def run_strategy(
 
     if strategy_id == "vector_raw":
         vectors = embedder.embed([query])[0]
-        return merge_hits(code_fetch(db, codes), vector_fetch(db, vectors, limit=k))[:k]
+        return merge_hits(
+            code_fetch(db, codes),
+            vector_fetch(db, vectors, limit=k, include_synthetic=True),
+        )[:k]
 
     if strategy_id == "vector_apply":
         vectors = embedder.embed([query])[0]
         raw = merge_hits(
             code_fetch(db, codes),
-            vector_fetch(db, vectors, limit=overfetch),
+            vector_fetch(db, vectors, limit=overfetch, include_synthetic=True),
         )
         return _hits_from_ranked(_apply_only(raw, manifest, appliance, limit=k))
 
@@ -307,7 +312,7 @@ def run_strategy(
         vectors = embedder.embed([query])[0]
         raw = merge_hits(
             code_fetch(db, codes),
-            vector_fetch(db, vectors, limit=overfetch),
+            vector_fetch(db, vectors, limit=overfetch, include_synthetic=True),
         )
         ranked = filter_and_rank(
             raw, manifest, appliance, limit=k, query=query, query_error_codes=codes
@@ -327,7 +332,7 @@ def run_strategy(
             code_fetch(db, codes),
             _rrf(
                 [
-                    vector_fetch(db, vectors, limit=overfetch),
+                    vector_fetch(db, vectors, limit=overfetch, include_synthetic=True),
                     lexical_fetch(db, query, limit=overfetch),
                 ]
             ),
@@ -340,7 +345,7 @@ def run_strategy(
     if strategy_id == "union_lexical_apply":
         vectors = embedder.embed([query])[0]
         pool = _union_pool(
-            vector_fetch(db, vectors, limit=overfetch),
+            vector_fetch(db, vectors, limit=overfetch, include_synthetic=True),
             lexical_or_fetch(db, query, limit=overfetch),
         )
         ranked = filter_and_rank(
@@ -356,7 +361,7 @@ def run_strategy(
     if strategy_id == "union_literal_apply":
         vectors = embedder.embed([query])[0]
         pool = _union_pool(
-            vector_fetch(db, vectors, limit=overfetch),
+            vector_fetch(db, vectors, limit=overfetch, include_synthetic=True),
             literal_fetch(db, query, limit=overfetch),
         )
         ranked = filter_and_rank(

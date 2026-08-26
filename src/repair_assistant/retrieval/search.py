@@ -64,13 +64,19 @@ def vector_fetch(
     query_vector: list[float],
     *,
     limit: int,
+    include_synthetic: bool = False,
 ) -> list[dict]:
-    """Return raw hit dicts ordered by cosine similarity (higher is better)."""
+    """Return raw hit dicts ordered by cosine similarity (higher is better).
+
+    Synthetic eval docs (``synth-*`` / ``SYNTH-*``) are excluded unless
+    ``include_synthetic`` is true (bake-off only).
+    """
     if not query_vector:
         return []
     vec = str(query_vector)
+    synth_clause = "" if include_synthetic else "AND doc_id NOT LIKE 'synth-%%'"
     rows = db.fetchall(
-        """
+        f"""
         SELECT
             doc_id,
             chunk_id,
@@ -83,6 +89,7 @@ def vector_fetch(
             1 - (embedding <=> %s::vector) AS score
         FROM chunks
         WHERE embedding IS NOT NULL
+        {synth_clause}
         ORDER BY embedding <=> %s::vector
         LIMIT %s
         """,
@@ -369,6 +376,13 @@ def search(
             ]
             if restricted:
                 raw = restricted
+    # Eval synthetics must never surface in production ask/diagnose.
+    raw = [
+        hit
+        for hit in raw
+        if not str(hit.get("doc_id") or "").startswith("synth-")
+        and not str(hit.get("publication_number") or "").startswith("SYNTH-")
+    ]
     all_ranked = filter_and_rank(
         raw,
         manifest,

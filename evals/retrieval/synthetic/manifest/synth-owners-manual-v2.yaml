@@ -1,0 +1,43 @@
+doc_id: synth-owners-manual-v2
+publication_number: SYNTH-UC-200
+revision: A
+title: "[SYNTHETIC] Owner's Manual — cleaning (current)"
+doc_type: use_and_care
+languages: [en-US]
+
+authority:
+  tier: owner_literature
+
+applicability:
+  brands: [Whirlpool]
+  platform: L-97
+  product_category: front_load_washer_27in
+  regions: [US, CA]
+  models:
+    - WFW5620HW*
+  serial_ranges:
+    - scope: all
+
+temporal:
+  publication_date: 2021
+
+relationships:
+  - type: supersedes
+    target: SYNTH-UC-100
+    note: Eval-only stand-in for current owner's manual W11355369.
+
+provenance:
+  source_url: null
+  url_status: synthetic
+  access_method: synthetic_eval
+  license: LicenseRef-Eval-Synthetic
+  redistributable: true
+  local_filename: owners-manual-v2.txt
+  access_notes: >-
+    SYNTHETIC. Not OEM content. Used only by bench-retrieve for supersession IR.
+
+corpus:
+  role: synthetic_eval
+  rationale: >-
+    Current owner's manual in the synthetic supersession pair. Must be cited
+    for drum-cleaning questions; SYNTH-UC-100 must not be treated as current.

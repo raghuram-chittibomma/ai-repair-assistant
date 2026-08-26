@@ -12,6 +12,10 @@ from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.ingest.env import database_url
 from repair_assistant.ingest.store import Database
 from repair_assistant.retrieval.strategies import default_embedder, run_strategy
+from repair_assistant.retrieval.synthetic import (
+    ensure_synthetic_ingested,
+    merge_manifest_with_synthetic,
+)
 
 
 @dataclass
@@ -181,13 +185,14 @@ def run_bakeoff(
     overfetch: int = 40,
 ) -> list[FixtureResult]:
     data = load_fixtures(fixtures_path)
-    corpus = manifest_mod.load()
+    corpus = merge_manifest_with_synthetic(manifest_mod.load())
     k = k or int(data.get("k") or 8)
     strategy_ids = strategies or [s["id"] for s in data["strategies"]]
     embedder = default_embedder()
     results: list[FixtureResult] = []
 
     with Database(database_url()) as db:
+        ensure_synthetic_ingested(db, embedder, root=corpus.root)
         for sid in strategy_ids:
             for fixture in data["fixtures"]:
                 hits = run_strategy(
