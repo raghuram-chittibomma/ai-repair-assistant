@@ -18,6 +18,18 @@ PUA_LIST_MARKERS: dict[str, str] = {
 
 _PUA_RE = re.compile("[\ue000-\uf8ff]")
 
+# pdfplumber merges overdrawn strip-circuit labels (J36-1 drawn atop J6-1)
+# into interleaves like JJ366--11. Collapse back to the longer connector id.
+_OVERDRAWN_J = re.compile(r"J{2}(\d)(\d)\2")
+_OVERDRAWN_PIN = re.compile(r"-{2}(\d)\1\b")
+
+
+def collapse_overdrawn_connector_labels(text: str) -> str:
+    """Undo pdfplumber overdraw merges: ``JJ366--11`` → ``J36-1``."""
+    text = _OVERDRAWN_J.sub(r"J\1\2", text)
+    text = _OVERDRAWN_PIN.sub(r"-\1", text)
+    return text
+
 
 def map_pua(text: str, *, replace_unknown: str = "") -> str:
     """Replace known PUA list markers; drop or replace other PUA codepoints."""
@@ -28,7 +40,8 @@ def map_pua(text: str, *, replace_unknown: str = "") -> str:
             return PUA_LIST_MARKERS[ch]
         return replace_unknown
 
-    return _PUA_RE.sub(_sub, text)
+    return collapse_overdrawn_connector_labels(_PUA_RE.sub(_sub, text))
+
 
 
 def count_pua_markers(text: str) -> dict[str, int]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from repair_assistant.corpus.applicability import Appliance
@@ -10,6 +11,7 @@ from repair_assistant.ingest.embeddings import Embedder, LocalEmbedder, build_em
 from repair_assistant.ingest.env import embedding_model
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import code_to_spaced_regex
+from repair_assistant.parsing.error_codes import extract_connector_ids
 from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.retrieval.rank import (
     RankedHit,
@@ -125,6 +127,71 @@ def code_fetch(db: Database, codes: list[str], *, limit: int = 30) -> list[dict]
         hit["error_codes"] = sorted(set(hit["error_codes"]) | set(codes))
         out.append(hit)
     return out
+
+
+def connector_fetch(db: Database, connectors: list[str], *, limit: int = 20) -> list[dict]:
+    """Exact connector-id recall (J36) — dense retrieval is weak on short alphanumerics.
+
+    Strip-circuit tables often store only ``J36 | -1`` cells; pull same-page
+    headings/prose so the model sees motor/harness context, not just the pin id.
+    """
+    if not connectors:
+        return []
+    pattern = "|".join(rf"{re.escape(c)}(?![0-9])" for c in connectors)
+    seed_rows = db.fetchall(
+        """
+        SELECT
+            doc_id,
+            chunk_id,
+            text,
+            page,
+            kind,
+            error_codes,
+            publication_number,
+            revision,
+            1.0 AS score
+        FROM chunks
+        WHERE text ~* %s
+        ORDER BY
+            CASE WHEN text ~* 'motor|stator|harness' THEN 0 ELSE 1 END,
+            length(coalesce(text, '')) DESC,
+            page,
+            doc_id
+        LIMIT %s
+        """,
+        (pattern, limit),
+    )
+    seeds = [_row_to_hit(row) for row in seed_rows]
+    pages = {(h["doc_id"], h["page"]) for h in seeds if h.get("page") is not None}
+    if not pages:
+        return seeds
+
+    doc_ids = list({d for d, _ in pages})
+    page_nos = list({p for _, p in pages})
+    neighbor_rows = db.fetchall(
+        """
+        SELECT
+            doc_id,
+            chunk_id,
+            text,
+            page,
+            kind,
+            error_codes,
+            publication_number,
+            revision,
+            0.95 AS score
+        FROM chunks
+        WHERE doc_id = ANY(%s::text[])
+          AND page = ANY(%s::int[])
+          AND kind IN ('heading', 'prose', 'procedure')
+          AND length(coalesce(text, '')) >= 60
+          AND text ~* 'motor|stator|harness|acu'
+        ORDER BY length(coalesce(text, '')) DESC
+        LIMIT %s
+        """,
+        (doc_ids, page_nos, limit),
+    )
+    return merge_hits(seeds, [_row_to_hit(row) for row in neighbor_rows])[:limit]
 
 
 def reference_fetch(
@@ -268,6 +335,7 @@ def search(
 
     codes = extract_error_codes(query)
     code_hits = code_fetch(db, codes)
+    connector_hits = connector_fetch(db, extract_connector_ids(query))
     rev_letter = requested_revision(query)
     bibliographic = is_bibliographic_query(query)
     rev_hits: list[dict] = []
@@ -286,6 +354,7 @@ def search(
         raw = merge_hits(
             rev_hits,
             code_hits,
+            connector_hits,
             reference_fetch(db, manifest, code_hits, query=query, limit=3),
             vector_fetch(db, vectors[0], limit=max(overfetch, limit)),
         )

@@ -24,6 +24,13 @@ def test_count_pua_markers():
     assert counts["U+F06E"] == 2
 
 
+def test_collapse_overdrawn_connector_labels():
+    assert pua.collapse_overdrawn_connector_labels("JJ366--11") == "J36-1"
+    assert pua.collapse_overdrawn_connector_labels("JJ366 | --33") == "J36 | -3"
+    assert pua.map_pua("JJ366--22") == "J36-2"
+    assert pua.map_pua("Disconnect J15 from the ACU") == "Disconnect J15 from the ACU"
+
+
 def test_mhtml_rejoins_quoted_printable_soft_breaks(tmp_path):
     path = tmp_path / "page.mhtml"
     path.write_text(

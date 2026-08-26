@@ -51,3 +51,20 @@ scenarios:
   genuine-incremental-addition:
     must_cite: [W11320651]
     expect_contains_any: [voltage, step]
+
+  f5e2-technician-depth:
+    must_cite: [W11320651]
+    expect_contains_any: ["test #4", "door lock", j7]
+    fails_if_contains:
+      - cycle power
+      - pause or cancel
+      - press the pause
+
+  connector-designation:
+    must_cite: [W11169652]
+    must_not_cite: [W11395614]
+    expect_contains_any: [motor, stator, harness]
+
+  code-to-procedure-hop:
+    expect_cites_any: [W11320651, W11169652]
+    expect_contains_any: [temperature sensor, thermistor, j15, ntc, resistance]

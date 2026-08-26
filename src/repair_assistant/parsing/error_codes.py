@@ -19,6 +19,14 @@ def extract_error_codes(text: str) -> list[str]:
     return sorted(found)
 
 
+_CONNECTOR = re.compile(r"\bJ(\d{1,3})\b", re.IGNORECASE)
+
+
+def extract_connector_ids(text: str) -> list[str]:
+    """Return ACU-style connector ids like J36 found in ``text``."""
+    return sorted({f"J{match.group(1)}" for match in _CONNECTOR.finditer(text)})
+
+
 def code_to_spaced_regex(code: str) -> str:
     """F5E2 → PostgreSQL regex matching F5E2 or F5 E2 / F 5 E 2."""
     code = code.strip().upper()

@@ -132,7 +132,7 @@ families:
           the three articles.
 
       - id: f5e2-technician-depth
-        status: needs_document
+        status: ready
         question: >-
           F5 E2 on a WFW5620HW0 - the door will not lock. What should I check?
         appliance: {model: WFW5620HW0}
@@ -141,6 +141,8 @@ families:
           The tech sheet's TEST #4 Door Lock System procedure, not the consumer
           article's "close the door and cycle power". Tests whether the system
           matches depth of answer to the depth of the question.
+        note: >-
+          Unlocked 2026-08-26: W11320651 Rev B is held and contains TEST #4.
 
   # -------------------------------------------------------------------------
   - id: precedence-revision-and-supersession
@@ -167,14 +169,16 @@ families:
           present. Re-enable when the current owner's manual is acquired.
 
       - id: tech-sheet-revision-choice
-        status: needs_document
+        status: needs_authoring
         question: Which tech sheet applies to a WFW5620HW0?
         appliance: {model: WFW5620HW0}
         expect: >-
           The later or model-designated sheet, with the reasoning stated.
         blocked_by: >-
-          Unresolved: whether W11320651 Rev B supersedes W11156989 Rev A or
-          coexists with it. See docs/corpus/ACQUISITION.md.
+          Both W11156989 and W11320651 are held. Unresolved whether W11320651
+          Rev B supersedes W11156989 or coexists with it. Needs an explicit
+          manifest relationship before this can be graded. See
+          docs/corpus/ACQUISITION.md.
 
   # -------------------------------------------------------------------------
   - id: staleness-part-numbers
@@ -237,12 +241,18 @@ families:
           diagnostic LED information.
 
       - id: connector-designation
-        status: needs_document
+        status: ready
         question: What connects to J36 on the ACU?
         appliance: {model: WFW5620HW0}
+        must_cite: [W11169652]
+        must_not_cite: [W11395614]
         expect: >-
-          Resolved from the wiring diagram or tech sheet. Short alphanumeric
-          designators are the worst case for embedding-based retrieval.
+          Motor harness / direct-drive motor stator at ACU connector J36
+          (service manual strip circuit), not the unrelated 24in bulletin that
+          also mentions J36.
+        note: >-
+          Unlocked 2026-08-26: J36 appears in held W11169652 (not in tech sheets
+          or the excluded wiring diagram W11243716).
 
   # -------------------------------------------------------------------------
   - id: retrieval-cross-reference
@@ -253,13 +263,18 @@ families:
       codes. Returning the pointer is not an answer.
     scenarios:
       - id: code-to-procedure-hop
-        status: needs_document
+        status: ready
         question: I have F3E2 on my WFW5620HW0. What do I do?
         appliance: {model: WFW5620HW0}
         expect: >-
           The content of TEST #10a Wash Temperature Sensor, including its
           measured values - not the sentence "See TEST #10a, page 19".
+          Citing either the tech sheet or the service manual procedure is
+          acceptable; terminating at the fault-table cross-reference is not.
         fails_if: The answer terminates at the cross-reference.
+        note: >-
+          Unlocked 2026-08-26: both W11320651 and W11169652 hold F3E2 → TEST #10
+          procedure content. Grading accepts either publication.
 
   # -------------------------------------------------------------------------
   - id: conversational-symptom

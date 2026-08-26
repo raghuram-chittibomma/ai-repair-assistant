@@ -1,6 +1,10 @@
 """Tests for fault-code normalisation (MindTouch spaced forms)."""
 
-from repair_assistant.parsing.error_codes import code_to_spaced_regex, extract_error_codes
+from repair_assistant.parsing.error_codes import (
+    code_to_spaced_regex,
+    extract_connector_ids,
+    extract_error_codes,
+)
 
 
 def test_extract_spaced_and_tight_codes() -> None:
@@ -10,3 +14,9 @@ def test_extract_spaced_and_tight_codes() -> None:
 
 def test_spaced_regex() -> None:
     assert code_to_spaced_regex("F5E2") == r"F\s*5\s*E\s*2"
+
+
+def test_extract_connector_ids() -> None:
+    assert extract_connector_ids("What connects to J36 on the ACU?") == ["J36"]
+    assert extract_connector_ids("check J7 and J15") == ["J15", "J7"]
+    assert extract_connector_ids("no connectors") == []
