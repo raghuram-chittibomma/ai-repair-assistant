@@ -296,6 +296,50 @@ def create_app(
             escalated=turn.escalated,
         )
 
+    @app.post("/v1/diagnose/stream", dependencies=[Depends(require_api_key)])
+    def diagnose_stream_route(body: DiagnoseRequest, db: Database = Depends(get_db)) -> StreamingResponse:
+        """SSE stream: status / token / done events for multi-turn diagnose()."""
+        appliance = Appliance(model=body.model, serial=body.serial)
+        try:
+            sid, session = store.get_or_create(
+                body.session_id,
+                manifest=_manifest(),
+                appliance=appliance,
+                audience=Audience(body.audience),
+                retrieval_limit=body.limit,
+                overfetch=body.overfetch,
+            )
+        except KeyError:
+            raise HTTPException(
+                status_code=410,
+                detail=(
+                    "diagnostic session expired or unknown after API restart; "
+                    "start a new chat"
+                ),
+            ) from None
+
+        def event_iter():
+            try:
+                for event in session.send_stream(db, body.message):
+                    if event.get("type") == "done":
+                        event["session_id"] = sid
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            except RuntimeError as exc:
+                err = {"type": "error", "detail": str(exc)}
+                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+            except Exception as exc:  # noqa: BLE001 — surface to client
+                err = {"type": "error", "detail": str(exc)}
+                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(
+            event_iter(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     @app.delete("/v1/diagnose/{session_id}", dependencies=[Depends(require_api_key)])
     def diagnose_delete(session_id: str) -> dict[str, bool]:
         return {"deleted": store.delete(session_id)}

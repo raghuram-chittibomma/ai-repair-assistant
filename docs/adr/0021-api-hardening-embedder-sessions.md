@@ -30,5 +30,8 @@ silently on restart, and each API request opened a fresh Postgres connection.
 
 ## Follow-on (UI streaming)
 
-Ask mode uses `POST /v1/ask/stream` (SSE). Search-only mode and chat export live
-in `/ui` without changing the non-streaming `/v1/ask` contract.
+Ask mode uses `POST /v1/ask/stream` (SSE). Diagnostic chat uses
+`POST /v1/diagnose/stream` (SSE) with the same status/token/done event shape;
+`done` also includes `session_id` and `turn`. Search-only mode and chat export
+live in `/ui` without changing the non-streaming `/v1/ask` or `/v1/diagnose`
+contracts.

@@ -14,6 +14,7 @@ from repair_assistant.parsing.error_codes import code_to_spaced_regex
 from repair_assistant.parsing.error_codes import extract_connector_ids
 from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.retrieval.rank import (
+    RankAudit,
     RankedHit,
     filter_and_rank,
     is_acu_led_query,
@@ -360,20 +361,25 @@ def search(
             query=query,
             limit=8 if is_acu_led_query(query) else 12,
         )
+    vector_hits: list[dict] = []
+    if not (bibliographic and rev_letter and rev_hits and is_acu_led_query(query)):
+        vector_hits = vector_fetch(
+            db,
+            vectors[0],
+            limit=max(overfetch, limit),
+            include_synthetic=include_synthetic,
+        )
     if bibliographic and rev_letter and rev_hits and is_acu_led_query(query):
         raw = rev_hits
+        ref_hits: list[dict] = []
     else:
+        ref_hits = reference_fetch(db, manifest, code_hits, query=query, limit=3)
         raw = merge_hits(
             rev_hits,
             code_hits,
             connector_hits,
-            reference_fetch(db, manifest, code_hits, query=query, limit=3),
-            vector_fetch(
-                db,
-                vectors[0],
-                limit=max(overfetch, limit),
-                include_synthetic=include_synthetic,
-            ),
+            ref_hits,
+            vector_hits,
         )
         if bibliographic and rev_letter:
             by_id = {d.doc_id: d for d in manifest.documents}
@@ -393,6 +399,15 @@ def search(
             if not str(hit.get("doc_id") or "").startswith("synth-")
             and not str(hit.get("publication_number") or "").startswith("SYNTH-")
         ]
+
+    from repair_assistant.observability.langfuse_tracing import (
+        child_observation,
+        tracing_enabled,
+        update_span,
+    )
+    from repair_assistant.observability.retrieval_trace import build_retrieval_trace_output
+
+    audit = RankAudit() if tracing_enabled() else None
     all_ranked = filter_and_rank(
         raw,
         manifest,
@@ -400,9 +415,23 @@ def search(
         limit=len(raw),
         query=query,
         query_error_codes=codes,
+        audit=audit,
     )
     filtered_out = (len(raw) - len(all_ranked)) if appliance is not None else 0
     ranked = all_ranked[:limit]
+    if audit is not None and len(all_ranked) > limit:
+        for rest in all_ranked[limit:]:
+            audit.diversity_dropped.append(
+                {
+                    "doc_id": rest.doc_id,
+                    "chunk_id": rest.chunk_id,
+                    "page": rest.page,
+                    "final_score": round(rest.final_score, 4),
+                    "reason": f"final_top_k={limit}",
+                    "text_preview": " ".join(rest.text.split())[:240],
+                }
+            )
+        filtered_out = len(audit.rejected) + len(audit.diversity_dropped)
     hits = [
         Hit(
             doc_id=h.doc_id,
@@ -418,6 +447,38 @@ def search(
         )
         for h in ranked
     ]
+
+    if audit is not None:
+        source_counts = {
+            "revision": len(rev_hits),
+            "code": len(code_hits),
+            "connector": len(connector_hits),
+            "reference": len(ref_hits),
+            "vector": len(vector_hits),
+        }
+        trace_out = build_retrieval_trace_output(
+            query=query,
+            appliance=appliance,
+            limit=limit,
+            overfetch=overfetch,
+            source_counts=source_counts,
+            merged_count=len(raw),
+            audit=audit,
+            final_hits=hits,
+            bibliographic=bibliographic,
+            revision_query=rev_letter,
+        )
+        with child_observation(
+            "retrieval",
+            input={
+                "query": query,
+                "appliance_model": appliance.model if appliance else None,
+                "limit": limit,
+                "overfetch": overfetch,
+            },
+        ) as span:
+            update_span(span, output=trace_out)
+
     return SearchResult(
         query=query,
         hits=hits,

@@ -56,7 +56,8 @@ Open **http://localhost:8080/ui** in your browser.
 | `http://localhost:8080/v1/ask` | Non-streaming grounded answer |
 | `http://localhost:8080/v1/ask/stream` | SSE streaming ask (UI default) |
 | `http://localhost:8080/v1/search` | Retrieval hits only |
-| `http://localhost:8080/v1/diagnose` | Multi-turn diagnostic chat |
+| `http://localhost:8080/v1/diagnose` | Multi-turn diagnostic chat (non-streaming) |
+| `http://localhost:8080/v1/diagnose/stream` | SSE streaming diagnostic chat (UI default) |
 
 The API on your laptop connects to Postgres on the LAN host via `DATABASE_URL`.
 

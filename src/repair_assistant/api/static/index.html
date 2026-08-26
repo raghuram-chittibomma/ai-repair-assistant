@@ -202,7 +202,7 @@
         <label for="mode">Mode</label>
         <select id="mode">
           <option value="ask">Ask (streaming)</option>
-          <option value="diagnose">Diagnostic chat</option>
+          <option value="diagnose">Diagnostic chat (streaming)</option>
           <option value="search">Search only</option>
         </select>
       </div>
@@ -341,9 +341,10 @@
         sessionBar.innerHTML =
           `<span class="pill active">Diagnostic session active</span>` +
           `<span class="pill">Turn ${turn}</span>` +
+          `<span class="pill">Replies stream token-by-token</span>` +
           `<span class="pill" title="${sessionId}">Session …${sessionId.slice(-8)}</span>`;
       } else {
-        sessionBar.innerHTML = `<span class="pill">Diagnostic chat — next send starts a session</span>`;
+        sessionBar.innerHTML = `<span class="pill">Diagnostic chat — replies stream; next send starts a session</span>`;
       }
     }
 
@@ -516,16 +517,11 @@
       return { events, rest };
     }
 
-    async function runAskStream(text, model, serial, audience) {
-      const body = { question: text, model, audience };
-      if (serial) body.serial = serial;
+    async function consumeSse(url, body, onEvent) {
       abortController = new AbortController();
       const timer = setTimeout(() => abortController.abort(), FETCH_TIMEOUT_MS);
-      showPending(embedderWarm ? "Retrieving…" : "Retrieving (embeddings may still be warming)…");
-      let streamEl = null;
-      let assembled = "";
       try {
-        const res = await fetch("/v1/ask/stream", {
+        const res = await fetch(url, {
           method: "POST",
           headers: authHeaders({ "Content-Type": "application/json", Accept: "text/event-stream" }),
           body: JSON.stringify(body),
@@ -533,7 +529,9 @@
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(errorDetail(data, res.statusText));
+          const err = new Error(errorDetail(data, res.statusText));
+          err.status = res.status;
+          throw err;
         }
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -544,56 +542,7 @@
           buf += decoder.decode(value, { stream: true });
           const parsed = parseSseChunk(buf);
           buf = parsed.rest;
-          for (const ev of parsed.events) {
-            if (ev.type === "status") {
-              const phase = ev.phase === "generating"
-                ? `Generating (${ev.retrieval_count || 0} hits)…`
-                : "Retrieving…";
-              statusEl.textContent = phase;
-              statusEl.className = "status busy";
-              if (pendingEl) {
-                pendingEl.querySelector(".body").innerHTML = `<span class="dots">${phase}</span>`;
-              }
-            } else if (ev.type === "token") {
-              if (!streamEl) {
-                removePending();
-                streamEl = append("assistant", "");
-              }
-              assembled += ev.text || "";
-              streamEl.querySelector(".body").textContent = assembled;
-              log.scrollTop = log.scrollHeight;
-            } else if (ev.type === "error") {
-              throw new Error(ev.detail || "stream error");
-            } else if (ev.type === "done") {
-              removePending();
-              const answer = ev.answer || assembled || "";
-              if (streamEl) {
-                streamEl.remove();
-                streamEl = null;
-              }
-              append("assistant", answer || "(empty response)", {
-                citations: ev.citations || [],
-                abstained: !!ev.abstained,
-                abstainReason: ev.abstain_reason || "",
-                safetyAction: ev.safety_action || "allow",
-                safetyNotice: ev.safety_notice || "",
-                escalated: !!ev.escalated,
-              });
-              record("assistant", answer, {
-                citations: ev.citations || [],
-                meta: {
-                  abstained: !!ev.abstained,
-                  safety_action: ev.safety_action,
-                  retrieval_count: ev.retrieval_count,
-                },
-              });
-              embedderWarm = true;
-              statusEl.textContent = ev.abstained
-                ? "Abstained — see reason above"
-                : "API ready (embedder warm)";
-              statusEl.className = ev.abstained ? "status busy" : "status ok";
-            }
-          }
+          for (const ev of parsed.events) onEvent(ev);
         }
       } finally {
         clearTimeout(timer);
@@ -601,51 +550,110 @@
       }
     }
 
-    async function runDiagnose(text, model, serial, audience) {
+    function handleStreamStatus(ev) {
+      const phase = ev.phase === "generating"
+        ? `Generating (${ev.retrieval_count || 0} hits)…`
+        : "Retrieving…";
+      statusEl.textContent = phase;
+      statusEl.className = "status busy";
+      if (pendingEl) {
+        pendingEl.querySelector(".body").innerHTML = `<span class="dots">${phase}</span>`;
+      }
+    }
+
+    function finalizeStreamMessage(ev, assembled, streamEl) {
+      removePending();
+      const answer = ev.answer || ev.assistant_message || assembled || "";
+      if (streamEl) {
+        streamEl.remove();
+        streamEl = null;
+      }
+      append("assistant", answer || "(empty response)", {
+        citations: ev.citations || [],
+        abstained: !!ev.abstained,
+        abstainReason: ev.abstain_reason || "",
+        safetyAction: ev.safety_action || "allow",
+        safetyNotice: ev.safety_notice || "",
+        escalated: !!ev.escalated,
+      });
+      record("assistant", answer, {
+        citations: ev.citations || [],
+        meta: {
+          abstained: !!ev.abstained,
+          safety_action: ev.safety_action,
+          retrieval_count: ev.retrieval_count,
+        },
+      });
+      embedderWarm = true;
+      statusEl.textContent = ev.abstained
+        ? "Abstained — see reason above"
+        : "API ready (embedder warm)";
+      statusEl.className = ev.abstained ? "status busy" : "status ok";
+      return { answer, streamEl };
+    }
+
+    async function runAskStream(text, model, serial, audience) {
+      const body = { question: text, model, audience };
+      if (serial) body.serial = serial;
+      showPending(embedderWarm ? "Retrieving…" : "Retrieving (embeddings may still be warming)…");
+      let streamEl = null;
+      let assembled = "";
+      await consumeSse("/v1/ask/stream", body, (ev) => {
+        if (ev.type === "status") handleStreamStatus(ev);
+        else if (ev.type === "token") {
+          if (!streamEl) {
+            removePending();
+            streamEl = append("assistant", "");
+          }
+          assembled += ev.text || "";
+          streamEl.querySelector(".body").textContent = assembled;
+          log.scrollTop = log.scrollHeight;
+        } else if (ev.type === "error") {
+          throw new Error(ev.detail || "stream error");
+        } else if (ev.type === "done") {
+          ({ streamEl } = finalizeStreamMessage(ev, assembled, streamEl));
+        }
+      });
+    }
+
+    async function runDiagnoseStream(text, model, serial, audience) {
       const body = { message: text, model, audience };
       if (serial) body.serial = serial;
       if (sessionId) body.session_id = sessionId;
-      abortController = new AbortController();
-      const timer = setTimeout(() => abortController.abort(), FETCH_TIMEOUT_MS);
-      showPending("Waiting for diagnostic reply…");
+      showPending(embedderWarm ? "Retrieving…" : "Retrieving (embeddings may still be warming)…");
+      let streamEl = null;
+      let assembled = "";
       try {
-        const res = await fetch("/v1/diagnose", {
-          method: "POST",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(body),
-          signal: abortController.signal,
+        await consumeSse("/v1/diagnose/stream", body, (ev) => {
+          if (ev.type === "status") handleStreamStatus(ev);
+          else if (ev.type === "token") {
+            if (!streamEl) {
+              removePending();
+              streamEl = append("assistant", "");
+            }
+            assembled += ev.text || "";
+            streamEl.querySelector(".body").textContent = assembled;
+            log.scrollTop = log.scrollHeight;
+          } else if (ev.type === "error") {
+            throw new Error(ev.detail || "stream error");
+          } else if (ev.type === "done") {
+            if (ev.session_id) sessionId = ev.session_id;
+            if (typeof ev.turn === "number") turn = ev.turn;
+            updateSessionBar();
+            ({ streamEl } = finalizeStreamMessage(ev, assembled, streamEl));
+          }
         });
-        const data = await res.json().catch(() => ({}));
-        removePending();
-        if (res.status === 410) {
+      } catch (err) {
+        if (err.status === 410 || (err.message && err.message.toLowerCase().includes("expired"))) {
           sessionId = null;
           turn = 0;
           updateSessionBar();
           throw new Error(
-            errorDetail(data, "Session expired") +
+            err.message +
               " — start a new chat (diagnose sessions are not kept across API restarts)."
           );
         }
-        if (!res.ok) throw new Error(errorDetail(data, res.statusText));
-        if (data.session_id) sessionId = data.session_id;
-        if (typeof data.turn === "number") turn = data.turn;
-        updateSessionBar();
-        const answer = data.assistant_message || "";
-        append("assistant", answer || "(empty response)", {
-          citations: data.citations || [],
-          abstained: !!data.abstained,
-          abstainReason: data.abstain_reason || "",
-          safetyAction: data.safety_action || "allow",
-          safetyNotice: data.safety_notice || "",
-          escalated: !!data.escalated,
-        });
-        record("assistant", answer, { citations: data.citations || [] });
-        embedderWarm = true;
-        statusEl.textContent = data.abstained ? "Abstained — see reason above" : "API ready (embedder warm)";
-        statusEl.className = data.abstained ? "status busy" : "status ok";
-      } finally {
-        clearTimeout(timer);
-        abortController = null;
+        throw err;
       }
     }
 
@@ -723,7 +731,7 @@
       const mode = modeEl.value;
       try {
         if (mode === "search") await runSearch(text, model, serial);
-        else if (mode === "diagnose") await runDiagnose(text, model, serial, audience);
+        else if (mode === "diagnose") await runDiagnoseStream(text, model, serial, audience);
         else await runAskStream(text, model, serial, audience);
       } catch (err) {
         removePending();

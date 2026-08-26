@@ -191,12 +191,62 @@ def test_ask_stream_route_sse(mock_stream: MagicMock, client: TestClient) -> Non
     assert '"type": "token"' in response.text or '"type":"token"' in response.text
 
 
+@patch("repair_assistant.api.sessions.DiagnosticSession")
+def test_diagnose_stream_route_sse(mock_session_cls: MagicMock, client: TestClient) -> None:
+    instance = MagicMock()
+    instance.send_stream.return_value = iter(
+        [
+            {"type": "status", "phase": "retrieving"},
+            {"type": "token", "text": "Check"},
+            {
+                "type": "done",
+                "assistant_message": "Check wiring [1].",
+                "abstained": False,
+                "abstain_reason": "",
+                "citations": [],
+                "retrieval_count": 2,
+                "safety_action": "allow",
+                "safety_notice": "",
+                "escalated": False,
+                "turn": 1,
+            },
+        ]
+    )
+    mock_session_cls.return_value = instance
+
+    response = client.post(
+        "/v1/diagnose/stream",
+        json={"message": "F5E2", "model": "WFW5620HW0"},
+    )
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+    assert "session_id" in response.text
+    assert '"type": "token"' in response.text or '"type":"token"' in response.text
+
+
+@patch("repair_assistant.api.sessions.DiagnosticSession")
+def test_diagnose_stream_unknown_session_returns_410(
+    mock_session_cls: MagicMock, client: TestClient
+) -> None:
+    response = client.post(
+        "/v1/diagnose/stream",
+        json={
+            "message": "still broken",
+            "model": "WFW5620HW0",
+            "session_id": "does-not-exist",
+        },
+    )
+    assert response.status_code == 410
+    mock_session_cls.assert_not_called()
+
+
 def test_ui_page(client: TestClient) -> None:
     response = client.get("/ui", follow_redirects=False)
     assert response.status_code == 200
     assert "AI Repair Assistant" in response.text
     assert "API key" in response.text
     assert "Search only" in response.text
+    assert "Diagnostic chat (streaming)" in response.text
     assert "Export JSON" in response.text
     assert "Cancel" in response.text
 

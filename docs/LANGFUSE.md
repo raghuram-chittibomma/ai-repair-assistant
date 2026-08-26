@@ -87,12 +87,29 @@ Then smoke-test with `ask` as above; traces appear in the LAN Langfuse UI.
 
 ## What is traced
 
-When keys are set:
+When keys are set, each `ask` / `ask_stream` / `diagnose` turn produces a **nested
+trace** in Langfuse:
 
-| Entry | Trace name | Typical fields |
-| --- | --- | --- |
-| `ask()` | `ask` | question, model, appliance, hit count, abstain, citations, safety |
-| `DiagnosticSession.send` | `diagnose` | user message, turn, retrieval count, abstain, safety |
+```
+ask | diagnose
+├── safety_assess
+├── retrieval          ← chunk pipeline audit
+├── evidence           ← numbered evidence block sent to the LLM
+├── llm (generation)   ← full messages[] in, model text out
+└── safety_gate        ← raw vs gated answer
+```
+
+| Span | Fields |
+| --- | --- |
+| Root (`ask` / `diagnose`) | question/message, model, appliance, abstain, citation labels, duration |
+| `retrieval` | query, source counts (vector/code/connector/reference/revision), merged candidates, **selected** chunks (score, apply_reason, preview), **rejected** (applicability), **ranked_before_diversity**, **diversity_dropped** |
+| `evidence` | full `evidence_text` prompt block (truncated at `REPAIR_TRACE_MAX_CHARS`, default 12000) |
+| `llm` | `messages` array (system + user) in; `content` (full model output) out |
+| `safety_assess` | action, rule_id, reason, prompt_directive |
+| `safety_gate` | raw preview, blocked, notice, gated text preview |
+
+Long strings are truncated automatically. Override with `REPAIR_TRACE_MAX_CHARS` in
+`.env.local` if you need longer prompt captures.
 
 When `bench-qa` / `bench-candidates` run with Langfuse keys set, spans also carry
 `eval_bench`, `eval_run_id` (matches the JSON filename stamp), and `scenario_id`

@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import time
+from typing import Any, Iterator
 
 from langchain_core.messages import AIMessage, HumanMessage
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
-from repair_assistant.diagnostic.graph import build_diagnostic_graph, citations_for_turn
+from repair_assistant.diagnostic.graph import (
+    build_diagnostic_graph,
+    citations_for_turn,
+    diagnose_turn_stream,
+)
 from repair_assistant.diagnostic.state import DiagnosticGraphState, TurnResult
 from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import observation, update_span
@@ -120,3 +125,58 @@ class DiagnosticSession:
                 },
             )
             return turn
+
+    def send_stream(self, db: Database, user_message: str) -> Iterator[dict[str, Any]]:
+        """Process one user message and yield SSE-friendly events."""
+        self._turn += 1
+        meta = {
+            "turn": self._turn,
+            "appliance_model": self._state.get("appliance_model"),
+            "audience": self._state.get("audience"),
+        }
+        started = time.perf_counter()
+        with observation(
+            "diagnose",
+            input={"user_message": user_message, "turn": self._turn, "stream": True},
+            metadata=meta,
+        ) as span:
+            invoke_state: DiagnosticGraphState = {
+                **self._state,
+                "messages": [*self._state["messages"], HumanMessage(content=user_message)],
+            }
+            final: dict[str, Any] | None = None
+            for event in diagnose_turn_stream(
+                db,
+                self._manifest,
+                invoke_state,
+                llm=self._llm,  # type: ignore[arg-type]
+                retrieval_limit=self._retrieval_limit,
+                overfetch=self._overfetch,
+            ):
+                if event.get("type") == "done":
+                    state = event.pop("_state")
+                    self._state = state
+                    assistant = event.get("assistant_message") or ""
+                    event["turn"] = self._turn
+                    final = event
+                    update_span(
+                        span,
+                        output={
+                            "abstained": event.get("abstained"),
+                            "answer_preview": assistant[:500],
+                            "citations": [
+                                c["label"] for c in event.get("citations") or [] if isinstance(c, dict)
+                            ],
+                            "retrieval_count": event.get("retrieval_count"),
+                            "safety_action": event.get("safety_action"),
+                            "escalated": event.get("escalated"),
+                        },
+                        metadata={
+                            **meta,
+                            "duration_ms": int((time.perf_counter() - started) * 1000),
+                            "abstain_reason": event.get("abstain_reason"),
+                        },
+                    )
+                yield event
+            if final is None:
+                update_span(span, metadata={**meta, "duration_ms": int((time.perf_counter() - started) * 1000)})

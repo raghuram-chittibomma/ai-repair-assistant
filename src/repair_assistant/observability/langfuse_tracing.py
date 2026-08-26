@@ -10,6 +10,8 @@ from typing import Any
 from repair_assistant.ingest.env import load_dotenv_files
 from repair_assistant.observability.eval_context import merge_eval_metadata
 
+_DEFAULT_TRACE_MAX = 12_000
+
 
 class _NoOpSpan:
     """Stand-in when tracing is disabled."""
@@ -25,8 +27,32 @@ def tracing_enabled() -> bool:
     return bool(public and secret)
 
 
+def trace_max_chars() -> int:
+    raw = os.environ.get("REPAIR_TRACE_MAX_CHARS", "").strip()
+    if not raw:
+        return _DEFAULT_TRACE_MAX
+    try:
+        return max(500, int(raw))
+    except ValueError:
+        return _DEFAULT_TRACE_MAX
+
+
+def truncate_for_trace(value: Any, *, max_chars: int | None = None) -> Any:
+    """Truncate long strings in trace payloads; recurse into dicts/lists."""
+    limit = max_chars if max_chars is not None else trace_max_chars()
+    if isinstance(value, str):
+        if len(value) <= limit:
+            return value
+        return value[: limit - 20] + f"... [{len(value)} chars total]"
+    if isinstance(value, dict):
+        return {k: truncate_for_trace(v, max_chars=limit) for k, v in value.items()}
+    if isinstance(value, list):
+        return [truncate_for_trace(v, max_chars=limit) for v in value]
+    return value
+
+
 def _client() -> Any:
-    """Return a Langfuse client configured from the environment."""
+    """Return a process-local Langfuse client configured from the environment."""
     try:
         from langfuse import Langfuse
     except Exception as exc:  # pragma: no cover - depends on local Python/pydantic
@@ -61,22 +87,79 @@ def observation(
     with client.start_as_current_observation(
         as_type="span",
         name=name,
-        input=input,
+        input=truncate_for_trace(input) if input is not None else None,
         metadata=merge_eval_metadata(metadata),
     ) as span:
         yield span
     client.flush()
 
 
+@contextmanager
+def child_observation(
+    name: str,
+    *,
+    input: Any = None,
+    metadata: dict[str, Any] | None = None,
+    as_type: str = "span",
+) -> Iterator[Any]:
+    """Nested span/generation under the current trace. Does not flush."""
+    if not tracing_enabled():
+        yield _NoOpSpan()
+        return
+
+    client = _client()
+    with client.start_as_current_observation(
+        as_type=as_type,
+        name=name,
+        input=truncate_for_trace(input) if input is not None else None,
+        metadata=merge_eval_metadata(metadata),
+    ) as span:
+        yield span
+
+
+@contextmanager
+def generation(
+    name: str,
+    *,
+    model: str,
+    input: Any,
+    metadata: dict[str, Any] | None = None,
+) -> Iterator[Any]:
+    """Langfuse generation observation for an LLM call."""
+    if not tracing_enabled():
+        yield _NoOpSpan()
+        return
+
+    client = _client()
+    with client.start_as_current_observation(
+        as_type="generation",
+        name=name,
+        model=model,
+        input=truncate_for_trace(input),
+        metadata=merge_eval_metadata(metadata),
+    ) as span:
+        yield span
+
+
 def update_span(span: Any, **kwargs: Any) -> None:
-    """Best-effort span.update (no-op span ignores)."""
+    """Best-effort span.update (no-op span ignores). Truncates input/output."""
     update = getattr(span, "update", None)
-    if callable(update):
-        update(**kwargs)
+    if not callable(update):
+        return
+    payload = dict(kwargs)
+    if "input" in payload:
+        payload["input"] = truncate_for_trace(payload["input"])
+    if "output" in payload:
+        payload["output"] = truncate_for_trace(payload["output"])
+    update(**payload)
 
 
 __all__ = [
+    "child_observation",
+    "generation",
     "observation",
+    "trace_max_chars",
+    "truncate_for_trace",
     "tracing_enabled",
     "update_span",
 ]

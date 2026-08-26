@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from repair_assistant.corpus.applicability import Appliance, document_applies
 from repair_assistant.corpus.manifest import Document, Manifest
@@ -68,6 +69,15 @@ def is_technician_depth_query(query: str) -> bool:
     return bool(_TECHNICIAN_DEPTH.search(query))
 
 
+@dataclass
+class RankAudit:
+    """Optional collector for retrieval observability (Langfuse)."""
+
+    rejected: list[dict[str, Any]] = field(default_factory=list)
+    ranked_sorted: list["RankedHit"] = field(default_factory=list)
+    diversity_dropped: list[dict[str, Any]] = field(default_factory=list)
+
+
 @dataclass(frozen=True)
 class RankedHit:
     doc_id: str
@@ -127,6 +137,7 @@ def filter_and_rank(
     limit: int,
     query: str = "",
     query_error_codes: list[str] | None = None,
+    audit: RankAudit | None = None,
 ) -> list[RankedHit]:
     """Drop inapplicable docs; boost correcting / pointer literature and error-code matches."""
     by_id = _doc_by_id(manifest)
@@ -155,6 +166,19 @@ def filter_and_rank(
             reason = "no appliance filter"
 
         if not applies:
+            if audit is not None:
+                audit.rejected.append(
+                    {
+                        "doc_id": doc_id,
+                        "chunk_id": hit["chunk_id"],
+                        "page": hit.get("page"),
+                        "score": round(float(hit["score"]), 4),
+                        "publication_number": hit.get("publication_number"),
+                        "revision": hit.get("revision"),
+                        "apply_reason": reason,
+                        "text_preview": " ".join((hit.get("text") or "").split())[:240],
+                    }
+                )
             continue
 
         boost = 0.0
@@ -267,21 +291,52 @@ def filter_and_rank(
             ranked = matched
 
     ranked.sort(key=lambda h: h.final_score, reverse=True)
-    return _diverse_top(ranked, limit)
+    if audit is not None:
+        audit.ranked_sorted = list(ranked)
+    return _diverse_top(ranked, limit, audit=audit)
 
 
-def _diverse_top(ranked: list[RankedHit], limit: int, *, max_per_doc: int = 2) -> list[RankedHit]:
+def _diverse_top(
+    ranked: list[RankedHit],
+    limit: int,
+    *,
+    max_per_doc: int = 2,
+    audit: RankAudit | None = None,
+) -> list[RankedHit]:
     """Keep top scores while preventing one document from filling the entire window."""
     doc_ids = {h.doc_id for h in ranked}
     per_doc_cap = limit if len(doc_ids) == 1 else max_per_doc
     out: list[RankedHit] = []
     counts: dict[str, int] = {}
-    for hit in ranked:
+    for i, hit in enumerate(ranked):
         n = counts.get(hit.doc_id, 0)
         if n >= per_doc_cap:
+            if audit is not None:
+                audit.diversity_dropped.append(
+                    {
+                        "doc_id": hit.doc_id,
+                        "chunk_id": hit.chunk_id,
+                        "page": hit.page,
+                        "final_score": round(hit.final_score, 4),
+                        "reason": f"max_per_doc={per_doc_cap}",
+                        "text_preview": " ".join(hit.text.split())[:240],
+                    }
+                )
             continue
         out.append(hit)
         counts[hit.doc_id] = n + 1
         if len(out) >= limit:
+            if audit is not None:
+                for rest in ranked[i + 1 :]:
+                    audit.diversity_dropped.append(
+                        {
+                            "doc_id": rest.doc_id,
+                            "chunk_id": rest.chunk_id,
+                            "page": rest.page,
+                            "final_score": round(rest.final_score, 4),
+                            "reason": f"top_k={limit}",
+                            "text_preview": " ".join(rest.text.split())[:240],
+                        }
+                    )
             break
     return out

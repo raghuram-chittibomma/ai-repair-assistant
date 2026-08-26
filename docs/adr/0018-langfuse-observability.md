@@ -52,3 +52,9 @@ No new charter deviation.
   LAN-only and treat keys as secrets.
 - Follow-ons (not this ADR): Langfuse on `.52`, auto-scoring benches into
   Langfuse datasets, UI feedback → eval fixtures, LLM-as-judge.
+
+## Follow-on (end-to-end traces)
+
+Nested Langfuse spans now cover retrieval audit (`retrieval`), evidence prompt
+(`evidence`), LLM I/O (`llm` generation), and safety gate (`safety_gate`). See
+[LANGFUSE.md](../LANGFUSE.md).

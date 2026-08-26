@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Iterator
+
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 
@@ -13,12 +15,56 @@ from repair_assistant.diagnostic.state import DiagnosticGraphState
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.qa.context import citations_from_answer, format_evidence
-from repair_assistant.qa.generate import LLMClient, OpenAIClient
+from repair_assistant.qa.generate import LLMClient, OpenAIClient, _trace_evidence_prompt, _trace_gate
+from repair_assistant.observability.langfuse_tracing import child_observation, update_span
 from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
 from repair_assistant.safety.policy import assess_request, block_message
+
+
+def _latest_ai(messages: list) -> str:
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage):
+            return str(msg.content)
+    return ""
+
+
+def _apply_delta(state: DiagnosticGraphState, delta: dict) -> DiagnosticGraphState:
+    new: DiagnosticGraphState = dict(state)  # type: ignore[assignment]
+    for key, value in delta.items():
+        if key == "messages":
+            new["messages"] = [*new.get("messages", []), *value]
+        else:
+            new[key] = value  # type: ignore[literal-required]
+    return new
+
+
+def _done_payload(state: DiagnosticGraphState, assistant: str) -> dict[str, Any]:
+    abstained = bool(state.get("abstained"))
+    cited = [] if abstained else citations_for_turn(state, assistant)
+    return {
+        "type": "done",
+        "assistant_message": assistant,
+        "abstained": abstained,
+        "abstain_reason": state.get("abstain_reason") or "",
+        "citations": [
+            {
+                "index": c.index,
+                "doc_id": c.doc_id,
+                "chunk_id": c.chunk_id,
+                "label": c.label,
+                "page": c.page,
+            }
+            for c in cited
+        ],
+        "retrieval_count": int(state.get("retrieval_count") or 0),
+        "safety_action": state.get("safety_action", SafetyAction.ALLOW.value),
+        "safety_notice": state.get("safety_notice") or "",
+        "escalated": bool(state.get("escalated")),
+        "_state": state,
+    }
 
 
 def _latest_human(messages: list) -> str:
@@ -183,6 +229,118 @@ def make_respond_node(llm: LLMClient):
         }
 
     return respond
+
+
+def diagnose_turn_stream(
+    db: Database,
+    manifest: Manifest,
+    state: DiagnosticGraphState,
+    *,
+    llm: OpenAIClient | None = None,
+    retrieval_limit: int = 8,
+    overfetch: int = 40,
+) -> Iterator[dict[str, Any]]:
+    """Yield SSE events for one turn: status, token deltas, then done."""
+    client = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+
+    state = _apply_delta(state, make_assess_node()(state))
+    with child_observation(
+        "safety_assess",
+        input={"message": _latest_human(state["messages"]), "audience": state.get("audience")},
+    ) as span:
+        update_span(
+            span,
+            output={
+                "action": state.get("safety_action"),
+                "rule_id": state.get("safety_rule_id"),
+                "reason": state.get("safety_notice"),
+                "prompt_directive": state.get("prompt_directive"),
+            },
+        )
+    if state.get("safety_action") == SafetyAction.BLOCK.value:
+        state = _apply_delta(state, make_blocked_node()(state))
+        yield _done_payload(state, _latest_ai(state["messages"]))
+        return
+
+    yield {"type": "status", "phase": "retrieving"}
+    state = _apply_delta(
+        state,
+        make_retrieve_node(db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch)(state),
+    )
+
+    if state.get("abstained") and not state.get("evidence_text"):
+        reason = state.get("abstain_reason") or "No evidence available."
+        content = f"ABSTAIN: {reason}"
+        state = _apply_delta(
+            state,
+            {
+                "messages": [AIMessage(content=content)],
+                "abstained": True,
+                "abstain_reason": reason,
+            },
+        )
+        yield _done_payload(state, content)
+        return
+
+    _trace_evidence_prompt(
+        state.get("evidence_text", ""),
+        retrieval_count=int(state.get("retrieval_count") or 0),
+    )
+    yield {
+        "type": "status",
+        "phase": "generating",
+        "retrieval_count": int(state.get("retrieval_count") or 0),
+    }
+
+    assessment = SafetyAssessment(
+        action=SafetyAction(state.get("safety_action") or SafetyAction.ALLOW.value),
+        rule_id=state.get("safety_rule_id") or "allow",
+        reason=state.get("safety_notice") or "",
+        audience=Audience(state.get("audience") or Audience.OWNER.value),
+        prompt_directive=state.get("prompt_directive") or "",
+    )
+    system = diagnose_system()
+    if assessment.prompt_directive:
+        system = f"{system}\n\n{assessment.prompt_directive}"
+    user_prompt = build_diagnostic_user_prompt(
+        appliance_model=state.get("appliance_model"),
+        appliance_serial=state.get("appliance_serial"),
+        evidence_text=state.get("evidence_text", ""),
+        transcript=_transcript(state["messages"]),
+    )
+
+    parts: list[str] = []
+    for delta in client.stream(system, user_prompt):
+        parts.append(delta)
+        yield {"type": "token", "text": delta}
+
+    raw = "".join(parts).strip()
+    if raw.upper().startswith("ABSTAIN:"):
+        reason = raw.split(":", 1)[-1].strip()
+        state = _apply_delta(
+            state,
+            {
+                "messages": [AIMessage(content=raw)],
+                "abstained": True,
+                "abstain_reason": reason,
+            },
+        )
+        yield _done_payload(state, raw)
+        return
+
+    gated = _trace_gate(assessment, raw, state.get("evidence_text", ""))
+    state = _apply_delta(
+        state,
+        {
+            "messages": [AIMessage(content=gated.text)],
+            "abstained": gated.blocked,
+            "abstain_reason": gated.notice if gated.blocked else "",
+            "safety_action": gated.action.value,
+            "safety_notice": gated.notice,
+            "escalated": gated.escalated,
+        },
+    )
+    yield _done_payload(state, gated.text)
 
 
 def _route_after_assess(state: DiagnosticGraphState) -> str:
