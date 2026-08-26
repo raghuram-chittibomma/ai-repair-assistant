@@ -1,0 +1,376 @@
+{
+  "timestamp": "2026-08-25T23:49:40.134842+00:00",
+  "results": [
+    {
+      "scenario_id": "acu-led-step-10",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "During the ACU power check for the WFW5620HW0, the ACU diagnostic LED should blink rapidly for a few seconds after being powered on, then it will blink slowly (0.5 seconds on, 0.5 seconds off). This indicates the functionality of the microcontroller and power supply [2][4]. If the LED is not lit, there is no 5 volts DC supply to the microcontroller, and if it does not blink slowly within 30 seconds of being powered up, the microcontroller is not responding [2][6].",
+      "citations": [
+        "tsp-w11375982",
+        "W11375982",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "tech-sheet-w11156989-revd",
+        "W11156989"
+      ],
+      "duration_ms": 12332,
+      "turns": []
+    },
+    {
+      "scenario_id": "door-locks-wont-run-wrong-platform",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "To troubleshoot your Whirlpool front load washer model WFW5620HW0 that locks the door but won't start, consider the following steps:\n\n1. **Check Control Lock**: Ensure that the control lock is not activated. If the control lock LED is on, press and hold the appropriate button to deactivate it [6].\n\n2. **Reset the Washer**: Unplug the washer and reconnect the power cord. Wait for 2 minutes to see if the washer resets and the door unlocks [1].\n\n3. **Inspect Door Lock Mechanism**: Check the door lock mechanism for any obstructions or binding. Repair as necessary [3][4].\n\n4. **Verify Door Latch Alignment**: Ensure that the door latch is not misaligned, broken, or over-tightened [1].\n\n5. **Check Connections**: Visually check that the connectors related to the door lock system are securely inserted into the ACU [4][5].\n\nIf these steps do not resolve the issue, further diagnostics may be required.",
+      "citations": [
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "tech-sheet-w11320651",
+        "W11320651"
+      ],
+      "duration_ms": 3760,
+      "turns": []
+    },
+    {
+      "scenario_id": "serial-inside-range",
+      "passed": false,
+      "detail": "must_cite missing 'W11395614'; got []",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: The evidence does not specify whether the door-lock service pointer applies to your machine based on the serial number provided.",
+      "citations": [],
+      "duration_ms": 1966,
+      "turns": []
+    },
+    {
+      "scenario_id": "serial-outside-range",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "",
+      "citations": [],
+      "duration_ms": 1400,
+      "turns": []
+    },
+    {
+      "scenario_id": "serial-unknown-must-ask",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "",
+      "citations": [],
+      "duration_ms": 1009,
+      "turns": []
+    },
+    {
+      "scenario_id": "f5e2-three-way",
+      "passed": false,
+      "detail": "must_cite missing 'kb-f5e2-front-load'; got ['service-manual-w11169652-revb', 'W11169652', 'kb-error-codes-front-load', 'kb-error-codes-front-load']; must_cite missing 'kb-f5e2-front-load'; got ['service-manual-w11169652-revb', 'W11169652', 'kb-error-codes-front-load', 'kb-error-codes-front-load']",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The F5 E2 error code on your washer indicates a door lock failure. This can occur if the door does not close completely due to interference, if the ACU detects an open door switch when attempting to lock, or if the ACU cannot determine if the door lock is in a locked state [2][6]. To resolve this issue, check that there are no items blocking the door and ensure it is closing completely. You can also press the Pause or Cancel button twice and then the Power button once to clear the code [6].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "kb-error-codes-front-load",
+        "kb-error-codes-front-load"
+      ],
+      "duration_ms": 2919,
+      "turns": []
+    },
+    {
+      "scenario_id": "door-lock-part-number",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The part number for the door lock on a WFW5620HW0 is W11320547 [1][2].",
+      "citations": [
+        "parts-list-w11320547",
+        "W11320547",
+        "parts-list-w11320547",
+        "W11320547"
+      ],
+      "duration_ms": 1783,
+      "turns": []
+    },
+    {
+      "scenario_id": "error-code-lookup",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "F8E1 is a fault code indicating a \"Long Fill\" condition in the washer. This fault is displayed when the water level does not change for a period of time, or when water is present but the ACU (Automatic Control Unit) does not detect the water level changing. Possible causes include issues with the water supply, such as being disconnected or turned off, kinked water supply hoses, plugged hose screens, low water pressure, or problems with the pressure hose connection from the tub to the pressure switch [1][6]. Additionally, it can also indicate a valve failure [2][4].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "service-manual-w11169652",
+        "W11169652",
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651"
+      ],
+      "duration_ms": 2802,
+      "turns": []
+    },
+    {
+      "scenario_id": "error-code-orphaned-by-extraction",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "F6E1 is a communication error indicating that the ACU (Appliance Control Unit) cannot hear the HMI (Human Machine Interface). This fault is displayed when communications between the HMI and ACU have not been detected. To troubleshoot, you can try recycling power to the washer, verify continuity in the cable between ACU (J19) and HMI, check AC and DC supplies, and refer to specific tests for the Human Machine Interface [1][3][4].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651"
+      ],
+      "duration_ms": 2343,
+      "turns": []
+    },
+    {
+      "scenario_id": "publication-number-lookup",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "W11375982 is a service manual that applies to the following models: 7MWFW6622HW, MHW6630HW, WFW5620HW, and WFW862CHC, as indicated on pages 1 and 3 of the manual [3][4].",
+      "citations": [
+        "tsp-w11375982",
+        "W11375982",
+        "tsp-w11375982",
+        "W11375982"
+      ],
+      "duration_ms": 2267,
+      "turns": []
+    },
+    {
+      "scenario_id": "unresponsive-control-panel",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "To troubleshoot your washer model WFW5620HW0, which powers on but has a non-responsive control panel, you should consider the following steps:\n\n1. **Check Power Supply**: Ensure that there is power at the outlet. Verify that circuit breakers, fuses, or junction box connections are functioning properly, as a lack of power can cause no operation or keypad response [2][5].\n\n2. **Control Lock**: Check if the control lock is activated. If the control lock LED is on, you will need to press and hold the appropriate button to deactivate it [4][5].\n\n3. **Connections**: Inspect the connections between the AC power cord and the ACU (Appliance Control Unit) for continuity. Also, check the connections and harness continuity between the ACU and the Human-Machine Interface (HMI) [4][5].\n\n4. **Diagnostic Mode**: If necessary, you can activate the Service Diagnostic mode to further investigate the issue. Make sure the washer is in standby mode (plugged in with all indicators off) and wait 30 seconds after applying power before activating the mode [3][6].\n\nBy following these steps, you should be able to identify the cause of the control panel's unresponsiveness.",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "tech-sheet-w11156989-revd",
+        "W11156989"
+      ],
+      "duration_ms": 3719,
+      "turns": []
+    },
+    {
+      "scenario_id": "installation-fault-not-component-fault",
+      "passed": false,
+      "detail": "must_cite missing 'W11156977'; got ['kb-f7e1-front-load', 'kb-f7e1-front-load', 'service-manual-w11169652-revb', 'W11169652']",
+      "command": "ask",
+      "abstained": false,
+      "answer": "To address the F7 E1 error code on your WFW5620HW0 washer, you should first ensure that all four shipping bolts and the plastic spacers have been removed from the rear of the washer. This error indicates a motor speed sensing issue, which can occur if the shipping bolts are not removed, leading to excessive noise, vibration, or error codes during operation [3]. \n\nAdditionally, if the shipping bolts have already been removed and the issue persists, you may need to check the harness continuity and connections between the ACU and the motor, as well as the AC and DC power supplies [4].",
+      "citations": [
+        "kb-f7e1-front-load",
+        "kb-f7e1-front-load",
+        "service-manual-w11169652-revb",
+        "W11169652"
+      ],
+      "duration_ms": 2774,
+      "turns": []
+    },
+    {
+      "scenario_id": "model-without-engineering-digit",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The service manual that covers the WFW5620HW is W11169652 Rev B [1].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652"
+      ],
+      "duration_ms": 1830,
+      "turns": []
+    },
+    {
+      "scenario_id": "digit-sensitive-document",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: There is no specific parts list provided for the WFW5620HW in the evidence.",
+      "citations": [],
+      "duration_ms": 1660,
+      "turns": []
+    },
+    {
+      "scenario_id": "adjacent-base-model-must-not-match",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "",
+      "citations": [],
+      "duration_ms": 1134,
+      "turns": []
+    },
+    {
+      "scenario_id": "out-of-corpus-appliance",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: There is no evidence provided that specifically addresses why a Samsung dishwasher is not draining.",
+      "citations": [],
+      "duration_ms": 1853,
+      "turns": []
+    },
+    {
+      "scenario_id": "out-of-corpus-model",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: The evidence does not provide a specific explanation for the F5 E2 error code on the Whirlpool WTW5000DW washer.",
+      "citations": [],
+      "duration_ms": 1914,
+      "turns": []
+    },
+    {
+      "scenario_id": "known-gap-revised-manual",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The ACU is equipped with a status LED that indicates various conditions. If the LED is blinking rapidly for a few seconds and then blinks slowly, it may indicate that the ACU is not properly connected, such as not being pressed into connectors far enough. Additionally, before replacing components, it is important to check all connections to ensure they are secure [1].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652"
+      ],
+      "duration_ms": 2306,
+      "turns": []
+    },
+    {
+      "scenario_id": "identifier-only-distinction",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The safety notice on page 1 of W11320651 states that the service data sheet is intended for use by persons with electrical, electronic, and mechanical experience and knowledge at a level generally considered acceptable in the appliance repair trade. It warns that any attempt to repair a major appliance may result in personal injury and property damage, and that the manufacturer or seller cannot be responsible for any injury or damage arising from the use of this data sheet [3].",
+      "citations": [
+        "tech-sheet-w11320651",
+        "W11320651"
+      ],
+      "duration_ms": 2504,
+      "turns": []
+    },
+    {
+      "scenario_id": "shared-pages-deduplicated",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "Before servicing the WFW5620HW0 washer, the following should be checked according to the diagnostic guide:\n\n1. Ensure the washer is in standby mode (plugged in with all indicators off).\n2. Verify that there is power at the wall outlet.\n3. Check if a household fuse has blown, or if the circuit breaker or GFCI has tripped. Inform the customer that a time-delay fuse is required.\n4. Wait 30 seconds after initial power is applied before activating Service Diagnostic mode.\n5. Ensure both hot and cold water faucets are open and that the water supply hoses are unobstructed.\n6. Confirm that the drain hose is not sealed into the drain pipe and that there is an air gap for ventilation.\n7. Check all harnesses and connections before replacing components, looking for connectors not fully seated, broken or loose wires, and pin insertion issues [1][2][3].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651"
+      ],
+      "duration_ms": 4001,
+      "turns": []
+    },
+    {
+      "scenario_id": "reflow-is-not-a-revision",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: The evidence does not provide specific information about the content on page 3 of the two tech sheets for comparison.",
+      "citations": [],
+      "duration_ms": 2854,
+      "turns": []
+    },
+    {
+      "scenario_id": "genuine-incremental-addition",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "To measure voltage safely on the L-97 platform, follow these steps:\n\n1. Unplug the washer or disconnect power.\n2. Connect the voltmeter to the proper connectors.\n3. Plug in the washer or reconnect power and verify voltage [1].\n4. Ensure that the controls are in the off position to prevent the appliance from starting when energized [2][3].\n5. Allow enough space to perform the voltage measurements without obstructions [2][3].\n6. Keep other people a safe distance away from the appliance to prevent potential injury [2][3].\n7. Always use the proper testing equipment [2][3].\n8. After voltage measurements, always disconnect power before servicing [2][4][5][6][7]. \n\nFailure to follow these instructions can result in death or electrical shock [4][5].",
+      "citations": [
+        "tech-sheet-w11320651",
+        "W11320651",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "tech-sheet-w11156989",
+        "W11156989"
+      ],
+      "duration_ms": 3875,
+      "turns": []
+    },
+    {
+      "scenario_id": "language-must-be-filtered",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The tech sheets indicate that the Interference Filter (IF) is involved in testing and verifying all inputs to the Appliance Control Unit (ACU) and the machine control electronics. Service personnel can perform diagnostic tests to check the functionality of the IF as part of an overall checkup of the washer [2][3][7][8]. Additionally, when checking for line voltage, it is important to verify voltage at both the input and output of the interference filter. If line voltage is not present at the output, the interference filter should be replaced [6].",
+      "citations": [
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "tech-sheet-w11156989",
+        "W11156989",
+        "service-manual-w11169652",
+        "W11169652",
+        "tech-sheet-w11320651",
+        "W11320651"
+      ],
+      "duration_ms": 2583,
+      "turns": []
+    },
+    {
+      "scenario_id": "symbol-font-list-structure",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: The evidence does not provide a list of pre-service checks in order.",
+      "citations": [],
+      "duration_ms": 1764,
+      "turns": []
+    }
+  ]
+}

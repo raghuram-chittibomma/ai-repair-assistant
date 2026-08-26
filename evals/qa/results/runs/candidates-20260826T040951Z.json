@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-08-26T04:09:51.361783+00:00",
+  "results": [
+    {
+      "scenario_id": "connector-designation",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "J36 on the ACU connects to the motor, as indicated by the direct drive motor strip circuit information provided in the evidence [1][2].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652"
+      ],
+      "duration_ms": 12437,
+      "turns": []
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-08-26T04:08:05.511921+00:00",
+  "results": [
+    {
+      "scenario_id": "f5e2-technician-depth",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "To address the F5 E2 error code on your WFW5620HW0, you should check the following:\n\n1. Ensure that the door is closing completely and that there are no items blocking it, as this can prevent the door from locking properly [2][6].\n2. Verify that the door lock system is functioning correctly by referring to TEST #4: Door Lock System in the service manual [2][3][5].\n\nIf these checks do not resolve the issue, further diagnostics may be necessary.",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652",
+        "kb-error-codes-front-load",
+        "kb-error-codes-front-load",
+        "tech-sheet-w11156989-revd",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651"
+      ],
+      "duration_ms": 14334,
+      "turns": []
+    },
+    {
+      "scenario_id": "connector-designation",
+      "passed": false,
+      "detail": "expect_contains_any missing one of ['motor', 'stator', 'harness']; must_cite missing 'W11169652'; got []; must_cite missing 'W11169652'; got []",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: The evidence does not specify what connects to J36 on the ACU.",
+      "citations": [],
+      "duration_ms": 2315,
+      "turns": []
+    },
+    {
+      "scenario_id": "code-to-procedure-hop",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "To address the F3E2 error code on your WFW5620HW0, which indicates a Wash NTC Fault, you should check if the wash temperature sensor is out of range, or if there is an open circuit or short circuit detected. Refer to TEST #10: Wash Temperature Sensor on page 3-17 of the service manual W11169652 Rev B for detailed troubleshooting steps [1].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652"
+      ],
+      "duration_ms": 2758,
+      "turns": []
+    }
+  ]
+}
