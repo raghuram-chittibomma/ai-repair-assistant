@@ -1,4 +1,4 @@
-"""Run live ask() against ready scenarios from evals/scenarios/candidates.yaml."""
+"""Run live ask()/diagnose against ready scenarios from candidates.yaml."""
 
 from __future__ import annotations
 
@@ -13,7 +13,12 @@ from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.eval.grading import grade_answer
 from repair_assistant.eval.llm_judge import JudgeClient, grade_with_optional_judge
-from repair_assistant.eval.qa_bench import QAScenarioResult, _cite_keys, write_run_log
+from repair_assistant.eval.qa_bench import (
+    QAScenarioResult,
+    TurnRecord,
+    _cite_keys,
+    _run_diagnose,
+)
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.generate import ask
 
@@ -25,10 +30,12 @@ class CandidateBenchResult:
     passed: bool
     skipped: bool = False
     detail: str = ""
+    command: str = "ask"
     answer: str = ""
     citations: list[str] = field(default_factory=list)
     abstained: bool = False
     duration_ms: int = 0
+    turns: list[TurnRecord] = field(default_factory=list)
 
 
 def load_candidates(path: Path | None = None) -> dict[str, Any]:
@@ -66,7 +73,11 @@ def iter_runnable(data: dict[str, Any], *, grading: dict[str, dict[str, Any]]) -
         for scenario in family.get("scenarios") or []:
             if scenario.get("status") != "ready":
                 continue
-            if not scenario.get("question"):
+            is_diagnose = scenario.get("command") == "diagnose"
+            if is_diagnose:
+                if not scenario.get("turns"):
+                    continue
+            elif not scenario.get("question"):
                 continue
             merged = _merge_scenario(scenario, grading.get(scenario["id"], {}))
             merged["_family_id"] = family["id"]
@@ -103,6 +114,35 @@ def run_candidates_bench(
     for scenario in iter_runnable(data, grading=grading):
         if scenario_ids and scenario["id"] not in scenario_ids:
             continue
+
+        if scenario.get("command") == "diagnose":
+            qa = _run_diagnose(
+                db,
+                corpus,
+                scenario,
+                use_judge=use_judge,
+                judge_llm=judge_llm,
+            )
+            detail = qa.detail
+            if scenario.get("requires_judge") and not use_judge:
+                if "needs --judge" not in detail:
+                    detail = f"{detail}; det-only (needs --judge for prose)"
+            results.append(
+                CandidateBenchResult(
+                    scenario_id=scenario["id"],
+                    family_id=scenario["_family_id"],
+                    passed=qa.passed,
+                    detail=detail,
+                    command="diagnose",
+                    answer=qa.answer,
+                    citations=qa.citations,
+                    abstained=qa.abstained,
+                    duration_ms=qa.duration_ms,
+                    turns=qa.turns,
+                )
+            )
+            continue
+
         start = time.perf_counter()
         outcome = ask(
             db,
@@ -129,6 +169,7 @@ def run_candidates_bench(
                 family_id=scenario["_family_id"],
                 passed=passed,
                 detail=detail,
+                command="ask",
                 answer=outcome.answer,
                 citations=cite_keys,
                 abstained=outcome.abstained,
@@ -159,10 +200,11 @@ def to_qa_results(results: list[CandidateBenchResult]) -> list[QAScenarioResult]
             scenario_id=r.scenario_id,
             passed=r.passed,
             detail=r.detail,
-            command="ask",
+            command=r.command,
             abstained=r.abstained,
             answer=r.answer,
             citations=r.citations,
+            turns=r.turns,
             duration_ms=r.duration_ms,
         )
         for r in results

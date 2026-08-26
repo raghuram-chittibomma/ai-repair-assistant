@@ -19,7 +19,7 @@ can slip between layers.
 | Parsing (`bench-parse`, ADR-0007) | strong | Manual (PDF-local) | D3 still interim; chain smoke covers one precedence doc (E6) | P2 |
 | Retrieval IR (`bench-retrieve`, ADR-0011/0020) | strong | Manual pass/fail (14 hard) | Measures cores only — omits `connector_fetch` / `reference_fetch` / `manual_rev_fetch`; leaders tied → weak discrimination | P0 |
 | Safety (`bench-safety`, ADR-0014) | adequate | Weak in practice | Offline-capable but **not in CI** | P1 |
-| Q&A smoke (`bench-qa`, ADR-0015) | adequate | Manual | Only one diagnose case; later-turn notes unenforced | P1 |
+| Q&A smoke (`bench-qa`, ADR-0015) | adequate | Manual | Diagnose uses `turn_grades` (E7); still one smoke diagnose case | P2 |
 | Candidates (`bench-candidates`, ADR-0017) | adequate | Soft | Every ready has ≥1 det rule (E2); prose-critical still need `--judge` (`requires_judge`) | P1 |
 | LLM judge + promote (ADR-0019) | thin | Opt-in only | No calibration set; promote drafts unused as discipline | P1 |
 | Observability (Langfuse ADR-0018) | thin | None for eval | Benches never score into Langfuse; no failure→dataset loop | P2 |
@@ -39,7 +39,8 @@ can slip between layers.
 5. **Parse → ingest → retrieve → answer can slip** — Mitigated by thin
    `bench-chain` (E6); still one story, not a full corpus re-parse.
 6. **Staleness / language / multi-hop / supersession ownership muddled** — Q&A prose vs IR cores.
-7. **Diagnostic trajectory under-tested** — Smoke grades turn 1 only; candidates are `ask()` only.
+7. **Diagnostic trajectory under-tested** — Mitigated by E7 (`turn_grades` +
+   `diagnostic-trajectory` candidates); still thin vs ask coverage.
 8. **CI vs docs drift** — Live benches manual; some ADRs/runbooks overclaim or lag.
 9. **Run-log hygiene** — Timestamped JSONs committed without retention policy.
 10. **Observability unlinked to eval** — Traces ≠ benches.
@@ -58,7 +59,7 @@ can slip between layers.
 | **E4** | Align IR↔candidates IDs + hardness; demote or fix ready-but-failing fog | S | Cross-layer |
 | **E5** | Implement or drop `must_not_cite_as_current` in `grade_answer` | S | Grading |
 | **E6** | ~~Thin chain smoke~~ **Done** — `bench-chain` + `evals/chain/fixtures.yaml` (manual) | — | Cross-layer |
-| **E7** | Grade diagnose multi-turn; add 2–3 diagnose candidates | M | Q&A / Diagnostic |
+| **E7** | ~~Grade diagnose multi-turn; add diagnose candidates~~ **Done** — `turn_grades` + 3 candidates | — | Q&A / Diagnostic |
 | **E8** | Refresh EVALS.md counts, fix ADR-0015 CI claim, charter D4 staleness | S | Docs |
 | **E9** | Run-log retention policy | S | Ops |
 | **E10** | Small judge calibration pack (10 fixed cases) | M | Judge |
@@ -73,7 +74,9 @@ on the retrieve bake-off. **E3 (CI safety) skipped by policy** (all evals
 manual). **E2 done** — every ready candidate has ≥1 deterministic rule via
 `candidates-grading.yaml` (+ unit test); prose-heavy cases set `requires_judge`.
 **E6 done** — `bench-chain` re-parses `tsp-w11375982`, force-ingests, grades
-production `search()` + `ask()` on `acu-led-step-10`. Next: E7 / E9–E12.
+production `search()` + `ask()` on `acu-led-step-10`. **E7 done** —
+`turn_grades` grades every diagnose turn; smoke `f5e2-door-locks-wont-start`
+enforces turns 1–2; three `diagnostic-trajectory` candidates. Next: E9–E12.
 
 ---
 

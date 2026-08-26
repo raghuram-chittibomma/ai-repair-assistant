@@ -21,7 +21,68 @@ DETERMINISTIC_KEYS: tuple[str, ...] = (
 
 def has_deterministic_grading(scenario: dict[str, Any]) -> bool:
     """True if the scenario (after overlay merge) has ≥1 det grading rule."""
-    return any(scenario.get(key) for key in DETERMINISTIC_KEYS)
+    if any(scenario.get(key) for key in DETERMINISTIC_KEYS):
+        return True
+    turn_grades = scenario.get("turn_grades") or {}
+    for mini in turn_grades.values():
+        if isinstance(mini, dict) and any(mini.get(key) for key in DETERMINISTIC_KEYS):
+            return True
+    return False
+
+
+def grade_diagnose_turns(
+    scenario: dict[str, Any],
+    turns: list[Any],
+) -> tuple[bool, str]:
+    """Grade diagnose turns with optional per-turn ``turn_grades``.
+
+    Each turn object needs ``.turn``, ``.assistant_message`` (or ``.answer``),
+    ``.citations``, and ``.abstained``. When ``turn_grades`` is absent, falls
+    back to top-level keys on ``expect_turn`` (default: last turn).
+    """
+    if not turns:
+        return False, "no turns recorded"
+
+    by_turn = {int(t.turn): t for t in turns}
+    turn_grades = scenario.get("turn_grades")
+    if turn_grades:
+        failures: list[str] = []
+        for raw_key in sorted(turn_grades.keys(), key=lambda k: int(k)):
+            n = int(raw_key)
+            mini = turn_grades[raw_key]
+            if not isinstance(mini, dict):
+                failures.append(f"turn {n}: invalid grade block")
+                continue
+            target = by_turn.get(n)
+            if target is None:
+                failures.append(f"turn {n}: missing")
+                continue
+            answer = getattr(target, "assistant_message", None)
+            if answer is None:
+                answer = getattr(target, "answer", "") or ""
+            passed, detail = grade_answer(
+                mini,
+                answer=answer,
+                citations=list(getattr(target, "citations", None) or []),
+                abstained=bool(getattr(target, "abstained", False)),
+            )
+            if not passed:
+                failures.append(f"turn {n}: {detail}")
+        if failures:
+            return False, "; ".join(failures)
+        return True, "ok"
+
+    expect_turn = int(scenario.get("expect_turn") or turns[-1].turn)
+    target = by_turn.get(expect_turn) or turns[-1]
+    answer = getattr(target, "assistant_message", None)
+    if answer is None:
+        answer = getattr(target, "answer", "") or ""
+    return grade_answer(
+        scenario,
+        answer=answer,
+        citations=list(getattr(target, "citations", None) or []),
+        abstained=bool(getattr(target, "abstained", False)),
+    )
 
 
 _SUPERSESSION_ACK = re.compile(

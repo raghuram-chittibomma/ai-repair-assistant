@@ -54,6 +54,7 @@ def test_the_families_the_corpus_revealed_are_all_present(seeds):
         "retrieval-exact-identifier",
         "retrieval-cross-reference",
         "conversational-symptom",
+        "diagnostic-trajectory",
         "applicability-engineering-digit",
         "abstention",
     }

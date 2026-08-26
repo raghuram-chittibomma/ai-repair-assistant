@@ -14,8 +14,8 @@ import yaml
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.diagnostic.session import DiagnosticSession
-from repair_assistant.eval.grading import grade_answer
-from repair_assistant.eval.llm_judge import JudgeClient, grade_with_optional_judge
+from repair_assistant.eval.grading import grade_answer, grade_diagnose_turns
+from repair_assistant.eval.llm_judge import JudgeClient, grade_with_optional_judge, needs_llm_judge
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.context import Citation
 from repair_assistant.qa.generate import ask
@@ -144,9 +144,7 @@ def _run_diagnose(
         )
 
     elapsed = int((time.perf_counter() - start) * 1000)
-    expect_turn = int(scenario.get("expect_turn") or (turns[-1].turn if turns else 1))
-    target = next((t for t in turns if t.turn == expect_turn), turns[-1] if turns else None)
-    if target is None:
+    if not turns:
         return QAScenarioResult(
             scenario_id=scenario["id"],
             passed=False,
@@ -154,6 +152,16 @@ def _run_diagnose(
             detail="no turns recorded",
             duration_ms=elapsed,
         )
+
+    by_turn = {t.turn: t for t in turns}
+    if scenario.get("turn_grades"):
+        judge_n = int(
+            scenario.get("judge_turn")
+            or max(int(k) for k in scenario["turn_grades"])
+        )
+    else:
+        judge_n = int(scenario.get("expect_turn") or turns[-1].turn)
+    target = by_turn.get(judge_n) or turns[-1]
 
     result = QAScenarioResult(
         scenario_id=scenario["id"],
@@ -165,6 +173,17 @@ def _run_diagnose(
         turns=turns,
         duration_ms=elapsed,
     )
+
+    def _det(
+        scen: dict[str, Any],
+        *,
+        answer: str,
+        citations: list[str],
+        abstained: bool,
+    ) -> tuple[bool, str]:
+        del answer, citations, abstained
+        return grade_diagnose_turns(scen, turns)
+
     passed, detail = grade_with_optional_judge(
         scenario,
         answer=result.answer,
@@ -172,8 +191,15 @@ def _run_diagnose(
         abstained=result.abstained,
         use_judge=use_judge,
         llm=judge_llm,
-        deterministic_grade=grade_answer,
+        deterministic_grade=_det,
     )
+    # Prose judge only sees one turn; when turn_grades exist, annotate if judge skipped.
+    if (
+        scenario.get("turn_grades")
+        and not use_judge
+        and needs_llm_judge(scenario)
+    ):
+        detail = f"{detail}; det turns only (needs --judge for prose)"
     result.passed = passed
     result.detail = detail
     return result

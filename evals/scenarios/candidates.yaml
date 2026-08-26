@@ -322,6 +322,81 @@ families:
           assembled across document types.
 
   # -------------------------------------------------------------------------
+  - id: diagnostic-trajectory
+    title: Multi-turn diagnose narrowing
+    why: >-
+      Technicians clarify over turns. The session must keep prior codes, ask
+      cheap checks first, and avoid wrong-platform or premature board replace.
+    scenarios:
+      - id: f5e2-narrow-then-exclude-24in
+        status: ready
+        command: diagnose
+        appliance: {model: WFW5620HW0}
+        turns:
+          - My washer shows F5E2 and the door locks but it won't start.
+          - The door seems fully closed — what should I check next?
+        turn_grades:
+          1:
+            expect_contains: [F5E2]
+            expect_cites_any: [W11169652, W11320651, W11156989, kb-f5e2-front-load]
+            must_not_cite: [W11395614]
+            fails_if_contains: [lid]
+          2:
+            expect_contains_any: ["test #4", "door lock", switch, strike, latch]
+            must_not_cite: [W11395614]
+            fails_if_contains: [lid, "24-inch", WFW3090]
+        expect: >-
+          Turn 1 grounds F5E2 as door-lock; turn 2 narrows checks without the
+          24in TSP (W11395614).
+        fails_if: >-
+          Cites W11395614 on either turn, or blends lid-lock / top-load remedies.
+
+      - id: control-lock-before-board
+        status: ready
+        command: diagnose
+        appliance: {model: WFW5620HW0}
+        turns:
+          - My washer powers on but the control panel doesn't respond to any buttons.
+          - I already held the Control Lock button for 3 seconds and LOC is gone — still dead.
+        turn_grades:
+          1:
+            expect_contains_any: [control lock, "LOC", lock]
+            fails_if_contains:
+              - replace the ACU
+              - replace the HMI
+              - replace the control board
+          2:
+            expect_contains_any: [HMI, ACU, "test #2", communication, harness]
+        expect: >-
+          Turn 1 checks Control Lock before board replace; turn 2 may escalate
+          after lock is ruled out.
+        fails_if: >-
+          Board replacement is recommended on turn 1 before Control Lock is tried.
+        note: Prose trajectory benefits from --judge; det covers turn-1 safety.
+        requires_judge: true
+
+      - id: f7e1-bolts-then-persist
+        status: ready
+        command: diagnose
+        appliance: {model: WFW5620HW0}
+        turns:
+          - My new washer shakes violently and shows F7 E1 during spin.
+          - I already removed all four shipping bolts — it still shakes and shows F7E1.
+        turn_grades:
+          1:
+            must_cite: [W11156977]
+            expect_contains_any: [shipping, transport, bolt, install]
+            fails_if_contains: ["replace the motor", "motor failure"]
+          2:
+            expect_cites_any: [W11320651, W11169652, W11156989]
+            expect_contains_any: ["test #3", speed, motor, rotor]
+        expect: >-
+          Turn 1 steers to shipping bolts / install; turn 2 moves to motor-speed
+          diagnostics after bolts are already removed.
+        fails_if: >-
+          Turn 1 jumps to motor replacement; turn 2 ignores prior bolt removal.
+
+  # -------------------------------------------------------------------------
   - id: applicability-engineering-digit
     title: Engineering-digit ambiguity
     why: >-

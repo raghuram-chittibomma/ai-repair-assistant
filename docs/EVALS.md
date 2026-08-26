@@ -30,8 +30,10 @@ Deterministic overlays for the candidate bench are in
 `evals/qa/candidates-grading.yaml`. Every `ready` scenario must have ≥1
 machine-checkable rule after merge (unit-tested). Overlay entries may set
 `requires_judge: true` when prose `fails_if` / `expect` still matter — pass
-`--judge` to grade those after the deterministic gate (ADR-0019). All eval
-benches stay **manual** (not CI-scheduled).
+`--judge` to grade those after the deterministic gate (ADR-0019). Diagnose
+scenarios use `command: diagnose`, `turns:`, and optional `turn_grades:` (per-turn
+det keys); without `turn_grades`, top-level keys apply to `expect_turn` (or the
+last turn). All eval benches stay **manual** (not CI-scheduled).
 
 ---
 
@@ -188,7 +190,6 @@ Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
 - CI / scheduled eval benches of any kind (including offline `bench-safety`) —
   operators run the EVALS.md sequence by hand
-- Dedicated multi-turn diagnose harness beyond the one smoke diagnose case
 - Auto-merging promoted drafts into live overlay keys (always human review)
 
 See ADR-0015, ADR-0017, and ADR-0019 for Q&A benches, candidates, and judge/promote.

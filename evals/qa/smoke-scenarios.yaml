@@ -33,9 +33,16 @@ scenarios:
       - My washer shows F5E2 and the door locks but it won't start.
       - The door seems fully closed.
     appliance: {model: WFW5620HW0}
-    expect_turn: 1
-    expect_contains:
-      - F5E2
+    turn_grades:
+      1:
+        expect_contains: [F5E2]
+        expect_cites_any: [W11169652, W11320651, W11156989, kb-f5e2-front-load]
+        must_not_cite: [W11395614]
+        fails_if_contains: [lid]
+      2:
+        expect_contains_any: ["test #4", "door lock", switch, strike, latch]
+        must_not_cite: [W11395614]
+        fails_if_contains: [lid]
     notes: >-
       Multi-turn: first turn should ground in door-lock evidence; second turn
       should narrow checks without citing W11395614 (24in wrong platform).
