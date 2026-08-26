@@ -15,7 +15,7 @@ not on PATH.
 | --- | --- | --- | --- | --- |
 | Unit / grader | `pytest` | none | `tests/` | pass/fail |
 | Parsing | `bench-parse --write` | local PDFs for fixtures | `evals/parsing/fixtures.yaml` | `evals/parsing/results/scorecard.md` |
-| Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` |
+| Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K) |
 | Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` | stdout scorecard |
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
@@ -62,6 +62,24 @@ python -m repair_assistant.corpus.cli bench-candidates --write --scenario instal
   timestamped JSON run log with answers, citations, latency, and pass/fail.
 - Commit scorecards when you want a durable baseline; intermediate run JSONs
   are optional.
+
+### Retrieval IR metrics (diagnostic)
+
+`bench-retrieve` still gates on pass/fail (`must_cite` / `must_not_cite`). The
+scorecard also reports:
+
+| Metric | Meaning |
+| --- | --- |
+| **Hit@K** | All `must_cite` labels present (and `must_cite_any` satisfied) in top‑K |
+| **Recall@K** | Fraction of required targets found (`must_cite` each count; `must_cite_any` is one group) |
+| **Precision@K** | Fraction of unique retrieved docs that match a relevant label |
+| **Forbidden@K** | Count of `must_not_cite` labels that appeared in top‑K |
+
+Optional fixture field `relevant:` overrides the relevant label set for IR
+math. Fixtures with only `must_not_cite` leave Hit/Recall/Precision as `n/a`.
+
+**Release gate** = pass/fail. Use IR numbers to compare strategies and spot
+noise or missed docs — not as a substitute for hard corpus cases.
 
 ### Recent baselines (hand-run)
 
