@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import threading
 from typing import Protocol, Sequence
 
 # Default: MIT-licensed, strong English retrieval, runs fully offline after download.
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 DEFAULT_EMBEDDING_DIMS = 768
+
+_shared_lock = threading.Lock()
+_shared_embedder: "Embedder | None" = None
+_shared_model: str | None = None
 
 
 class Embedder(Protocol):
@@ -51,3 +56,29 @@ def build_embedder(*, skip: bool, model: str = DEFAULT_EMBEDDING_MODEL) -> Embed
     if skip:
         return NullEmbedder()
     return LocalEmbedder(model=model)
+
+
+def get_shared_embedder(*, model: str | None = None) -> Embedder:
+    """Process-wide LocalEmbedder (Phase 10). Avoids reloading BGE per request."""
+    global _shared_embedder, _shared_model
+    from repair_assistant.ingest.env import embedding_model
+
+    resolved = model or embedding_model()
+    with _shared_lock:
+        if _shared_embedder is None or _shared_model != resolved:
+            _shared_embedder = LocalEmbedder(model=resolved)
+            _shared_model = resolved
+        return _shared_embedder
+
+
+def shared_embedder_loaded() -> bool:
+    with _shared_lock:
+        return _shared_embedder is not None
+
+
+def reset_shared_embedder() -> None:
+    """Test helper: drop the process singleton."""
+    global _shared_embedder, _shared_model
+    with _shared_lock:
+        _shared_embedder = None
+        _shared_model = None

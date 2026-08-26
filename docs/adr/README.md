@@ -71,12 +71,18 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0018](0018-langfuse-observability.md) | Self-hosted Langfuse (MIT); opt-in SDK traces; not LangSmith | Charter Phase 9; OSS + D8 |
 | [0019](0019-llm-judge-promote.md) | Opt-in `--judge` for prose expect/fails_if; `promote-eval` drafts | Charter Phase 9 maturity |
 
-## Phase 9 — Product hardening
+## Phase 9 — Product surface (API / UI)
 
 | ADR | Decision | Driver |
 | --- | --- | --- |
 | [0016](0016-http-api-docker.md) | FastAPI `/v1/*`; optional API key; Dockerfile + Compose `api` service | Charter Phase 10 |
 | [0017](0017-web-ui-deploy-eval.md) | `/ui` web chat; `deploy-api.ps1`; `bench-candidates` + grading overlay | LAN product use |
+
+## Phase 10 — Product hardening
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0021](0021-api-hardening-embedder-sessions.md) | Shared embedder + warmup; in-memory session TTL/max; DB pool | Day-to-day LAN reliability |
 
 ## Infrastructure
 

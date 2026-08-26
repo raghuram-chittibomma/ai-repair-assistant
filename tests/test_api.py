@@ -22,12 +22,18 @@ def mock_db():
 
 
 @pytest.fixture
-def client(mock_db):
+def client(mock_db, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("REPAIR_SKIP_EMBEDDER_WARMUP", "1")
+
     @contextmanager
     def factory():
         yield mock_db
 
-    app = create_app(session_store=SessionStore(), db_factory=factory)
+    app = create_app(
+        session_store=SessionStore(ttl_seconds=3600, max_sessions=8),
+        db_factory=factory,
+        warmup_embedder=False,
+    )
     with TestClient(app) as test_client:
         yield test_client
 
@@ -41,7 +47,10 @@ def test_health_no_auth(client: TestClient) -> None:
 def test_ready_checks_database(client: TestClient, mock_db: MagicMock) -> None:
     response = client.get("/ready")
     assert response.status_code == 200
-    assert response.json()["database"] == "ok"
+    body = response.json()
+    assert body["database"] == "ok"
+    assert body["embedder"] in {"cold", "loaded"}
+    assert "sessions" in body
     mock_db.fetchone.assert_called_once()
 
 
@@ -138,10 +147,28 @@ def test_diagnose_route_returns_session_id(mock_session_cls: MagicMock, client: 
     assert body["turn"] == 1
 
 
+@patch("repair_assistant.api.sessions.DiagnosticSession")
+def test_diagnose_unknown_session_returns_410(
+    mock_session_cls: MagicMock, client: TestClient
+) -> None:
+    response = client.post(
+        "/v1/diagnose",
+        json={
+            "message": "still broken",
+            "model": "WFW5620HW0",
+            "session_id": "does-not-exist",
+        },
+    )
+    assert response.status_code == 410
+    assert "expired" in response.json()["detail"].lower()
+    mock_session_cls.assert_not_called()
+
+
 def test_ui_page(client: TestClient) -> None:
     response = client.get("/ui", follow_redirects=False)
     assert response.status_code == 200
     assert "AI Repair Assistant" in response.text
+    assert "API key" in response.text
 
     root = client.get("/", follow_redirects=False)
     assert root.status_code in {307, 308}

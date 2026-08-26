@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
-from repair_assistant.ingest.embeddings import Embedder, LocalEmbedder, build_embedder
+from repair_assistant.ingest.embeddings import Embedder, LocalEmbedder, get_shared_embedder
 from repair_assistant.ingest.env import embedding_model
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import code_to_spaced_regex
@@ -340,7 +340,7 @@ def search(
     ``include_synthetic`` is for bake-off only. Production ask/diagnose leave it
     false so ``synth-*`` / ``SYNTH-*`` eval docs never surface.
     """
-    embedder = embedder or build_embedder(skip=False, model=embedding_model())
+    embedder = embedder or get_shared_embedder(model=embedding_model())
     vectors = embedder.embed([query])
     if not vectors or not vectors[0]:
         return SearchResult(query=query)

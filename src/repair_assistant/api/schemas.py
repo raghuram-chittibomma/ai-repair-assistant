@@ -91,3 +91,5 @@ class HealthResponse(BaseModel):
 class ReadyResponse(BaseModel):
     status: str
     database: str
+    embedder: str = "unknown"
+    sessions: int = 0

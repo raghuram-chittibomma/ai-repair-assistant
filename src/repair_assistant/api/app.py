@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import os
-from collections.abc import Generator
-from contextlib import contextmanager
-from functools import lru_cache
-from pathlib import Path
+import time
+from collections.abc import AsyncIterator, Generator
+from contextlib import asynccontextmanager, contextmanager
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
+from repair_assistant.api.db_pool import DEFAULT_POOL_SIZE, DatabasePool
 from repair_assistant.api.schemas import (
     AskRequest,
     AskResponse,
@@ -24,14 +26,21 @@ from repair_assistant.api.schemas import (
     SearchRequest,
     SearchResponse,
 )
-from repair_assistant.api.sessions import SessionStore
+from repair_assistant.api.sessions import (
+    DEFAULT_SESSION_MAX,
+    DEFAULT_SESSION_TTL_SECONDS,
+    SessionStore,
+)
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
+from repair_assistant.ingest.embeddings import get_shared_embedder, shared_embedder_loaded
 from repair_assistant.ingest.env import database_url, load_dotenv_files
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.generate import ask
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.models import Audience
+
+_log = logging.getLogger("repair_assistant.api")
 
 
 def _citation_out(cite) -> CitationOut:
@@ -44,29 +53,65 @@ def _citation_out(cite) -> CitationOut:
     )
 
 
-@lru_cache
 def _manifest():
     return manifest_mod.load()
 
 
-def _session_store() -> SessionStore:
-    return SessionStore()
-
-
-_store = _session_store()
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
 
 
 def create_app(
     *,
     session_store: SessionStore | None = None,
     db_factory=None,
+    warmup_embedder: bool | None = None,
 ) -> FastAPI:
     load_dotenv_files()
-    store = session_store or _store
+    store = session_store or SessionStore(
+        ttl_seconds=_env_int("REPAIR_SESSION_TTL_SECONDS", DEFAULT_SESSION_TTL_SECONDS),
+        max_sessions=_env_int("REPAIR_SESSION_MAX", DEFAULT_SESSION_MAX),
+    )
+    pool: DatabasePool | None = None
+    if db_factory is None:
+        try:
+            pool = DatabasePool(
+                database_url(),
+                size=_env_int("REPAIR_DB_POOL_SIZE", DEFAULT_POOL_SIZE),
+            )
+        except RuntimeError:
+            pool = None
+
+    skip_warmup = os.environ.get("REPAIR_SKIP_EMBEDDER_WARMUP", "").strip() in {
+        "1",
+        "true",
+        "yes",
+    }
+    do_warmup = (not skip_warmup) if warmup_embedder is None else warmup_embedder
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        if do_warmup:
+            try:
+                get_shared_embedder()
+                _log.info("embedder_warmup status=ok")
+            except Exception as exc:
+                _log.warning("embedder_warmup status=failed detail=%s", exc)
+        yield
+        if pool is not None:
+            pool.close()
+
     app = FastAPI(
         title="AI Repair Assistant",
         description="Grounded repair Q&A over manufacturer documentation.",
         version="0.1.0",
+        lifespan=lifespan,
     )
 
     def require_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> None:
@@ -76,8 +121,12 @@ def create_app(
 
     @contextmanager
     def db_connection() -> Generator[Database, None, None]:
-        with Database(database_url()) as db:
-            yield db
+        if pool is not None:
+            with pool.connection() as db:
+                yield db
+        else:
+            with Database(database_url()) as db:
+                yield db
 
     def get_db() -> Generator[Database, None, None]:
         try:
@@ -86,6 +135,22 @@ def create_app(
                 yield db
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.middleware("http")
+    async def request_timing(request: Request, call_next):
+        started = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        path = request.url.path
+        if path.startswith("/v1/") or path in {"/ready", "/health"}:
+            _log.info(
+                "http_request method=%s path=%s status=%s duration_ms=%s",
+                request.method,
+                path,
+                response.status_code,
+                elapsed_ms,
+            )
+        return response
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -96,7 +161,12 @@ def create_app(
         row = db.fetchone("SELECT 1")
         if row is None:
             raise HTTPException(status_code=503, detail="database not ready")
-        return ReadyResponse(status="ready", database="ok")
+        return ReadyResponse(
+            status="ready",
+            database="ok",
+            embedder="loaded" if shared_embedder_loaded() else "cold",
+            sessions=store.count(),
+        )
 
     @app.post("/v1/search", response_model=SearchResponse, dependencies=[Depends(require_api_key)])
     def search_route(body: SearchRequest, db: Database = Depends(get_db)) -> SearchResponse:
@@ -158,14 +228,23 @@ def create_app(
     @app.post("/v1/diagnose", response_model=DiagnoseResponse, dependencies=[Depends(require_api_key)])
     def diagnose_route(body: DiagnoseRequest, db: Database = Depends(get_db)) -> DiagnoseResponse:
         appliance = Appliance(model=body.model, serial=body.serial)
-        sid, session = store.get_or_create(
-            body.session_id,
-            manifest=_manifest(),
-            appliance=appliance,
-            audience=Audience(body.audience),
-            retrieval_limit=body.limit,
-            overfetch=body.overfetch,
-        )
+        try:
+            sid, session = store.get_or_create(
+                body.session_id,
+                manifest=_manifest(),
+                appliance=appliance,
+                audience=Audience(body.audience),
+                retrieval_limit=body.limit,
+                overfetch=body.overfetch,
+            )
+        except KeyError:
+            raise HTTPException(
+                status_code=410,
+                detail=(
+                    "diagnostic session expired or unknown after API restart; "
+                    "start a new chat"
+                ),
+            ) from None
         try:
             turn = session.send(db, body.message)
         except RuntimeError as exc:

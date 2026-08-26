@@ -8,11 +8,12 @@ Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H f
 anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
 many understood superficially.
 
-> **Status: Phase 9 of 10.** Run the app on your machine; Postgres lives on the LAN
-> Docker host. CLI, API, and web UI at `http://localhost:8080/ui` (see
-> [Deployment](docs/DEPLOYMENT.md)). Eval harnesses at every layer — **manual runs**
-> only ([Evaluation](docs/EVALS.md)). Optional self-hosted **Langfuse** traces
-> ([LANGFUSE.md](docs/LANGFUSE.md), ADR-0018). **LAN-only** (D8) — not internet-facing.
+> **Status: Phase 10 of 10 (hardening).** Run the app on your machine; Postgres
+> lives on the LAN Docker host. CLI, API, and web UI at `http://localhost:8080/ui`
+> (see [Deployment](docs/DEPLOYMENT.md)). Eval harnesses at every layer — **manual
+> runs** only ([Evaluation](docs/EVALS.md)). Optional self-hosted **Langfuse**
+> traces ([LANGFUSE.md](docs/LANGFUSE.md), ADR-0018). **LAN-only** (D8) — not
+> internet-facing.
 
 ---
 

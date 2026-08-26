@@ -51,8 +51,9 @@
     }
     .controls-secondary {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1.2fr;
       gap: 0.75rem;
+      align-items: end;
     }
     label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.25rem; }
     input, select, button, textarea {
@@ -200,6 +201,10 @@
           <option value="technician">Technician</option>
         </select>
       </div>
+      <div>
+        <label for="apiKey">API key (optional)</label>
+        <input id="apiKey" type="password" placeholder="If REPAIR_API_KEY is set" autocomplete="off" />
+      </div>
       <div id="sessionBar" aria-live="polite"></div>
     </div>
     <div id="status" class="status">Checking API…</div>
@@ -218,14 +223,48 @@
     const serialEl = document.getElementById("serial");
     const modeEl = document.getElementById("mode");
     const audienceEl = document.getElementById("audience");
+    const apiKeyEl = document.getElementById("apiKey");
     const sendBtn = document.getElementById("send");
     const newSessionBtn = document.getElementById("newSession");
     const sessionBar = document.getElementById("sessionBar");
+
+    const FETCH_TIMEOUT_MS = 180000;
+    const API_KEY_STORAGE = "repair_api_key";
 
     let sessionId = null;
     let turn = 0;
     let busy = false;
     let pendingEl = null;
+    let embedderWarm = false;
+
+    apiKeyEl.value = localStorage.getItem(API_KEY_STORAGE) || "";
+    apiKeyEl.addEventListener("change", () => {
+      const v = apiKeyEl.value.trim();
+      if (v) localStorage.setItem(API_KEY_STORAGE, v);
+      else localStorage.removeItem(API_KEY_STORAGE);
+    });
+
+    function authHeaders(extra = {}) {
+      const headers = { ...extra };
+      const key = apiKeyEl.value.trim();
+      if (key) headers["X-API-Key"] = key;
+      return headers;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+      try {
+        return await fetch(url, { ...options, signal: ctrl.signal });
+      } catch (err) {
+        if (err && err.name === "AbortError") {
+          throw new Error("Request timed out — try again or check the API");
+        }
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
 
     function errorDetail(data, fallback) {
       if (!data || data.detail == null) return fallback;
@@ -344,8 +383,9 @@
 
     function showPending() {
       removePending();
-      const cold =
-        "Looking up manufacturer docs (first request may take 30–60s while embeddings load)";
+      const cold = embedderWarm
+        ? "Looking up manufacturer docs…"
+        : "Looking up manufacturer docs (embeddings may still be warming — first request can take 30–60s)";
       pendingEl = append("assistant", cold, { pending: true });
     }
 
@@ -358,9 +398,13 @@
 
     async function checkHealth() {
       try {
-        const r = await fetch("/ready");
+        const r = await apiFetch("/ready");
         if (!r.ok) throw new Error("not ready");
-        statusEl.textContent = "API ready";
+        const data = await r.json().catch(() => ({}));
+        embedderWarm = data.embedder === "loaded";
+        const emb = embedderWarm ? "embedder warm" : "embedder cold";
+        const sess = typeof data.sessions === "number" ? `; ${data.sessions} session(s)` : "";
+        statusEl.textContent = `API ready (${emb}${sess})`;
         statusEl.className = "status ok";
       } catch {
         statusEl.textContent = "API not ready — is the server running with DATABASE_URL set?";
@@ -371,7 +415,10 @@
     async function endServerSession() {
       if (!sessionId) return;
       try {
-        await fetch("/v1/diagnose/" + encodeURIComponent(sessionId), { method: "DELETE" });
+        await apiFetch("/v1/diagnose/" + encodeURIComponent(sessionId), {
+          method: "DELETE",
+          headers: authHeaders(),
+        });
       } catch {
         /* best-effort */
       }
@@ -386,7 +433,7 @@
       if (announce) {
         const msg =
           modeEl.value === "diagnose"
-            ? "New diagnostic session. Describe the symptom to begin."
+            ? "New diagnostic session. Describe the symptom to begin. Sessions are in-memory and expire after idle time or API restart."
             : "Chat cleared. Each question is answered independently.";
         append("system", msg);
       }
@@ -424,26 +471,36 @@
           const body = { message: text, model, audience };
           if (serial) body.serial = serial;
           if (sessionId) body.session_id = sessionId;
-          res = await fetch("/v1/diagnose", {
+          res = await apiFetch("/v1/diagnose", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify(body),
           });
         } else {
           const body = { question: text, model, audience };
           if (serial) body.serial = serial;
-          res = await fetch("/v1/ask", {
+          res = await apiFetch("/v1/ask", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify(body),
           });
         }
         const data = await res.json().catch(() => ({}));
         removePending();
+        if (res.status === 410) {
+          sessionId = null;
+          turn = 0;
+          updateSessionBar();
+          throw new Error(
+            errorDetail(data, "Session expired") +
+              " — start a new chat (diagnose sessions are not kept across API restarts)."
+          );
+        }
         if (!res.ok) throw new Error(errorDetail(data, res.statusText));
         if (data.session_id) sessionId = data.session_id;
         if (typeof data.turn === "number") turn = data.turn;
         updateSessionBar();
+        embedderWarm = true;
         const answer = data.answer ?? data.assistant_message ?? "";
         append("assistant", answer || "(empty response)", {
           citations: data.citations || [],
@@ -455,7 +512,7 @@
         });
         statusEl.textContent = data.abstained
           ? "Abstained — see reason above"
-          : "API ready";
+          : "API ready (embedder warm)";
         statusEl.className = data.abstained ? "status busy" : "status ok";
       } catch (err) {
         removePending();

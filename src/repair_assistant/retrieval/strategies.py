@@ -7,8 +7,7 @@ from typing import Any
 
 from repair_assistant.corpus.applicability import Appliance, document_applies
 from repair_assistant.corpus.manifest import Manifest
-from repair_assistant.ingest.embeddings import Embedder, build_embedder
-from repair_assistant.ingest.env import embedding_model
+from repair_assistant.ingest.embeddings import Embedder
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.retrieval.rank import RankedHit, filter_and_rank
@@ -407,4 +406,7 @@ def run_strategy(
 
 
 def default_embedder() -> Embedder:
-    return build_embedder(skip=False, model=embedding_model())
+    from repair_assistant.ingest.embeddings import get_shared_embedder
+    from repair_assistant.ingest.env import embedding_model
+
+    return get_shared_embedder(model=embedding_model())
