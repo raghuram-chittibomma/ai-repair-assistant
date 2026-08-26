@@ -10,7 +10,8 @@ many understood superficially.
 
 > **Status: Phase 9 of 10.** Run the app on your machine; Postgres lives on the LAN
 > Docker host. CLI, API, and web UI at `http://localhost:8080/ui` (see
-> [Deployment](docs/DEPLOYMENT.md)). **LAN-only** (D8) — not internet-facing.
+> [Deployment](docs/DEPLOYMENT.md)). Eval harnesses at every layer — **manual runs**
+> only ([Evaluation](docs/EVALS.md)). **LAN-only** (D8) — not internet-facing.
 
 ---
 
@@ -132,7 +133,8 @@ tests/                   deterministic tests
 - [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is actually in these documents
 - [Parsing bake-off](evals/parsing/results/scorecard.md) — extractor scores; decision in ADR-0007
 - [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker + Compose; real host/ports in gitignored local file
-- [Deployment](docs/DEPLOYMENT.md) — run API + web UI on the LAN Docker host
+- [Deployment](docs/DEPLOYMENT.md) — local app + remote Postgres; optional LAN Docker API
+- [Evaluation](docs/EVALS.md) — manual benches at every pipeline layer
 - [Architecture decision records](docs/adr/) — decisions; must note charter deviations when they occur
 
 ## Fixed technology constraints

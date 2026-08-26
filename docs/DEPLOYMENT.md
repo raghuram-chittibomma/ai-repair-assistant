@@ -56,12 +56,15 @@ Open **http://localhost:8080/ui** in your browser.
 
 The API on your laptop connects to Postgres on the LAN host via `DATABASE_URL`.
 
-### 5. Eval benches (optional)
+### 5. Eval benches (manual)
+
+Live evals are run by hand — see [EVALS.md](EVALS.md) for every level
+(parsing, retrieval, safety, Q&A smoke, candidates). Quick check:
 
 ```powershell
+python -m repair_assistant.corpus.cli bench-safety
 python -m repair_assistant.corpus.cli bench-qa --write
 python -m repair_assistant.corpus.cli bench-candidates --write
-python -m repair_assistant.corpus.cli bench-safety
 ```
 
 ---
