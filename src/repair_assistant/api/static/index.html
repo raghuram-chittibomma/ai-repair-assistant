@@ -13,6 +13,7 @@
       --accent: #3d8bfd;
       --ok: #3dd68c;
       --warn: #ffb020;
+      --danger: #ff6b6b;
       --border: #2a3544;
     }
     * { box-sizing: border-box; }
@@ -40,13 +41,18 @@
       padding: 1rem 1.5rem 2rem;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 0.85rem;
     }
     .controls {
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: 1fr 1fr 1fr auto;
       gap: 0.75rem;
       align-items: end;
+    }
+    .controls-secondary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
     }
     label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.25rem; }
     input, select, button, textarea {
@@ -67,7 +73,26 @@
       min-width: 5.5rem;
     }
     button:disabled { opacity: 0.5; cursor: wait; }
-    button.secondary { background: transparent; border-color: var(--border); }
+    button.secondary { background: transparent; border-color: var(--border); color: var(--text); }
+    #sessionBar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      min-height: 1.25rem;
+    }
+    #sessionBar .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+    #sessionBar .pill.active { border-color: #35507a; color: var(--text); }
     #log {
       flex: 1;
       min-height: 18rem;
@@ -88,15 +113,56 @@
     .msg.assistant { border-color: #2a4a3a; }
     .msg.system { color: var(--muted); font-size: 0.85rem; border-style: dashed; }
     .msg.abstain { border-color: var(--warn); }
+    .msg.safety { border-color: var(--danger); }
+    .msg.pending { border-style: dashed; color: var(--muted); }
+    .msg .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 0.55rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .badge.abstain { color: var(--warn); border-color: var(--warn); }
+    .badge.safety { color: var(--danger); border-color: var(--danger); }
+    .badge.escalate { color: var(--warn); border-color: var(--warn); }
+    .reason {
+      margin-top: 0.55rem;
+      padding-top: 0.55rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
     .cites { margin-top: 0.65rem; font-size: 0.8rem; color: var(--muted); }
     .cites span { display: block; }
     .composer { display: flex; gap: 0.5rem; align-items: flex-end; }
     .composer textarea { min-height: 3.2rem; resize: vertical; }
     .status { font-size: 0.8rem; color: var(--muted); }
     .status.ok { color: var(--ok); }
-    .status.err { color: #ff6b6b; }
-    @media (max-width: 640px) {
-      .controls { grid-template-columns: 1fr; }
+    .status.err { color: var(--danger); }
+    .status.busy { color: var(--warn); }
+    .dots::after {
+      content: "";
+      animation: dots 1.2s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0% { content: ""; }
+      25% { content: "."; }
+      50% { content: ".."; }
+      75% { content: "..."; }
+    }
+    @media (max-width: 720px) {
+      .controls, .controls-secondary { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -112,6 +178,10 @@
         <input id="model" value="WFW5620HW0" autocomplete="off" />
       </div>
       <div>
+        <label for="serial">Serial (optional)</label>
+        <input id="serial" placeholder="e.g. CF82012345" autocomplete="off" />
+      </div>
+      <div>
         <label for="mode">Mode</label>
         <select id="mode">
           <option value="ask">Single question</option>
@@ -119,8 +189,18 @@
         </select>
       </div>
       <div>
-        <button type="button" id="newSession" class="secondary" title="New diagnostic session">New chat</button>
+        <button type="button" id="newSession" class="secondary" title="Clear chat and start a new diagnostic session">New chat</button>
       </div>
+    </div>
+    <div class="controls-secondary">
+      <div>
+        <label for="audience">Audience</label>
+        <select id="audience">
+          <option value="owner">Owner</option>
+          <option value="technician">Technician</option>
+        </select>
+      </div>
+      <div id="sessionBar" aria-live="polite"></div>
     </div>
     <div id="status" class="status">Checking API…</div>
     <div id="log" aria-live="polite"></div>
@@ -135,27 +215,145 @@
     const form = document.getElementById("form");
     const input = document.getElementById("input");
     const modelEl = document.getElementById("model");
+    const serialEl = document.getElementById("serial");
     const modeEl = document.getElementById("mode");
+    const audienceEl = document.getElementById("audience");
     const sendBtn = document.getElementById("send");
     const newSessionBtn = document.getElementById("newSession");
-    let sessionId = null;
+    const sessionBar = document.getElementById("sessionBar");
 
-    function append(role, text, citations = [], abstained = false) {
+    let sessionId = null;
+    let turn = 0;
+    let busy = false;
+    let pendingEl = null;
+
+    function errorDetail(data, fallback) {
+      if (!data || data.detail == null) return fallback;
+      const d = data.detail;
+      if (typeof d === "string") return d;
+      if (Array.isArray(d)) {
+        return d.map((item) => item.msg || JSON.stringify(item)).join("; ");
+      }
+      return String(d);
+    }
+
+    function updateSessionBar() {
+      const mode = modeEl.value;
+      if (mode === "ask") {
+        sessionBar.innerHTML = `<span class="pill">Single question — each send is independent</span>`;
+        return;
+      }
+      if (sessionId) {
+        sessionBar.innerHTML =
+          `<span class="pill active">Diagnostic session active</span>` +
+          `<span class="pill">Turn ${turn}</span>` +
+          `<span class="pill" title="${sessionId}">Session …${sessionId.slice(-8)}</span>`;
+      } else {
+        sessionBar.innerHTML = `<span class="pill">Diagnostic chat — next send starts a session</span>`;
+      }
+    }
+
+    function updatePlaceholder() {
+      input.placeholder =
+        modeEl.value === "diagnose"
+          ? "Describe the symptom or reply with what you observed…"
+          : "Ask a repair question…";
+    }
+
+    function append(role, text, opts = {}) {
+      const {
+        citations = [],
+        abstained = false,
+        abstainReason = "",
+        safetyAction = "allow",
+        safetyNotice = "",
+        escalated = false,
+        pending = false,
+      } = opts;
       const div = document.createElement("div");
-      div.className = "msg " + role + (abstained ? " abstain" : "");
-      div.textContent = text;
+      const classes = ["msg", role];
+      if (abstained) classes.push("abstain");
+      if (safetyAction === "block" || safetyAction === "escalate" || escalated) classes.push("safety");
+      if (pending) classes.push("pending");
+      div.className = classes.join(" ");
+
+      const badges = [];
+      if (abstained) badges.push(["abstain", "Abstained"]);
+      if (safetyAction === "block") badges.push(["safety", "Blocked"]);
+      else if (safetyAction === "escalate" || escalated) badges.push(["escalate", "Escalated"]);
+      if (badges.length) {
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        for (const [cls, label] of badges) {
+          const b = document.createElement("span");
+          b.className = "badge " + cls;
+          b.textContent = label;
+          meta.appendChild(b);
+        }
+        div.appendChild(meta);
+      }
+
+      const body = document.createElement("div");
+      body.className = "body";
+      if (pending) {
+        body.innerHTML = `<span class="dots">${text}</span>`;
+      } else {
+        body.textContent = text;
+      }
+      div.appendChild(body);
+
+      if (abstained && abstainReason) {
+        const r = document.createElement("div");
+        r.className = "reason";
+        r.textContent = "Why: " + abstainReason;
+        div.appendChild(r);
+      }
+      if (safetyNotice) {
+        const r = document.createElement("div");
+        r.className = "reason";
+        r.textContent = safetyNotice;
+        div.appendChild(r);
+      }
       if (citations.length) {
         const cites = document.createElement("div");
         cites.className = "cites";
         citations.forEach((c) => {
           const line = document.createElement("span");
-          line.textContent = `[${c.index}] ${c.label} — ${c.doc_id}`;
+          const page = c.page != null ? ` p.${c.page}` : "";
+          line.textContent = `[${c.index}] ${c.label}${page} — ${c.doc_id}`;
           cites.appendChild(line);
         });
         div.appendChild(cites);
       }
       log.appendChild(div);
       log.scrollTop = log.scrollHeight;
+      return div;
+    }
+
+    function setBusy(on, hint) {
+      busy = on;
+      sendBtn.disabled = on;
+      input.disabled = on;
+      modeEl.disabled = on;
+      newSessionBtn.disabled = on;
+      if (on) {
+        statusEl.textContent = hint || "Working…";
+        statusEl.className = "status busy";
+      }
+    }
+
+    function showPending() {
+      removePending();
+      const cold =
+        "Looking up manufacturer docs (first request may take 30–60s while embeddings load)";
+      pendingEl = append("assistant", cold, { pending: true });
+    }
+
+    function removePending() {
+      if (pendingEl) {
+        pendingEl.remove();
+        pendingEl = null;
+      }
     }
 
     async function checkHealth() {
@@ -165,29 +363,66 @@
         statusEl.textContent = "API ready";
         statusEl.className = "status ok";
       } catch {
-        statusEl.textContent = "API not ready — is the server running?";
+        statusEl.textContent = "API not ready — is the server running with DATABASE_URL set?";
         statusEl.className = "status err";
       }
     }
 
-    newSessionBtn.addEventListener("click", () => {
+    async function endServerSession() {
+      if (!sessionId) return;
+      try {
+        await fetch("/v1/diagnose/" + encodeURIComponent(sessionId), { method: "DELETE" });
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    async function resetChat({ announce } = { announce: true }) {
+      await endServerSession();
       sessionId = null;
-      append("system", "Started a new diagnostic session.");
+      turn = 0;
+      log.innerHTML = "";
+      updateSessionBar();
+      if (announce) {
+        const msg =
+          modeEl.value === "diagnose"
+            ? "New diagnostic session. Describe the symptom to begin."
+            : "Chat cleared. Each question is answered independently.";
+        append("system", msg);
+      }
+    }
+
+    modeEl.addEventListener("change", async () => {
+      updatePlaceholder();
+      await resetChat({ announce: true });
+      await checkHealth();
+    });
+
+    newSessionBtn.addEventListener("click", async () => {
+      if (busy) return;
+      await resetChat({ announce: true });
+      await checkHealth();
+      input.focus();
     });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (busy) return;
       const text = input.value.trim();
       if (!text) return;
       input.value = "";
       append("user", text);
-      sendBtn.disabled = true;
+      setBusy(true, "Waiting for grounded answer…");
+      showPending();
       try {
         const model = modelEl.value.trim();
+        const serial = serialEl.value.trim() || null;
+        const audience = audienceEl.value;
         const mode = modeEl.value;
         let res;
         if (mode === "diagnose") {
-          const body = { message: text, model };
+          const body = { message: text, model, audience };
+          if (serial) body.serial = serial;
           if (sessionId) body.session_id = sessionId;
           res = await fetch("/v1/diagnose", {
             method: "POST",
@@ -195,25 +430,46 @@
             body: JSON.stringify(body),
           });
         } else {
+          const body = { question: text, model, audience };
+          if (serial) body.serial = serial;
           res = await fetch("/v1/ask", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question: text, model }),
+            body: JSON.stringify(body),
           });
         }
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || res.statusText);
+        const data = await res.json().catch(() => ({}));
+        removePending();
+        if (!res.ok) throw new Error(errorDetail(data, res.statusText));
         if (data.session_id) sessionId = data.session_id;
+        if (typeof data.turn === "number") turn = data.turn;
+        updateSessionBar();
         const answer = data.answer ?? data.assistant_message ?? "";
-        append("assistant", answer, data.citations || [], data.abstained);
+        append("assistant", answer || "(empty response)", {
+          citations: data.citations || [],
+          abstained: !!data.abstained,
+          abstainReason: data.abstain_reason || "",
+          safetyAction: data.safety_action || "allow",
+          safetyNotice: data.safety_notice || "",
+          escalated: !!data.escalated,
+        });
+        statusEl.textContent = data.abstained
+          ? "Abstained — see reason above"
+          : "API ready";
+        statusEl.className = data.abstained ? "status busy" : "status ok";
       } catch (err) {
+        removePending();
         append("system", "Error: " + err.message);
+        statusEl.textContent = "Request failed";
+        statusEl.className = "status err";
       } finally {
-        sendBtn.disabled = false;
+        setBusy(false);
         input.focus();
       }
     });
 
+    updatePlaceholder();
+    updateSessionBar();
     checkHealth();
     input.focus();
   </script>
