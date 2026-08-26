@@ -105,77 +105,88 @@ def run_candidates_bench(
     scenario_ids: set[str] | None = None,
     use_judge: bool = False,
     judge_llm: JudgeClient | None = None,
+    eval_run_id: str | None = None,
 ) -> list[CandidateBenchResult]:
+    from datetime import UTC, datetime
+
+    from repair_assistant.observability.eval_context import eval_trace_context
+
     data = load_candidates(candidates_path)
     grading = load_grading_overlay(grading_path)
     corpus = manifest_mod.load()
     results: list[CandidateBenchResult] = []
+    run_id = eval_run_id or f"candidates-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
 
     for scenario in iter_runnable(data, grading=grading):
         if scenario_ids and scenario["id"] not in scenario_ids:
             continue
 
-        if scenario.get("command") == "diagnose":
-            qa = _run_diagnose(
+        with eval_trace_context(
+            eval_bench="candidates",
+            eval_run_id=run_id,
+            scenario_id=scenario["id"],
+        ):
+            if scenario.get("command") == "diagnose":
+                qa = _run_diagnose(
+                    db,
+                    corpus,
+                    scenario,
+                    use_judge=use_judge,
+                    judge_llm=judge_llm,
+                )
+                detail = qa.detail
+                if scenario.get("requires_judge") and not use_judge:
+                    if "needs --judge" not in detail:
+                        detail = f"{detail}; det-only (needs --judge for prose)"
+                results.append(
+                    CandidateBenchResult(
+                        scenario_id=scenario["id"],
+                        family_id=scenario["_family_id"],
+                        passed=qa.passed,
+                        detail=detail,
+                        command="diagnose",
+                        answer=qa.answer,
+                        citations=qa.citations,
+                        abstained=qa.abstained,
+                        duration_ms=qa.duration_ms,
+                        turns=qa.turns,
+                    )
+                )
+                continue
+
+            start = time.perf_counter()
+            outcome = ask(
                 db,
                 corpus,
-                scenario,
-                use_judge=use_judge,
-                judge_llm=judge_llm,
+                scenario["question"],
+                appliance=_appliance(scenario),
             )
-            detail = qa.detail
+            elapsed = int((time.perf_counter() - start) * 1000)
+            cite_keys = _cite_keys(outcome.citations)
+            passed, detail = grade_with_optional_judge(
+                scenario,
+                answer=outcome.answer,
+                citations=cite_keys,
+                abstained=outcome.abstained,
+                use_judge=use_judge,
+                llm=judge_llm,
+                deterministic_grade=grade_answer,
+            )
             if scenario.get("requires_judge") and not use_judge:
-                if "needs --judge" not in detail:
-                    detail = f"{detail}; det-only (needs --judge for prose)"
+                detail = f"{detail}; det-only (needs --judge for prose)"
             results.append(
                 CandidateBenchResult(
                     scenario_id=scenario["id"],
                     family_id=scenario["_family_id"],
-                    passed=qa.passed,
+                    passed=passed,
                     detail=detail,
-                    command="diagnose",
-                    answer=qa.answer,
-                    citations=qa.citations,
-                    abstained=qa.abstained,
-                    duration_ms=qa.duration_ms,
-                    turns=qa.turns,
+                    command="ask",
+                    answer=outcome.answer,
+                    citations=cite_keys,
+                    abstained=outcome.abstained,
+                    duration_ms=elapsed,
                 )
             )
-            continue
-
-        start = time.perf_counter()
-        outcome = ask(
-            db,
-            corpus,
-            scenario["question"],
-            appliance=_appliance(scenario),
-        )
-        elapsed = int((time.perf_counter() - start) * 1000)
-        cite_keys = _cite_keys(outcome.citations)
-        passed, detail = grade_with_optional_judge(
-            scenario,
-            answer=outcome.answer,
-            citations=cite_keys,
-            abstained=outcome.abstained,
-            use_judge=use_judge,
-            llm=judge_llm,
-            deterministic_grade=grade_answer,
-        )
-        if scenario.get("requires_judge") and not use_judge:
-            detail = f"{detail}; det-only (needs --judge for prose)"
-        results.append(
-            CandidateBenchResult(
-                scenario_id=scenario["id"],
-                family_id=scenario["_family_id"],
-                passed=passed,
-                detail=detail,
-                command="ask",
-                answer=outcome.answer,
-                citations=cite_keys,
-                abstained=outcome.abstained,
-                duration_ms=elapsed,
-            )
-        )
     return results
 
 

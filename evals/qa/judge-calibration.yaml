@@ -1,0 +1,139 @@
+# Frozen answer + prose criteria for LLM-judge calibration (E10).
+# No DB / ask() — operator runs: repair-corpus bench-judge-calibrate
+# Unit tests use FakeJudge; live OpenAI measures agreement with expected_passed.
+
+version: 1
+
+cases:
+  - id: cal-f5e2-door-lock-pass
+    question: What does F5 E2 mean on my washer?
+    answer: >-
+      F5E2 is a door lock failure on this front-load washer. Check the door
+      lock assembly; do not use lid-lock procedures.
+    citations: [kb-f5e2-front-load, W11320651]
+    abstained: false
+    expect: >-
+      The front-load answer, describing a door lock failure rather than a
+      lid lock obstruction.
+    fails_if: >-
+      The answer mentions a lid, or blends remedies from more than one of
+      the three articles.
+    expected_passed: true
+
+  - id: cal-f5e2-lid-lock-fail
+    question: What does F5 E2 mean on my washer?
+    answer: >-
+      F5E2 usually means the lid lock is obstructed. Clear the lid area and
+      retry the cycle.
+    citations: [kb-f5e2-top-load]
+    abstained: false
+    expect: >-
+      The front-load answer, describing a door lock failure rather than a
+      lid lock obstruction.
+    fails_if: >-
+      The answer mentions a lid, or blends remedies from more than one of
+      the three articles.
+    expected_passed: false
+
+  - id: cal-serial-must-ask-pass
+    question: Does the door-lock service pointer apply to my machine?
+    answer: >-
+      I need your serial number before I can say whether W11395614 applies;
+      the bulletin is serial-range scoped.
+    citations: []
+    abstained: false
+    expect: >-
+      Ask for the serial number rather than assuming. The document is
+      serial-scoped and the answer genuinely depends on it.
+    fails_if: Either "yes" or "no" is asserted without the serial.
+    expected_passed: true
+
+  - id: cal-serial-yes-without-serial-fail
+    question: Does the door-lock service pointer apply to my machine?
+    answer: Yes, the door-lock service pointer applies to your machine.
+    citations: [W11395614]
+    abstained: false
+    expect: >-
+      Ask for the serial number rather than assuming. The document is
+      serial-scoped and the answer genuinely depends on it.
+    fails_if: Either "yes" or "no" is asserted without the serial.
+    expected_passed: false
+
+  - id: cal-part-number-qualified-pass
+    question: What is the part number for the door lock on a WFW5620HW0?
+    answer: >-
+      Parts list W11320547 Rev C lists W10804741 for the door lock, but that
+      list is from August 2020 and part numbers supersede — confirm against a
+      current catalogue before ordering.
+    citations: [W11320547]
+    abstained: false
+    expect: >-
+      Cite W10804741 from W11320547 Rev C, AND qualify it: the parts list
+      dates from August 2020 and part numbers supersede over time, so it
+      should be confirmed against a current catalogue.
+    fails_if: >-
+      W10804741 is stated as the current part number with no qualification.
+    expected_passed: true
+
+  - id: cal-part-number-unqualified-fail
+    question: What is the part number for the door lock on a WFW5620HW0?
+    answer: The current door lock part number is W10804741.
+    citations: [W11320547]
+    abstained: false
+    expect: >-
+      Cite W10804741 from W11320547 Rev C, AND qualify it: the parts list
+      dates from August 2020 and part numbers supersede over time, so it
+      should be confirmed against a current catalogue.
+    fails_if: >-
+      W10804741 is stated as the current part number with no qualification.
+    expected_passed: false
+
+  - id: cal-control-lock-first-pass
+    question: My washer powers on but the control panel doesn't respond.
+    answer: >-
+      Try Control Lock first — look for LOC on the display and hold the
+      Control Lock button for about three seconds before assuming an HMI or
+      ACU fault.
+    citations: [W11169652]
+    abstained: false
+    expect: >-
+      Distinguish Control Lock (LOC, a user-activated setting with a trivial
+      remedy) from an HMI or ACU fault, and check the cheap and safe
+      explanation first.
+    fails_if: >-
+      Board replacement is recommended before Control Lock is ruled out.
+    expected_passed: true
+
+  - id: cal-board-replace-first-fail
+    question: My washer powers on but the control panel doesn't respond.
+    answer: >-
+      The HMI or ACU has likely failed. Replace the control board.
+    citations: [W11169652]
+    abstained: false
+    expect: >-
+      Distinguish Control Lock (LOC, a user-activated setting with a trivial
+      remedy) from an HMI or ACU fault, and check the cheap and safe
+      explanation first.
+    fails_if: >-
+      Board replacement is recommended before Control Lock is ruled out.
+    expected_passed: false
+
+  - id: cal-out-of-corpus-pass
+    question: Why is my Samsung dishwasher not draining?
+    answer: >-
+      This assistant only covers Whirlpool washers in the held corpus. I cannot
+      answer about a Samsung dishwasher from these documents.
+    citations: []
+    abstained: true
+    expect: State that the corpus covers Whirlpool washers only. No citation.
+    expected_passed: true
+
+  - id: cal-out-of-corpus-wrong-fail
+    question: Why is my Samsung dishwasher not draining?
+    answer: >-
+      Clear the drain filter and check for a clogged hose — common dishwasher
+      drain faults.
+    citations: [W11156977]
+    abstained: false
+    expect: State that the corpus covers Whirlpool washers only. No citation.
+    expected_passed: false

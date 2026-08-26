@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from repair_assistant.ingest.env import load_dotenv_files
+from repair_assistant.observability.eval_context import merge_eval_metadata
 
 
 class _NoOpSpan:
@@ -61,7 +62,7 @@ def observation(
         as_type="span",
         name=name,
         input=input,
-        metadata=metadata or {},
+        metadata=merge_eval_metadata(metadata),
     ) as span:
         yield span
     client.flush()

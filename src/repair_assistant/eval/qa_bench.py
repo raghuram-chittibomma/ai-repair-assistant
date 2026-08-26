@@ -212,21 +212,30 @@ def run_smoke_bench(
     scenario_ids: set[str] | None = None,
     use_judge: bool = False,
     judge_llm: JudgeClient | None = None,
+    eval_run_id: str | None = None,
 ) -> list[QAScenarioResult]:
     data = load_smoke_scenarios(scenarios_path)
     corpus = manifest_mod.load()
     results: list[QAScenarioResult] = []
+    run_id = eval_run_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    from repair_assistant.observability.eval_context import eval_trace_context
+
     for scenario in data["scenarios"]:
         if scenario_ids and scenario["id"] not in scenario_ids:
             continue
-        if scenario.get("command") == "diagnose":
-            results.append(
-                _run_diagnose(db, corpus, scenario, use_judge=use_judge, judge_llm=judge_llm)
-            )
-        else:
-            results.append(
-                _run_ask(db, corpus, scenario, use_judge=use_judge, judge_llm=judge_llm)
-            )
+        with eval_trace_context(
+            eval_bench="qa",
+            eval_run_id=run_id,
+            scenario_id=scenario["id"],
+        ):
+            if scenario.get("command") == "diagnose":
+                results.append(
+                    _run_diagnose(db, corpus, scenario, use_judge=use_judge, judge_llm=judge_llm)
+                )
+            else:
+                results.append(
+                    _run_ask(db, corpus, scenario, use_judge=use_judge, judge_llm=judge_llm)
+                )
     return results
 
 

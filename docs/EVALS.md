@@ -24,6 +24,8 @@ not on PATH.
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
 | Promote failure | `promote-eval --run … --scenario ID` | prior run JSON | — | YAML draft (optional `--write` into grading overlay) |
+| Judge calibrate | `bench-judge-calibrate --write` | `OPENAI_API_KEY` (no DB) | `evals/qa/judge-calibration.yaml` | `evals/qa/results/judge-calibration-scorecard.md` |
+| Prune run logs | `prune-eval-runs --keep N` | none | `evals/qa/results/runs/` | dry-run list (use `--execute` to delete) |
 
 Hard corpus scenarios live in `evals/scenarios/candidates.yaml` (`status: ready`).
 Deterministic overlays for the candidate bench are in
@@ -59,6 +61,12 @@ python -m repair_assistant.corpus.cli bench-candidates --write
 
 # Optional: also LLM-judge prose expect/fails_if (extra OpenAI cost)
 python -m repair_assistant.corpus.cli bench-candidates --write --judge
+
+# Judge calibration (frozen answers; no DB)
+python -m repair_assistant.corpus.cli bench-judge-calibrate --write
+
+# Prune old run JSON (dry-run by default)
+python -m repair_assistant.corpus.cli prune-eval-runs --keep 5
 ```
 
 Optional: re-run a single scenario

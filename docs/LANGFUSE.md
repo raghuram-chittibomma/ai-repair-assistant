@@ -94,5 +94,9 @@ When keys are set:
 | `ask()` | `ask` | question, model, appliance, hit count, abstain, citations, safety |
 | `DiagnosticSession.send` | `diagnose` | user message, turn, retrieval count, abstain, safety |
 
+When `bench-qa` / `bench-candidates` run with Langfuse keys set, spans also carry
+`eval_bench`, `eval_run_id` (matches the JSON filename stamp), and `scenario_id`
+(E11). Interactive `ask` / `diagnose` leave those fields unset.
+
 Benches (`bench-qa`, `bench-candidates`, …) do **not** require Langfuse. If keys
 are set during a bench run, traces will also be sent (OpenAI cost unchanged).

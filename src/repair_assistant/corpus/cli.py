@@ -967,9 +967,12 @@ def bench_qa_cmd(write: bool, scenario_ids: tuple[str, ...], judge: bool) -> Non
         raise click.ClickException(str(exc)) from exc
 
     ids = set(scenario_ids) if scenario_ids else None
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     with Database(url) as db:
         try:
-            results = run_smoke_bench(db, scenario_ids=ids, use_judge=judge)
+            results = run_smoke_bench(
+                db, scenario_ids=ids, use_judge=judge, eval_run_id=stamp
+            )
         except RuntimeError as exc:
             raise click.ClickException(str(exc)) from exc
 
@@ -981,7 +984,6 @@ def bench_qa_cmd(write: bool, scenario_ids: tuple[str, ...], judge: bool) -> Non
         out = corpus.root / "evals" / "qa" / "results"
         out.mkdir(parents=True, exist_ok=True)
         (out / "scorecard.md").write_text(card, encoding="utf-8", newline="\n")
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         log_path = out / "runs" / f"{stamp}.json"
         write_run_log(results, log_path)
         click.echo(f"Wrote {out / 'scorecard.md'}")
@@ -1018,9 +1020,13 @@ def bench_candidates_cmd(write: bool, scenario_ids: tuple[str, ...], judge: bool
         raise click.ClickException(str(exc)) from exc
 
     ids = set(scenario_ids) if scenario_ids else None
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    run_id = f"candidates-{stamp}"
     with Database(url) as db:
         try:
-            results = run_candidates_bench(db, scenario_ids=ids, use_judge=judge)
+            results = run_candidates_bench(
+                db, scenario_ids=ids, use_judge=judge, eval_run_id=run_id
+            )
         except RuntimeError as exc:
             raise click.ClickException(str(exc)) from exc
 
@@ -1032,14 +1038,81 @@ def bench_candidates_cmd(write: bool, scenario_ids: tuple[str, ...], judge: bool
         out = corpus.root / "evals" / "qa" / "results"
         out.mkdir(parents=True, exist_ok=True)
         (out / "candidates-scorecard.md").write_text(card, encoding="utf-8", newline="\n")
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        log_path = out / "runs" / f"candidates-{stamp}.json"
+        log_path = out / "runs" / f"{run_id}.json"
         write_run_log(to_qa_results(results), log_path)
         click.echo(f"Wrote {out / 'candidates-scorecard.md'}")
         click.echo(f"Wrote {log_path}")
 
     if any(not r.passed for r in results):
         raise click.ClickException("one or more candidate scenarios failed; see scorecard")
+
+
+@main.command("prune-eval-runs")
+@click.option("--keep", type=int, default=None, help="Keep newest N JSON logs per prefix.")
+@click.option(
+    "--older-than-days",
+    type=int,
+    default=None,
+    help="Delete JSON logs older than this many days (by mtime).",
+)
+@click.option(
+    "--dry-run/--execute",
+    default=True,
+    help="Dry-run lists deletions; --execute removes them (manual only).",
+)
+def prune_eval_runs_cmd(keep: int | None, older_than_days: int | None, dry_run: bool) -> None:
+    """Prune evals/qa/results/runs/*.json (E9; never scheduled)."""
+    from repair_assistant.eval.run_log_prune import apply_prune, plan_prune, runs_dir
+
+    try:
+        plan = plan_prune(keep=keep, older_than_days=older_than_days)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"Runs dir: {runs_dir()}")
+    click.echo(f"Keep {len(plan.keep)}, delete {len(plan.delete)} ({'dry-run' if dry_run else 'execute'})")
+    for path in plan.delete:
+        click.echo(f"  delete {path.name}")
+    removed = apply_prune(plan, dry_run=dry_run)
+    if dry_run and removed:
+        click.echo("Re-run with --execute to delete.")
+    elif not dry_run:
+        click.echo(f"Removed {len(removed)} file(s).")
+
+
+@main.command("bench-judge-calibrate")
+@click.option("--write/--no-write", default=False, help="Write scorecard under evals/qa/results/")
+def bench_judge_calibrate_cmd(write: bool) -> None:
+    """Score frozen judge-calibration.yaml cases (OpenAI; no DB / ask)."""
+    from repair_assistant.eval.judge_calibrate import (
+        load_calibration,
+        run_calibration,
+        scorecard_markdown,
+    )
+    from repair_assistant.qa.env import llm_model, openai_api_key
+    from repair_assistant.qa.generate import OpenAIClient
+
+    try:
+        key = openai_api_key()
+        model = llm_model()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    cases = load_calibration()
+    results = run_calibration(cases, llm=OpenAIClient(api_key=key, model=model))
+    card = scorecard_markdown(results)
+    click.echo(card)
+
+    if write:
+        corpus = _load()
+        out = corpus.root / "evals" / "qa" / "results"
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / "judge-calibration-scorecard.md"
+        path.write_text(card, encoding="utf-8", newline="\n")
+        click.echo(f"Wrote {path}")
+
+    if any(not r.agreed for r in results):
+        raise click.ClickException("judge calibration disagreement; see scorecard")
 
 
 @main.command("promote-eval")

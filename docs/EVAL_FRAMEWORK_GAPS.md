@@ -15,14 +15,14 @@ can slip between layers.
 
 | Layer | Maturity | Gate strength | Top gap | Severity |
 | --- | --- | --- | --- | --- |
-| Unit / graders (`tests/`) | strong | Strong (CI `pytest`) | Langfuse dotenv can defeat `test_tracing_disabled_by_default`; safety fixtures not executed as a suite in CI | P2 |
+| Unit / graders (`tests/`) | strong | Strong (CI `pytest`) | Safety fixtures not executed as a suite in CI | P2 |
 | Parsing (`bench-parse`, ADR-0007) | strong | Manual (PDF-local) | D3 still interim; chain smoke covers one precedence doc (E6) | P2 |
 | Retrieval IR (`bench-retrieve`, ADR-0011/0020) | strong | Manual pass/fail (14 hard) | Measures cores only — omits `connector_fetch` / `reference_fetch` / `manual_rev_fetch`; leaders tied → weak discrimination | P0 |
 | Safety (`bench-safety`, ADR-0014) | adequate | Weak in practice | Offline-capable but **not in CI** | P1 |
 | Q&A smoke (`bench-qa`, ADR-0015) | adequate | Manual | Diagnose uses `turn_grades` (E7); still one smoke diagnose case | P2 |
 | Candidates (`bench-candidates`, ADR-0017) | adequate | Soft | Every ready has ≥1 det rule (E2); prose-critical still need `--judge` (`requires_judge`) | P1 |
-| LLM judge + promote (ADR-0019) | thin | Opt-in only | No calibration set; promote drafts unused as discipline | P1 |
-| Observability (Langfuse ADR-0018) | thin | None for eval | Benches never score into Langfuse; no failure→dataset loop | P2 |
+| LLM judge + promote (ADR-0019) | adequate | Opt-in | Calibration pack exists (E10); promote drafts still unused as discipline | P2 |
+| Observability (Langfuse ADR-0018) | adequate | Manual | Bench spans carry `eval_bench` / `eval_run_id` / `scenario_id` (E11); no failure→dataset loop | P2 |
 | CI / release | thin | Unit + copyright only | ADR-0015 overclaimed live CI benches; EVALS.md can lag scorecard counts | P0 |
 | Cross-layer consistency | thin | n/a | Thin chain smoke exists; IDs/hardness still diverge across IR↔candidates | P1 |
 
@@ -34,7 +34,7 @@ can slip between layers.
 2. **Prose criteria are not full gates by default** — `grade_answer` ignores
    prose `expect`/`fails_if` unless `--judge`; ready scenarios now always have
    ≥1 det rule (E2), and prose-heavy overlays set `requires_judge`.
-3. **`must_not_cite_as_current` is dead for grading** — Present in candidates; not handled in `grade_answer`.
+3. **`must_not_cite_as_current` graded** — Implemented in `grade_answer` (E5).
 4. **Scenario ID / ownership mismatch** — e.g. IR `f5e2-front-load-not-top-load` vs candidates `f5e2-three-way`; IR soft serial vs candidates hard serial; synthetic supersession vs `needs_document` real case.
 5. **Parse → ingest → retrieve → answer can slip** — Mitigated by thin
    `bench-chain` (E6); still one story, not a full corpus re-parse.
@@ -42,8 +42,8 @@ can slip between layers.
 7. **Diagnostic trajectory under-tested** — Mitigated by E7 (`turn_grades` +
    `diagnostic-trajectory` candidates); still thin vs ask coverage.
 8. **CI vs docs drift** — Live benches manual; some ADRs/runbooks overclaim or lag.
-9. **Run-log hygiene** — Timestamped JSONs committed without retention policy.
-10. **Observability unlinked to eval** — Traces ≠ benches.
+9. **Run-log hygiene** — Mitigated by E9 (`prune-eval-runs` + runs README); still manual.
+10. **Observability unlinked to eval** — Mitigated by E11 metadata on bench spans; no dataset loop yet.
 11. **Ready-but-failing candidates** — Baseline 22/24 blurs gate meaning.
 12. **Generation negative controls uneven** — Fewer “wrong-but-fluent” fails than IR/safety.
 
@@ -61,9 +61,9 @@ can slip between layers.
 | **E6** | ~~Thin chain smoke~~ **Done** — `bench-chain` + `evals/chain/fixtures.yaml` (manual) | — | Cross-layer |
 | **E7** | ~~Grade diagnose multi-turn; add diagnose candidates~~ **Done** — `turn_grades` + 3 candidates | — | Q&A / Diagnostic |
 | **E8** | Refresh EVALS.md counts, fix ADR-0015 CI claim, charter D4 staleness | S | Docs |
-| **E9** | Run-log retention policy | S | Ops |
-| **E10** | Small judge calibration pack (10 fixed cases) | M | Judge |
-| **E11** | Attach bench run/scenario ids to Langfuse metadata | S | Observability |
+| **E9** | ~~Run-log retention~~ **Done** — `prune-eval-runs` + runs README (manual) | — | Ops |
+| **E10** | ~~Judge calibration pack~~ **Done** — 10 frozen cases + `bench-judge-calibrate` | — | Judge |
+| **E11** | ~~Langfuse bench metadata~~ **Done** — `eval_bench` / `eval_run_id` / `scenario_id` | — | Observability |
 | **E12** | Chunking micro-bake only if chain/boundary fails | M | Parsing / Retrieval |
 
 **Suggested first slice:** E8 → E5 → E4 → E1 (E3 skipped — no scheduled/CI evals).
@@ -76,7 +76,9 @@ manual). **E2 done** — every ready candidate has ≥1 deterministic rule via
 **E6 done** — `bench-chain` re-parses `tsp-w11375982`, force-ingests, grades
 production `search()` + `ask()` on `acu-led-step-10`. **E7 done** —
 `turn_grades` grades every diagnose turn; smoke `f5e2-door-locks-wont-start`
-enforces turns 1–2; three `diagnostic-trajectory` candidates. Next: E9–E12.
+enforces turns 1–2; three `diagnostic-trajectory` candidates. **E9–E11 done** —
+run-log prune, judge calibration pack, Langfuse eval metadata. Remaining: **E12**
+(only if chain/boundary fails), plus ongoing E4 readiness fog.
 
 ---
 
