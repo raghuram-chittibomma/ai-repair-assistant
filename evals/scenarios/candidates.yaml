@@ -9,6 +9,7 @@
 #   ready            - ground truth is known and the scenario can be written now
 #   needs_document   - ground truth requires a document not yet acquired
 #   needs_authoring  - the exact question and expected answer still need writing
+#   deferred         - authored, but excluded from the ready gate (hardness / flakiness)
 #
 # Deliberately NOT included: anything requiring a judgement about repair safety
 # that the corpus cannot support, and anything whose answer we merely believe.
