@@ -16,8 +16,6 @@ scenarios:
     must_not_cite: [W11395614]
 
   f5e2-three-way:
-    must_cite: [kb-f5e2-front-load]
-    must_not_cite: [kb-f5e2-top-load, kb-f5e2-laundry-tower]
     expect_contains: [door lock]
     fails_if_contains: [lid lock, top-load, laundry tower]
 

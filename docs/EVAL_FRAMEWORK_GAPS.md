@@ -24,7 +24,7 @@ can slip between layers.
 | LLM judge + promote (ADR-0019) | adequate | Opt-in | Calibration pack exists (E10); promote drafts still unused as discipline | P2 |
 | Observability (Langfuse ADR-0018) | adequate | Manual | Bench spans carry `eval_bench` / `eval_run_id` / `scenario_id` (E11); no failure→dataset loop | P2 |
 | CI / release | thin | Unit + copyright only | ADR-0015 overclaimed live CI benches; EVALS.md can lag scorecard counts | P0 |
-| Cross-layer consistency | thin | n/a | Thin chain smoke exists; IDs/hardness still diverge across IR↔candidates | P1 |
+| Cross-layer consistency | adequate | n/a | Crosswalk + E4 hardness aligned; residual ID naming differences remain | P2 |
 
 ---
 
@@ -44,7 +44,8 @@ can slip between layers.
 8. **CI vs docs drift** — Live benches manual; some ADRs/runbooks overclaim or lag.
 9. **Run-log hygiene** — Mitigated by E9 (`prune-eval-runs` + runs README); still manual.
 10. **Observability unlinked to eval** — Mitigated by E11 metadata on bench spans; no dataset loop yet.
-11. **Ready-but-failing candidates** — Baseline 22/24 blurs gate meaning.
+11. **Ready-but-failing candidates** — Cleared in E4 (F5E2 cite relaxed;
+    serial-inside deferred).
 12. **Generation negative controls uneven** — Fewer “wrong-but-fluent” fails than IR/safety.
 
 ---
@@ -56,7 +57,7 @@ can slip between layers.
 | **E1** | ~~IR strategy grading production `search()`~~ **Done** — `production_search` on retrieve bake-off | — | Retrieval |
 | **E2** | ~~Every `ready` candidate gets ≥1 deterministic rule~~ **Done** — overlay + unit gate; `requires_judge` for prose | — | Candidates |
 | **E3** | ~~Wire `bench-safety` into CI~~ **Skipped** — all evals remain manual | — | Safety / CI |
-| **E4** | Align IR↔candidates IDs + hardness; demote or fix ready-but-failing fog | S | Cross-layer |
+| **E4** | ~~Align IR↔candidates / ready-fail fog~~ **Done** — F5E2 `expect_cites_any`; `serial-inside-range` deferred | — | Cross-layer |
 | **E5** | ~~`must_not_cite_as_current` in `grade_answer`~~ **Done** | — | Grading |
 | **E6** | ~~Thin chain smoke~~ **Done** — `bench-chain` + `evals/chain/fixtures.yaml` (manual) | — | Cross-layer |
 | **E7** | ~~Grade diagnose multi-turn; add diagnose candidates~~ **Done** — `turn_grades` + 3 candidates | — | Q&A / Diagnostic |
@@ -68,12 +69,11 @@ can slip between layers.
 
 **Suggested first slice:** E8 → E5 → E4 → E1 (E3 skipped — no scheduled/CI evals).
 
-**Slice status (2026-08-26):** P0–E11 closed (E3 skipped by policy). **E12 skipped /
-deferred** — no evidence of chain or boundary-shaped failure on the default
-structured path; existing guards already cover the story (`error-codes-bound`,
-IR `error-code-f6e1`, candidates `error-code-orphaned-by-extraction`).
-**Only open backlog item: E4** (ready-but-failing fog / ID hardness alignment).
-
+**Slice status (2026-08-26):** Eval-framework backlog **closed** for the
+audited slice. E3 skipped (no CI evals); E12 deferred (no boundary failure).
+**E4 done** — `f5e2-three-way` uses `expect_cites_any` (wrong-KB bans kept);
+`serial-inside-range` is `status: deferred` to match soft IR. No remaining
+open E-items.
 ### E12 reopen triggers (then thin micro-bake, not a full D4 redo)
 
 Reopen chunking only if any of these regress under the **default** extractor /

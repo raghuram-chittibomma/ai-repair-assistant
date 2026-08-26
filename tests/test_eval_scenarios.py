@@ -14,7 +14,7 @@ import yaml
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance, document_applies
 
-VALID_STATUSES = {"ready", "needs_document", "needs_authoring"}
+VALID_STATUSES = {"ready", "needs_document", "needs_authoring", "deferred"}
 CITATION_KEYS = ("must_cite", "must_not_cite", "must_not_cite_as_current")
 
 

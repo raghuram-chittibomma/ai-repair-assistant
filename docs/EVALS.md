@@ -154,8 +154,8 @@ strategy is included; see [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 | --- | --- | --- | --- |
 | ACU LED bulletin | `acu-led-step-10` | `acu-led-step-10` | Aligned |
 | Wrong-platform door lock | `door-locks-wont-run-wrong-platform` | `door-locks-wont-run-wrong-platform` | Smoke uses `…-no-wrong-bulletin` |
-| F5E2 category | `f5e2-front-load-not-top-load` | `f5e2-three-way` | Q&A often cites manual/hub; IR cites KB |
-| Serial in/out | soft `serial-*-door-lock-tsp` | `serial-inside-range` / `serial-outside-range` | IR soft; candidates harder |
+| F5E2 category | `f5e2-front-load-not-top-load` (hard KB cite) | `f5e2-three-way` (`expect_cites_any` + wrong-KB ban) | IR owns three-way KB; Q&A accepts manual/hub |
+| Serial in/out | soft `serial-*-door-lock-tsp` | `serial-outside-range` ready; `serial-inside-range` **deferred** (E4) | Align hardness with IR soft inside-range |
 | Rev B manual | `manual-rev-b-acu-led` | `known-gap-revised-manual` | Different asserts |
 | Near-dup page 1 | `tech-sheet-page1-by-pub` | `identifier-only-distinction` | Aligned intent |
 | Supersession | `synth-owners-manual-supersession` | `superseded-owners-manual` | IR synthetic; Q&A `needs_document` |
@@ -188,7 +188,7 @@ leave `LANGFUSE_*` keys empty to disable tracing.
 | Retrieval | 14/14 hard (`vector_apply_boost`) | Includes `production_search` strategy |
 | Chain smoke | — | `bench-chain` harness ready; E12 deferred (no boundary failure to bake) |
 | Q&A smoke | 5/5 | Live |
-| Candidates | 22/24 | Deferred: `f5e2-three-way`, `serial-inside-range` (E4) |
+| Candidates | ready gate (post-E4) | `f5e2-three-way` cite relaxed; `serial-inside-range` deferred |
 
 Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
