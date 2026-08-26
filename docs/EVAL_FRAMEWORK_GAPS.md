@@ -16,7 +16,7 @@ can slip between layers.
 | Layer | Maturity | Gate strength | Top gap | Severity |
 | --- | --- | --- | --- | --- |
 | Unit / graders (`tests/`) | strong | Strong (CI `pytest`) | Safety fixtures not executed as a suite in CI | P2 |
-| Parsing (`bench-parse`, ADR-0007) | strong | Manual (PDF-local) | D3 still interim; chain smoke covers one precedence doc (E6) | P2 |
+| Parsing (`bench-parse`, ADR-0007) | strong | Manual (PDF-local) | D3 still interim; E12 deferred (boundary guards hold) | P2 |
 | Retrieval IR (`bench-retrieve`, ADR-0011/0020) | strong | Manual pass/fail (14 hard) | Measures cores only — omits `connector_fetch` / `reference_fetch` / `manual_rev_fetch`; leaders tied → weak discrimination | P0 |
 | Safety (`bench-safety`, ADR-0014) | adequate | Weak in practice | Offline-capable but **not in CI** | P1 |
 | Q&A smoke (`bench-qa`, ADR-0015) | adequate | Manual | Diagnose uses `turn_grades` (E7); still one smoke diagnose case | P2 |
@@ -53,32 +53,38 @@ can slip between layers.
 
 | ID | Action | Effort | Layer |
 | --- | --- | --- | --- |
-| **E1** | IR strategy/flag grading **production `search()`** (side doors); keep cores separate | M | Retrieval |
+| **E1** | ~~IR strategy grading production `search()`~~ **Done** — `production_search` on retrieve bake-off | — | Retrieval |
 | **E2** | ~~Every `ready` candidate gets ≥1 deterministic rule~~ **Done** — overlay + unit gate; `requires_judge` for prose | — | Candidates |
 | **E3** | ~~Wire `bench-safety` into CI~~ **Skipped** — all evals remain manual | — | Safety / CI |
 | **E4** | Align IR↔candidates IDs + hardness; demote or fix ready-but-failing fog | S | Cross-layer |
-| **E5** | Implement or drop `must_not_cite_as_current` in `grade_answer` | S | Grading |
+| **E5** | ~~`must_not_cite_as_current` in `grade_answer`~~ **Done** | — | Grading |
 | **E6** | ~~Thin chain smoke~~ **Done** — `bench-chain` + `evals/chain/fixtures.yaml` (manual) | — | Cross-layer |
 | **E7** | ~~Grade diagnose multi-turn; add diagnose candidates~~ **Done** — `turn_grades` + 3 candidates | — | Q&A / Diagnostic |
-| **E8** | Refresh EVALS.md counts, fix ADR-0015 CI claim, charter D4 staleness | S | Docs |
+| **E8** | ~~Refresh EVALS.md / ADR-0015 CI claim / charter D4~~ **Done** (P0 docs slice) | — | Docs |
 | **E9** | ~~Run-log retention~~ **Done** — `prune-eval-runs` + runs README (manual) | — | Ops |
 | **E10** | ~~Judge calibration pack~~ **Done** — 10 frozen cases + `bench-judge-calibrate` | — | Judge |
 | **E11** | ~~Langfuse bench metadata~~ **Done** — `eval_bench` / `eval_run_id` / `scenario_id` | — | Observability |
-| **E12** | Chunking micro-bake only if chain/boundary fails | M | Parsing / Retrieval |
+| **E12** | ~~Chunking micro-bake~~ **Skipped / deferred** — no chain or boundary failure under default path; reopen if triggers below fire | — | Parsing / Retrieval |
 
 **Suggested first slice:** E8 → E5 → E4 → E1 (E3 skipped — no scheduled/CI evals).
 
-**Slice status (2026-08-26):** Report filed; docs claims corrected;
-`must_not_cite_as_current` graded; IR↔candidates crosswalk; `production_search`
-on the retrieve bake-off. **E3 (CI safety) skipped by policy** (all evals
-manual). **E2 done** — every ready candidate has ≥1 deterministic rule via
-`candidates-grading.yaml` (+ unit test); prose-heavy cases set `requires_judge`.
-**E6 done** — `bench-chain` re-parses `tsp-w11375982`, force-ingests, grades
-production `search()` + `ask()` on `acu-led-step-10`. **E7 done** —
-`turn_grades` grades every diagnose turn; smoke `f5e2-door-locks-wont-start`
-enforces turns 1–2; three `diagnostic-trajectory` candidates. **E9–E11 done** —
-run-log prune, judge calibration pack, Langfuse eval metadata. Remaining: **E12**
-(only if chain/boundary fails), plus ongoing E4 readiness fog.
+**Slice status (2026-08-26):** P0–E11 closed (E3 skipped by policy). **E12 skipped /
+deferred** — no evidence of chain or boundary-shaped failure on the default
+structured path; existing guards already cover the story (`error-codes-bound`,
+IR `error-code-f6e1`, candidates `error-code-orphaned-by-extraction`).
+**Only open backlog item: E4** (ready-but-failing fog / ID hardness alignment).
+
+### E12 reopen triggers (then thin micro-bake, not a full D4 redo)
+
+Reopen chunking only if any of these regress under the **default** extractor /
+production path:
+
+1. `bench-parse` fixture `error-codes-bound` fails (F6E1 / F8E1 unbound)
+2. IR `error-code-f6e1` fails on `production_search` or `vector_apply_boost`
+3. Candidate `error-code-orphaned-by-extraction` fails det grading
+4. `bench-chain` fails in a way that points at severed code↔remedy chunks
+
+Until then, leave ADR-0007 / D3 interim as-is; do not invent a bake.
 
 ---
 
@@ -90,6 +96,7 @@ run-log prune, judge calibration pack, Langfuse eval metadata. Remaining: **E12*
 - `promote-eval` draft-only (no auto-merge)
 - Safety fixture quality; ranking unit tests
 - Docling non-default; hybrid-as-default decision (ADR-0020)
+- Chunking micro-bake without a boundary/chain failure (E12 deferred)
 
 ---
 
@@ -97,9 +104,9 @@ run-log prune, judge calibration pack, Langfuse eval metadata. Remaining: **E12*
 
 | Topic | Warranted? | Why |
 | --- | --- | --- |
-| Chunking | Micro only | If chain smoke or boundary-shaped IR fails — not a full D4 redo |
-| Retrieval strategy | No | Grade production `search()` instead of another hybrid core bake-off |
-| Judge calibration | Yes — small | 10-case agreement set before treating `--judge` as a release signal |
+| Chunking | **No (E12 deferred)** | Boundary guards pass; reopen only on listed triggers — not a full D4 redo |
+| Retrieval strategy | No | `production_search` already on the IR bake-off (E1) |
+| Judge calibration | Done (E10) | 10-case pack + `bench-judge-calibrate` |
 
 ---
 

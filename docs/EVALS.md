@@ -186,9 +186,9 @@ leave `LANGFUSE_*` keys empty to disable tracing.
 | --- | --- | --- |
 | Safety | 10/10 | Deterministic; manual (`bench-safety`) |
 | Retrieval | 14/14 hard (`vector_apply_boost`) | Includes `production_search` strategy |
-| Chain smoke | — | `bench-chain` (parse→ingest→search→ask); run after DB up |
+| Chain smoke | — | `bench-chain` harness ready; E12 deferred (no boundary failure to bake) |
 | Q&A smoke | 5/5 | Live |
-| Candidates | 22/24 | Deferred: `f5e2-three-way`, `serial-inside-range` |
+| Candidates | 22/24 | Deferred: `f5e2-three-way`, `serial-inside-range` (E4) |
 
 Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
