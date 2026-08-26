@@ -12,7 +12,7 @@ from repair_assistant.ingest.env import embedding_model
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.retrieval.rank import RankedHit, filter_and_rank
-from repair_assistant.retrieval.search import code_fetch, merge_hits, vector_fetch
+from repair_assistant.retrieval.search import code_fetch, merge_hits, search, vector_fetch
 
 
 def _appliance(raw: dict | None) -> Appliance | None:
@@ -373,6 +373,35 @@ def run_strategy(
             query_error_codes=codes,
         )
         return _hits_from_ranked(ranked)
+
+    if strategy_id == "production_search":
+        # Full ask/diagnose retrieval path (side doors included). Bake-off may
+        # include synthetics; production callers leave include_synthetic false.
+        allow_synth = fixture.get("source") == "synthetic"
+        result = search(
+            db,
+            manifest,
+            query,
+            appliance=appliance,
+            limit=k,
+            overfetch=overfetch,
+            embedder=embedder,
+            include_synthetic=allow_synth,
+        )
+        return [
+            {
+                "doc_id": h.doc_id,
+                "chunk_id": h.chunk_id,
+                "text": h.text,
+                "page": h.page,
+                "kind": h.kind,
+                "error_codes": list(h.error_codes or []),
+                "publication_number": h.publication_number,
+                "revision": h.revision,
+                "score": float(h.score),
+            }
+            for h in result.hits
+        ]
 
     raise KeyError(f"unknown strategy: {strategy_id}")
 

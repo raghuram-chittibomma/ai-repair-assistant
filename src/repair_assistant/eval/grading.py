@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+_SUPERSESSION_ACK = re.compile(
+    r"\b("
+    r"superseded|no longer current|previous (?:revision|manual|edition|version)|"
+    r"replaced by|older (?:manual|revision|edition)|not (?:the )?current"
+    r")\b",
+    re.I,
+)
 
 
 def matches_citation(keys: list[str], needle: str) -> bool:
@@ -50,6 +59,12 @@ def grade_answer(
     for forbidden in scenario.get("must_not_cite") or []:
         if matches_citation(citations, forbidden):
             failures.append(f"must_not_cite hit {forbidden!r}")
+
+    # Applies but must not be presented as the current authority unless the
+    # answer acknowledges supersession / non-currency.
+    for forbidden in scenario.get("must_not_cite_as_current") or []:
+        if matches_citation(citations, forbidden) and not _SUPERSESSION_ACK.search(answer):
+            failures.append(f"must_not_cite_as_current hit {forbidden!r}")
 
     if not abstained:
         for phrase in scenario.get("fails_if_contains") or []:

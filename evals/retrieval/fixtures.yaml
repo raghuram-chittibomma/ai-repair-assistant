@@ -28,6 +28,10 @@ strategies:
     description: Vector ∪ OR-semantics full-text, magnitude preserved, then apply + boosts
   - id: union_literal_apply
     description: Vector ∪ rare-literal exact match, magnitude preserved, then apply + boosts
+  - id: production_search
+    description: >-
+      Production search() path (code + connector + reference + manual_rev side
+      doors + vector), then apply + boosts. Grades what ask/diagnose actually run.
 
 fixtures:
   # --- Core (kept hard) ----------------------------------------------------

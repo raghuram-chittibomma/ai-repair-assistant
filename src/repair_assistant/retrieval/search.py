@@ -333,8 +333,13 @@ def search(
     limit: int = 8,
     overfetch: int = 40,
     embedder: Embedder | None = None,
+    include_synthetic: bool = False,
 ) -> SearchResult:
-    """Embed query, fetch neighbours, apply applicability + light precedence boosts."""
+    """Embed query, fetch neighbours, apply applicability + light precedence boosts.
+
+    ``include_synthetic`` is for bake-off only. Production ask/diagnose leave it
+    false so ``synth-*`` / ``SYNTH-*`` eval docs never surface.
+    """
     embedder = embedder or build_embedder(skip=False, model=embedding_model())
     vectors = embedder.embed([query])
     if not vectors or not vectors[0]:
@@ -363,7 +368,12 @@ def search(
             code_hits,
             connector_hits,
             reference_fetch(db, manifest, code_hits, query=query, limit=3),
-            vector_fetch(db, vectors[0], limit=max(overfetch, limit)),
+            vector_fetch(
+                db,
+                vectors[0],
+                limit=max(overfetch, limit),
+                include_synthetic=include_synthetic,
+            ),
         )
         if bibliographic and rev_letter:
             by_id = {d.doc_id: d for d in manifest.documents}
@@ -376,13 +386,13 @@ def search(
             ]
             if restricted:
                 raw = restricted
-    # Eval synthetics must never surface in production ask/diagnose.
-    raw = [
-        hit
-        for hit in raw
-        if not str(hit.get("doc_id") or "").startswith("synth-")
-        and not str(hit.get("publication_number") or "").startswith("SYNTH-")
-    ]
+    if not include_synthetic:
+        raw = [
+            hit
+            for hit in raw
+            if not str(hit.get("doc_id") or "").startswith("synth-")
+            and not str(hit.get("publication_number") or "").startswith("SYNTH-")
+        ]
     all_ranked = filter_and_rank(
         raw,
         manifest,

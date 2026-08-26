@@ -6,31 +6,32 @@ Pass/fail is the release gate. IR metrics (Hit@K, Recall@K, Precision@K)
 are diagnostic - derived from fixture `must_cite` / `must_cite_any` /
 `must_not_cite` (optional explicit `relevant`).
 
-| Fixture | Hard | hybrid_rrf_apply | lexical_apply | union_lexical_apply | union_literal_apply | vector_apply | vector_apply_boost | vector_raw |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `acu-led-step-10` | yes | PASS | FAIL | PASS | PASS | PASS | PASS | PASS |
-| `door-locks-wont-run-wrong-platform` | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| `f5e2-front-load-not-top-load` | yes | PASS | PASS | PASS | PASS | PASS | PASS | FAIL |
-| `error-code-f6e1` | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| `connector-j36-motor-harness` | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| `part-number-door-lock` | yes | PASS | FAIL | PASS | PASS | PASS | PASS | PASS |
-| `transport-bolt-vocabulary` | yes | PASS | FAIL | PASS | PASS | FAIL | PASS | FAIL |
-| `serial-inside-door-lock-tsp` | no | PASS | FAIL | PASS | PASS | PASS | PASS | PASS |
-| `serial-outside-door-lock-tsp` | no | PASS | PASS | PASS | PASS | PASS | PASS | FAIL |
-| `part-number-pressure-switch` | no | PASS | FAIL | PASS | PASS | PASS | PASS | PASS |
-| `test-10a-measured-values` | no | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL |
-| `tech-sheet-page1-by-pub` | yes | PASS | FAIL | PASS | PASS | FAIL | PASS | FAIL |
-| `manual-rev-b-acu-led` | yes | PASS | FAIL | PASS | PASS | FAIL | PASS | FAIL |
-| `f5e2-tech-sheet-not-kb` | yes | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL |
-| `publication-what-is-w11375982` | yes | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL |
-| `adjacent-model-parts-exclude` | yes | PASS | PASS | PASS | PASS | PASS | PASS | FAIL |
-| `maytag-mhw-platform-manual` | yes | PASS | FAIL | PASS | PASS | PASS | PASS | PASS |
-| `synth-owners-manual-supersession` | yes | PASS | FAIL | PASS | PASS | FAIL | PASS | FAIL |
+| Fixture | Hard | hybrid_rrf_apply | lexical_apply | production_search | union_lexical_apply | union_literal_apply | vector_apply | vector_apply_boost | vector_raw |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `acu-led-step-10` | yes | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |
+| `door-locks-wont-run-wrong-platform` | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| `f5e2-front-load-not-top-load` | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | FAIL |
+| `error-code-f6e1` | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| `connector-j36-motor-harness` | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| `part-number-door-lock` | yes | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |
+| `transport-bolt-vocabulary` | yes | PASS | FAIL | PASS | PASS | PASS | FAIL | PASS | FAIL |
+| `serial-inside-door-lock-tsp` | no | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |
+| `serial-outside-door-lock-tsp` | no | PASS | PASS | PASS | PASS | PASS | PASS | PASS | FAIL |
+| `part-number-pressure-switch` | no | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |
+| `test-10a-measured-values` | no | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL |
+| `tech-sheet-page1-by-pub` | yes | PASS | FAIL | PASS | PASS | PASS | FAIL | PASS | FAIL |
+| `manual-rev-b-acu-led` | yes | PASS | FAIL | PASS | PASS | PASS | FAIL | PASS | FAIL |
+| `f5e2-tech-sheet-not-kb` | yes | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL |
+| `publication-what-is-w11375982` | yes | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL |
+| `adjacent-model-parts-exclude` | yes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | FAIL |
+| `maytag-mhw-platform-manual` | yes | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |
+| `synth-owners-manual-supersession` | yes | PASS | FAIL | PASS | PASS | PASS | FAIL | PASS | FAIL |
 
 ## Hard-fixture summary
 
 - **hybrid_rrf_apply**: 14/14 hard fixtures passed
 - **lexical_apply**: 7/14 hard fixtures passed
+- **production_search**: 14/14 hard fixtures passed
 - **union_lexical_apply**: 14/14 hard fixtures passed
 - **union_literal_apply**: 14/14 hard fixtures passed
 - **vector_apply**: 8/14 hard fixtures passed
@@ -77,6 +78,24 @@ are diagnostic - derived from fixture `must_cite` / `must_cite_any` /
 | `lexical_apply` | `adjacent-model-parts-exclude` | n/a | n/a | n/a | 0 |
 | `lexical_apply` | `maytag-mhw-platform-manual` | no | 0.00 | n/a | 0 |
 | `lexical_apply` | `synth-owners-manual-supersession` | no | 0.00 | n/a | 0 |
+| `production_search` | `acu-led-step-10` | yes | 1.00 | 0.25 | 0 |
+| `production_search` | `door-locks-wont-run-wrong-platform` | n/a | n/a | n/a | 0 |
+| `production_search` | `f5e2-front-load-not-top-load` | yes | 1.00 | 0.20 | 0 |
+| `production_search` | `error-code-f6e1` | yes | 1.00 | 0.60 | 0 |
+| `production_search` | `connector-j36-motor-harness` | yes | 1.00 | 0.50 | 0 |
+| `production_search` | `part-number-door-lock` | yes | 1.00 | 0.20 | 0 |
+| `production_search` | `transport-bolt-vocabulary` | yes | 1.00 | 0.17 | 0 |
+| `production_search` | `serial-inside-door-lock-tsp` | yes | 1.00 | 1.00 | 0 |
+| `production_search` | `serial-outside-door-lock-tsp` | n/a | n/a | n/a | 0 |
+| `production_search` | `part-number-pressure-switch` | yes | 1.00 | 0.20 | 0 |
+| `production_search` | `test-10a-measured-values` | yes | 1.00 | 0.50 | 0 |
+| `production_search` | `tech-sheet-page1-by-pub` | yes | 1.00 | 1.00 | 0 |
+| `production_search` | `manual-rev-b-acu-led` | yes | 1.00 | 1.00 | 0 |
+| `production_search` | `f5e2-tech-sheet-not-kb` | yes | 1.00 | 0.20 | 0 |
+| `production_search` | `publication-what-is-w11375982` | yes | 1.00 | 1.00 | 0 |
+| `production_search` | `adjacent-model-parts-exclude` | n/a | n/a | n/a | 0 |
+| `production_search` | `maytag-mhw-platform-manual` | yes | 1.00 | 0.67 | 0 |
+| `production_search` | `synth-owners-manual-supersession` | yes | 1.00 | 0.20 | 0 |
 | `union_lexical_apply` | `acu-led-step-10` | yes | 1.00 | 0.25 | 0 |
 | `union_lexical_apply` | `door-locks-wont-run-wrong-platform` | n/a | n/a | n/a | 0 |
 | `union_lexical_apply` | `f5e2-front-load-not-top-load` | yes | 1.00 | 0.20 | 0 |
@@ -172,6 +191,7 @@ are diagnostic - derived from fixture `must_cite` / `must_cite_any` /
 
 - **hybrid_rrf_apply**: Hit@K 1.00, mean Recall@K 1.00, mean Precision@K 0.46 (n=15 recall / 15 precision)
 - **lexical_apply**: Hit@K 0.40, mean Recall@K 0.40, mean Precision@K 0.60 (n=15 recall / 6 precision)
+- **production_search**: Hit@K 1.00, mean Recall@K 1.00, mean Precision@K 0.51 (n=15 recall / 15 precision)
 - **union_lexical_apply**: Hit@K 1.00, mean Recall@K 1.00, mean Precision@K 0.40 (n=15 recall / 15 precision)
 - **union_literal_apply**: Hit@K 1.00, mean Recall@K 1.00, mean Precision@K 0.45 (n=15 recall / 15 precision)
 - **vector_apply**: Hit@K 0.60, mean Recall@K 0.60, mean Precision@K 0.29 (n=15 recall / 15 precision)
@@ -182,21 +202,21 @@ are diagnostic - derived from fixture `must_cite` / `must_cite_any` /
 
 - `vector_raw` / `f5e2-front-load-not-top-load`: must_not_cite hit 'kb-f5e2-top-load' in ['kb-f5e2-front-load', 'kb-f5e2-laundry-tower', 'kb-f5e2-top-load', 'kb-error-codes-front-load', 'service-manual-w11169652', 'W11169652', 'service-manual-w11169652-revb', 'tech-sheet-w11156989', 'W11156989']
 - `vector_raw` / `transport-bolt-vocabulary`: must_cite missing 'W11156977'; got ['use-and-care-w11156985', 'W11156985']
-- `vector_raw` / `serial-outside-door-lock-tsp`: must_not_cite hit 'W11395614' in ['service-manual-w11169652-revb', 'W11169652', 'service-manual-w11169652', 'W11320651', 'tech-sheet-w11320651', 'tech-sheet-w11156989', 'W11156989', 'tech-sheet-w11156989-revd', 'tsp-w11395614', 'W11395614']
-- `vector_raw` / `test-10a-measured-values`: must_cite_any missing one of ['W11320651', 'W11156989']; got ['service-manual-w11169652-revb', 'W11169652', 'service-manual-w11169652', 'W11466162', 'dimension-guide-w11466162']
+- `vector_raw` / `serial-outside-door-lock-tsp`: must_not_cite hit 'W11395614' in ['service-manual-w11169652-revb', 'W11169652', 'service-manual-w11169652', 'W11320651', 'tech-sheet-w11320651', 'tech-sheet-w11156989', 'W11156989', 'tech-sheet-w11156989-revd', 'W11395614', 'tsp-w11395614']
+- `vector_raw` / `test-10a-measured-values`: must_cite_any missing one of ['W11320651', 'W11156989']; got ['service-manual-w11169652-revb', 'W11169652', 'service-manual-w11169652', 'dimension-guide-w11466162', 'W11466162']
 - `vector_raw` / `tech-sheet-page1-by-pub`: must_cite missing 'W11320651'; got ['service-manual-w11169652', 'W11169652', 'service-manual-w11169652-revb']
 - `vector_raw` / `manual-rev-b-acu-led`: must_cite missing 'service-manual-w11169652-revb'; got ['W11375982', 'tsp-w11375982', 'tech-sheet-w11156989', 'W11156989', 'tech-sheet-w11156989-revd', 'W11320651', 'tech-sheet-w11320651']
 - `vector_raw` / `f5e2-tech-sheet-not-kb`: must_not_cite hit 'kb-f5e2-front-load' in ['kb-f5e2-front-load', 'kb-f5e2-laundry-tower', 'kb-f5e2-top-load', 'kb-error-codes-front-load', 'service-manual-w11169652', 'W11169652', 'service-manual-w11169652-revb', 'tech-sheet-w11156989', 'W11156989']
-- `vector_raw` / `publication-what-is-w11375982`: must_cite missing 'W11375982'; got ['tsp-w11395614', 'W11395614', 'W11766193', 'tsp-w11766193']
-- `vector_raw` / `adjacent-model-parts-exclude`: must_not_cite hit 'W11320547' in ['W11375982', 'tsp-w11375982', 'parts-list-w11320547', 'W11320547']
-- `vector_raw` / `synth-owners-manual-supersession`: must_not_cite hit 'SYNTH-UC-100' in ['synth-owners-manual-v1', 'SYNTH-UC-100', 'SYNTH-UC-200', 'synth-owners-manual-v2', 'tech-sheet-w11156989', 'W11156989', 'W11320651', 'tech-sheet-w11320651', 'tech-sheet-w11156989-revd', 'use-and-care-w11156985', 'W11156985']
+- `vector_raw` / `publication-what-is-w11375982`: must_cite missing 'W11375982'; got ['W11395614', 'tsp-w11395614', 'tsp-w11766193', 'W11766193']
+- `vector_raw` / `adjacent-model-parts-exclude`: must_not_cite hit 'W11320547' in ['W11375982', 'tsp-w11375982', 'W11320547', 'parts-list-w11320547']
+- `vector_raw` / `synth-owners-manual-supersession`: must_not_cite hit 'SYNTH-UC-100' in ['SYNTH-UC-100', 'synth-owners-manual-v1', 'synth-owners-manual-v2', 'SYNTH-UC-200', 'tech-sheet-w11156989', 'W11156989', 'W11320651', 'tech-sheet-w11320651', 'tech-sheet-w11156989-revd', 'use-and-care-w11156985', 'W11156985']
 - `vector_apply` / `transport-bolt-vocabulary`: must_cite missing 'W11156977'; got ['use-and-care-w11156985', 'W11156985']
-- `vector_apply` / `test-10a-measured-values`: must_cite_any missing one of ['W11320651', 'W11156989']; got ['service-manual-w11169652', 'W11169652', 'service-manual-w11169652-revb', 'W11466162', 'dimension-guide-w11466162']
+- `vector_apply` / `test-10a-measured-values`: must_cite_any missing one of ['W11320651', 'W11156989']; got ['service-manual-w11169652', 'W11169652', 'service-manual-w11169652-revb', 'dimension-guide-w11466162', 'W11466162']
 - `vector_apply` / `tech-sheet-page1-by-pub`: must_cite missing 'W11320651'; got ['service-manual-w11169652', 'W11169652', 'service-manual-w11169652-revb']
 - `vector_apply` / `manual-rev-b-acu-led`: must_cite missing 'service-manual-w11169652-revb'; got ['W11375982', 'tsp-w11375982', 'tech-sheet-w11156989', 'W11156989', 'tech-sheet-w11156989-revd', 'W11320651', 'tech-sheet-w11320651']
 - `vector_apply` / `f5e2-tech-sheet-not-kb`: must_not_cite hit 'kb-f5e2-front-load' in ['kb-f5e2-front-load', 'kb-error-codes-front-load', 'service-manual-w11169652', 'W11169652', 'service-manual-w11169652-revb', 'tech-sheet-w11156989', 'W11156989', 'tech-sheet-w11156989-revd']
-- `vector_apply` / `publication-what-is-w11375982`: must_cite missing 'W11375982'; got ['tsp-w11395614', 'W11395614', 'W11766193', 'tsp-w11766193']
-- `vector_apply` / `synth-owners-manual-supersession`: must_not_cite hit 'SYNTH-UC-100' in ['synth-owners-manual-v1', 'SYNTH-UC-100', 'SYNTH-UC-200', 'synth-owners-manual-v2', 'W11320651', 'tech-sheet-w11320651', 'W11156989', 'tech-sheet-w11156989-revd', 'tech-sheet-w11156989', 'use-and-care-w11156985', 'W11156985']
+- `vector_apply` / `publication-what-is-w11375982`: must_cite missing 'W11375982'; got ['W11395614', 'tsp-w11395614', 'tsp-w11766193', 'W11766193']
+- `vector_apply` / `synth-owners-manual-supersession`: must_not_cite hit 'SYNTH-UC-100' in ['SYNTH-UC-100', 'synth-owners-manual-v1', 'synth-owners-manual-v2', 'SYNTH-UC-200', 'W11320651', 'tech-sheet-w11320651', 'tech-sheet-w11156989-revd', 'W11156989', 'tech-sheet-w11156989', 'use-and-care-w11156985', 'W11156985']
 - `lexical_apply` / `acu-led-step-10`: must_cite missing 'W11375982'; got []
 - `lexical_apply` / `part-number-door-lock`: must_cite missing 'W11320547'; got []
 - `lexical_apply` / `transport-bolt-vocabulary`: must_cite missing 'W11156977'; got []

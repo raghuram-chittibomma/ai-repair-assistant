@@ -48,6 +48,26 @@ def test_fails_if_skipped_when_abstained() -> None:
     assert passed, detail
 
 
+def test_must_not_cite_as_current_blocks_uncqualified_cite() -> None:
+    scenario = {"must_not_cite_as_current": ["W11156989"]}
+    bad, detail = grade_answer(
+        scenario,
+        answer="See the safety notice in W11156989.",
+        citations=["W11156989"],
+        abstained=False,
+    )
+    assert not bad
+    assert "must_not_cite_as_current" in detail
+
+    ok, _ = grade_answer(
+        scenario,
+        answer="W11156989 is superseded; use W11320651 for this notice.",
+        citations=["W11156989", "W11320651"],
+        abstained=False,
+    )
+    assert ok
+
+
 def test_grade_scenario_adapter() -> None:
     result = QAScenarioResult(
         scenario_id="x",

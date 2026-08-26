@@ -91,6 +91,11 @@ families:
         appliance: {model: WFW3090GW2, serial: CF83000000, model_introduced: 2018}
         must_cite: [W11395614]
         expect: Yes, with the serial range quoted as the reason.
+        note: >-
+          Related IR fixture: soft `serial-inside-door-lock-tsp`. Q&A baseline
+          often fails (empty cites) — tracked as deferred in EVALS.md (22/24);
+          do not treat a candidates FAIL here as a silent regression without
+          checking the deferred list.
 
       - id: serial-outside-range
         status: ready
@@ -100,6 +105,8 @@ families:
         expect: >-
           No - correct model, but built in week 49 of 2018, past the end of the
           documented range.
+        note: >-
+          Related IR fixture: soft serial-outside-door-lock-tsp.
 
       - id: serial-unknown-must-ask
         status: ready
@@ -130,6 +137,10 @@ families:
         fails_if: >-
           The answer mentions a lid, or blends remedies from more than one of
           the three articles.
+        note: >-
+          Related IR fixture: `f5e2-front-load-not-top-load` (stricter KB cite).
+          Q&A often cites the service manual / error-code hub instead — deferred
+          in EVALS.md baseline 22/24 until grading/overlays tighten.
 
       - id: f5e2-technician-depth
         status: ready

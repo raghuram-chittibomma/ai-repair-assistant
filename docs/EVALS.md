@@ -1,8 +1,11 @@
 # Evaluation runbook (manual)
 
-Eval harnesses exist at every pipeline layer. **Live benches are run by hand** —
-not in CI and not on a schedule. Unit tests cover graders and ranking without
-OpenAI or Postgres.
+Eval harnesses exist at every pipeline layer. **All eval benches are run by
+hand** — not in CI and not on a schedule. Unit tests cover graders and ranking
+without OpenAI or Postgres.
+
+Framework gaps and prioritized backlog:
+[EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
 Use `python -m repair_assistant.corpus.cli …` on Windows if `repair-corpus` is
 not on PATH.
@@ -104,31 +107,43 @@ noise or missed docs — not as a substitute for hard corpus cases.
 
 ### Retrieval fixture families
 
-12 fixtures, 9 hard. Ground truth for the rare-literal family was verified by
-probing the ingested `chunks` table for each literal, not inferred from the
-manifest — a fixture that asserts a document holds a token it does not hold
+18 fixtures, **14 hard** (see current `evals/retrieval/results/scorecard.md` and
+[ADR-0020](adr/0020-hybrid-retrieval-retest.md)). Ground truth for rare-literal
+and product-class additions was verified against ingested chunks / manifest
+applicability — a fixture that asserts a document holds a token it does not hold
 measures nothing.
 
 | Family | Tests |
 | --- | --- |
 | `applicability-serial-range` | Serial-range decisions, in and out of scope |
 | `applicability-product-category` | Front-load vs top-load vs laundry tower |
+| `applicability-engineering-digit` | Exact-model parts list must not match adjacent base |
+| `applicability-multi-brand` | Maytag MHW* covered by shared platform manual |
 | `precedence-bulletin-over-manual` | Correcting bulletin outranks the manual |
-| `retrieval-exact-identifier` | Rare literals: error codes, connector IDs, part numbers, procedure labels |
-| `retrieval-term-mismatch` | Query term absent from the target document ("shipping" vs "transport" bolts) |
+| `precedence-revision` / supersession | Rev B preference; synthetic new-pub supersession |
+| `near-duplicate-tech-sheets` | Pub-ID identity when page text is twin |
+| `authority-depth` | Technician question prefers tech sheet over consumer KB |
+| `retrieval-bibliographic` | “What is W…” publication lookup |
+| `retrieval-exact-identifier` | Error codes, connectors, part numbers |
+| `retrieval-term-mismatch` | Query term absent from target (“shipping” vs “transport”) |
 
-The last two families are a deliberate pair. Rare literals reward an exact-match
-arm; term mismatch punishes one. A strategy that wins the first family by losing
-the second has not improved, and the scorecard should make that visible rather
-than average it away.
+Rare literals vs term mismatch remain a deliberate pair. Leaders currently
+saturate **14/14** hard on pass/fail — compare mean Precision@K. Bake-off cores
+(`run_strategy`) omit production side doors unless the `production_search`
+strategy is included; see [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
-Four strategies currently saturate the gate at 9/9 (`vector_apply_boost`,
-`hybrid_rrf_apply`, `union_literal_apply`, `union_lexical_apply`), so pass/fail
-no longer separates the leaders — compare mean Precision@K, and see
-[ADR-0020](adr/0020-hybrid-retrieval-retest.md) for why a full-text arm is not
-adopted. Note that `bench-retrieve` measures retrieval cores only:
-`run_strategy` omits the `connector_fetch` / `reference_fetch` /
-`manual_rev_fetch` recalls that `search()` uses in production.
+### IR ↔ candidates crosswalk (same stories, different IDs)
+
+| Product story | IR fixture | Candidates scenario | Notes |
+| --- | --- | --- | --- |
+| ACU LED bulletin | `acu-led-step-10` | `acu-led-step-10` | Aligned |
+| Wrong-platform door lock | `door-locks-wont-run-wrong-platform` | `door-locks-wont-run-wrong-platform` | Smoke uses `…-no-wrong-bulletin` |
+| F5E2 category | `f5e2-front-load-not-top-load` | `f5e2-three-way` | Q&A often cites manual/hub; IR cites KB |
+| Serial in/out | soft `serial-*-door-lock-tsp` | `serial-inside-range` / `serial-outside-range` | IR soft; candidates harder |
+| Rev B manual | `manual-rev-b-acu-led` | `known-gap-revised-manual` | Different asserts |
+| Near-dup page 1 | `tech-sheet-page1-by-pub` | `identifier-only-distinction` | Aligned intent |
+| Supersession | `synth-owners-manual-supersession` | `superseded-owners-manual` | IR synthetic; Q&A `needs_document` |
+| Tech depth F5E2 | `f5e2-tech-sheet-not-kb` | `f5e2-technician-depth` | Aligned intent |
 
 ### Synthetic eval documents
 
@@ -153,15 +168,19 @@ leave `LANGFUSE_*` keys empty to disable tracing.
 
 | Bench | Result | Notes |
 | --- | --- | --- |
-| Safety | 10/10 | Deterministic |
+| Safety | 10/10 | Deterministic; manual (`bench-safety`) |
+| Retrieval | 14/14 hard (`vector_apply_boost`) | Includes `production_search` strategy |
 | Q&A smoke | 5/5 | Live |
 | Candidates | 22/24 | Deferred: `f5e2-three-way`, `serial-inside-range` |
+
+Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
 ---
 
 ## Out of scope (for now)
 
-- CI / scheduled live benches (OpenAI cost and LAN DB dependency)
+- CI / scheduled eval benches of any kind (including offline `bench-safety`) —
+  operators run the EVALS.md sequence by hand
 - Dedicated multi-turn diagnose harness beyond the one smoke diagnose case
 - Auto-merging promoted drafts into live overlay keys (always human review)
 
