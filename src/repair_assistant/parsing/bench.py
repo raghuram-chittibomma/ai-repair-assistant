@@ -54,6 +54,7 @@ def run_bakeoff(
     corpus = manifest_mod.load()
     docs_dir = corpus.root / "corpus" / "documents"
     names = extractors or ["pypdf", "pdfplumber", "pymupdf"]
+    # Docling is opt-in (heavy models); include only when requested explicitly.
     results: list[FixtureResult] = []
 
     for name in names:

@@ -144,6 +144,117 @@ class PymupdfExtractor:
         )
 
 
+class DoclingExtractor:
+    """Layout/table extraction via Docling (experimental; optional dependency).
+
+    Heavier than pdfplumber: downloads local ML models on first use. Set
+    ``HF_HUB_DISABLE_SYMLINKS=1`` on Windows if Hugging Face cache symlink
+    creation fails without Developer Mode.
+    """
+
+    name = "docling"
+    _cache: dict[tuple[str, int, int], ExtractedDocument] = {}
+
+    def extract(self, path: Path | str) -> ExtractedDocument:
+        import os
+
+        # Windows without Developer Mode cannot create HF cache symlinks.
+        os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
+
+        from docling.document_converter import DocumentConverter
+
+        path = Path(path)
+        stat = path.stat()
+        cache_key = (str(path.resolve()), int(stat.st_mtime_ns), int(stat.st_size))
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        result = DocumentConverter().convert(str(path))
+        doc = result.document
+
+        pages_text: dict[int, list[str]] = {}
+        pages_tables: dict[int, list[Table]] = {}
+
+        for item, _level in doc.iterate_items():
+            page_no = None
+            if getattr(item, "prov", None):
+                try:
+                    page_no = int(item.prov[0].page_no)
+                except Exception:
+                    page_no = None
+            if page_no is None:
+                continue
+
+            if "Table" in type(item).__name__:
+                converted = _table_from_docling_item(item, doc, page_no)
+                if converted:
+                    pages_tables.setdefault(page_no, []).append(converted)
+                continue
+
+            text = getattr(item, "text", None) or ""
+            if text.strip():
+                pages_text.setdefault(page_no, []).append(text)
+
+        page_numbers = sorted(set(pages_text) | set(pages_tables))
+        if not page_numbers:
+            md = doc.export_to_markdown() if hasattr(doc, "export_to_markdown") else ""
+            page_numbers = [1]
+            pages_text[1] = [md] if md else []
+
+        pages: list[ExtractedPage] = []
+        for index in page_numbers:
+            parts = pages_text.get(index, [])
+            text = "\n".join(parts)
+            pages.append(
+                ExtractedPage(
+                    number=index,
+                    text=text,
+                    blocks=[Block(text=map_pua(text), page=index, kind="text")] if text else [],
+                    tables=pages_tables.get(index, []),
+                    language=detect_language(text),
+                )
+            )
+        extracted = ExtractedDocument(
+            path=str(path),
+            extractor=self.name,
+            pages=pages,
+            producer=_producer(path),
+        )
+        self._cache[cache_key] = extracted
+        return extracted
+
+
+def _table_from_docling_item(item: object, doc: object, page: int) -> Table | None:
+    """Convert a Docling TableItem into our Table model via dataframe when possible."""
+    try:
+        export = getattr(item, "export_to_dataframe", None)
+        if export is None:
+            return None
+        frame = export(doc=doc)
+    except Exception:
+        return None
+    if frame is None or getattr(frame, "empty", True):
+        return None
+    # Docling may use integer column names when headers are weak.
+    headers = [map_pua(str(c)).strip() for c in list(frame.columns)]
+    rows: list[TableRow] = []
+    for values in frame.astype(str).values.tolist():
+        cells = [map_pua(str(v)).strip() for v in values]
+        cells = ["" if c.lower() == "nan" else c for c in cells]
+        if any(cells):
+            rows.append(TableRow(cells=cells, page=page))
+    if not rows:
+        return None
+    # If headers look like 0,1,2… treat first data row as header when it helps.
+    if headers and all(h.isdigit() for h in headers) and rows:
+        headers = rows[0].cells
+        rows = rows[1:]
+        if not rows:
+            return None
+    return Table(headers=headers, rows=rows, page=page)
+
+
 def _convert_table(raw: list[list[str | None]], page: int) -> Table | None:
     if not raw or len(raw) < 2:
         return None
@@ -177,6 +288,12 @@ def available_extractors() -> list[Extractor]:
         import pymupdf  # noqa: F401
 
         extractors.append(PymupdfExtractor())
+    except ImportError:
+        pass
+    try:
+        import docling  # noqa: F401
+
+        extractors.append(DoclingExtractor())
     except ImportError:
         pass
     return extractors

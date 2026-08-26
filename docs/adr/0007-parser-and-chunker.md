@@ -53,3 +53,8 @@ folded into parse phase), [D3](../CHARTER.md#deviations-from-this-charter)
   not invent a second extraction path.
 - pypdf remains for identity/metadata only in the corpus package; content
   extraction goes through the parsing package.
+- **Follow-on (2026-08-26):** optional experimental extractor `docling`
+  (`pip install -e ".[docling]"`, `parse`/`bench-parse --extractor docling`)
+  matched pdfplumber/pymupdf on all parse fixtures but is **not** the default
+  (heavy local ML models, much slower). See
+  [DOCLING_GRAPHRAG_EVAL.md](../corpus/DOCLING_GRAPHRAG_EVAL.md).

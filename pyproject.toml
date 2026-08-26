@@ -43,6 +43,11 @@ dev = [
     "pytest>=8.3.0",
     "ruff>=0.7.0",
 ]
+# Experimental PDF extractor for parse bake-offs (ADR-0007 follow-on).
+# Not required for default pdfplumber parsing.
+docling = [
+    "docling>=2.0,<3",
+]
 
 [project.scripts]
 repair-corpus = "repair_assistant.corpus.cli:main"

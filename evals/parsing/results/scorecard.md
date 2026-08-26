@@ -20,3 +20,9 @@
 | pymupdf | structured | reflow-not-delta | PASS | phrase_present_both:Voltage checks must be made; content_hash_equal_for_phrase_chunk:distinct_hashes=1 |
 | pymupdf | structured | tsp-trilingual | PASS | languages_present:found=['en', 'es', 'fr']; phrase_present:0.5s on |
 | pymupdf | mhtml | mhtml-decode | PASS | mhtml_body:len=12055 matched=True |
+| docling | structured | error-codes-bound | PASS | codes_present:ratio=1.00 missing=[]; codes_bound:unbound=[] |
+| docling | structured | pua-list-markers | PASS | pua_mapped:raw_markers=152 unmapped_ratio=0.0000 |
+| docling | structured | near-dup-stable | PASS | identical_page_chunk_hashes:mismatched_pages=[] |
+| docling | structured | reflow-not-delta | PASS | phrase_present_both:Voltage checks must be made; content_hash_equal_for_phrase_chunk:distinct_hashes=1 |
+| docling | structured | tsp-trilingual | PASS | languages_present:found=['en', 'es', 'fr']; phrase_present:0.5s on |
+| docling | mhtml | mhtml-decode | PASS | mhtml_body:len=12055 matched=True |

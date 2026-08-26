@@ -434,7 +434,8 @@ def pin(write: bool) -> None:
     "--extractor",
     "extractors",
     multiple=True,
-    help="Extractor to score (repeatable). Default: pypdf, pdfplumber, pymupdf.",
+    help="Extractor to score (repeatable). Default: pypdf, pdfplumber, pymupdf. "
+    "Pass docling explicitly for the experimental Docling bake-off.",
 )
 @click.option(
     "--write/--no-write",
