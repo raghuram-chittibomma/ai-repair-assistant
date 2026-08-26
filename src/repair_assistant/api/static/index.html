@@ -30,9 +30,15 @@
       padding: 1rem 1.5rem;
       border-bottom: 1px solid var(--border);
       background: var(--panel);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      align-items: baseline;
+      justify-content: space-between;
     }
     header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
     header p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
+    header .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     main {
       flex: 1;
       max-width: 52rem;
@@ -75,6 +81,7 @@
     }
     button:disabled { opacity: 0.5; cursor: wait; }
     button.secondary { background: transparent; border-color: var(--border); color: var(--text); }
+    button.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
     #sessionBar {
       display: flex;
       flex-wrap: wrap;
@@ -113,6 +120,7 @@
     .msg.user { border-color: #35507a; }
     .msg.assistant { border-color: #2a4a3a; }
     .msg.system { color: var(--muted); font-size: 0.85rem; border-style: dashed; }
+    .msg.hit { border-color: #3a4560; font-size: 0.9rem; }
     .msg.abstain { border-color: var(--warn); }
     .msg.safety { border-color: var(--danger); }
     .msg.pending { border-style: dashed; color: var(--muted); }
@@ -136,6 +144,7 @@
     .badge.abstain { color: var(--warn); border-color: var(--warn); }
     .badge.safety { color: var(--danger); border-color: var(--danger); }
     .badge.escalate { color: var(--warn); border-color: var(--warn); }
+    .badge.hit { color: var(--accent); border-color: var(--accent); }
     .reason {
       margin-top: 0.55rem;
       padding-top: 0.55rem;
@@ -147,7 +156,8 @@
     .cites { margin-top: 0.65rem; font-size: 0.8rem; color: var(--muted); }
     .cites span { display: block; }
     .composer { display: flex; gap: 0.5rem; align-items: flex-end; }
-    .composer textarea { min-height: 3.2rem; resize: vertical; }
+    .composer textarea { min-height: 3.2rem; resize: vertical; flex: 1; }
+    .composer .btns { display: flex; flex-direction: column; gap: 0.4rem; }
     .status { font-size: 0.8rem; color: var(--muted); }
     .status.ok { color: var(--ok); }
     .status.err { color: var(--danger); }
@@ -169,8 +179,14 @@
 </head>
 <body>
   <header>
-    <h1>AI Repair Assistant</h1>
-    <p>Grounded Q&amp;A over manufacturer docs — LAN only (WFW5620H family)</p>
+    <div>
+      <h1>AI Repair Assistant</h1>
+      <p>Grounded Q&amp;A over manufacturer docs — LAN only (WFW5620H family)</p>
+    </div>
+    <div class="actions">
+      <button type="button" id="exportJson" class="secondary" title="Download chat history as JSON">Export JSON</button>
+      <button type="button" id="exportMd" class="secondary" title="Download chat history as Markdown">Export MD</button>
+    </div>
   </header>
   <main>
     <div class="controls">
@@ -185,12 +201,13 @@
       <div>
         <label for="mode">Mode</label>
         <select id="mode">
-          <option value="ask">Single question</option>
+          <option value="ask">Ask (streaming)</option>
           <option value="diagnose">Diagnostic chat</option>
+          <option value="search">Search only</option>
         </select>
       </div>
       <div>
-        <button type="button" id="newSession" class="secondary" title="Clear chat and start a new diagnostic session">New chat</button>
+        <button type="button" id="newSession" class="secondary" title="Clear chat / start a new diagnostic session">New chat</button>
       </div>
     </div>
     <div class="controls-secondary">
@@ -211,7 +228,10 @@
     <div id="log" aria-live="polite"></div>
     <form class="composer" id="form">
       <textarea id="input" rows="2" placeholder="Ask a repair question…" required></textarea>
-      <button type="submit" id="send">Send</button>
+      <div class="btns">
+        <button type="submit" id="send">Send</button>
+        <button type="button" id="cancel" class="danger" disabled title="Cancel in-flight request">Cancel</button>
+      </div>
     </form>
   </main>
   <script>
@@ -225,8 +245,11 @@
     const audienceEl = document.getElementById("audience");
     const apiKeyEl = document.getElementById("apiKey");
     const sendBtn = document.getElementById("send");
+    const cancelBtn = document.getElementById("cancel");
     const newSessionBtn = document.getElementById("newSession");
     const sessionBar = document.getElementById("sessionBar");
+    const exportJsonBtn = document.getElementById("exportJson");
+    const exportMdBtn = document.getElementById("exportMd");
 
     const FETCH_TIMEOUT_MS = 180000;
     const API_KEY_STORAGE = "repair_api_key";
@@ -236,6 +259,9 @@
     let busy = false;
     let pendingEl = null;
     let embedderWarm = false;
+    let abortController = null;
+    /** @type {{ts:string, role:string, mode:string, text:string, citations?:any[], meta?:object}[]} */
+    let history = [];
 
     apiKeyEl.value = localStorage.getItem(API_KEY_STORAGE) || "";
     apiKeyEl.addEventListener("change", () => {
@@ -251,35 +277,64 @@
       return headers;
     }
 
-    async function apiFetch(url, options = {}) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-      try {
-        return await fetch(url, { ...options, signal: ctrl.signal });
-      } catch (err) {
-        if (err && err.name === "AbortError") {
-          throw new Error("Request timed out — try again or check the API");
-        }
-        throw err;
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-
     function errorDetail(data, fallback) {
       if (!data || data.detail == null) return fallback;
       const d = data.detail;
       if (typeof d === "string") return d;
-      if (Array.isArray(d)) {
-        return d.map((item) => item.msg || JSON.stringify(item)).join("; ");
-      }
+      if (Array.isArray(d)) return d.map((item) => item.msg || JSON.stringify(item)).join("; ");
       return String(d);
+    }
+
+    function record(role, text, extra = {}) {
+      history.push({
+        ts: new Date().toISOString(),
+        role,
+        mode: modeEl.value,
+        text,
+        ...extra,
+      });
+    }
+
+    function download(filename, content, mime) {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportJson() {
+      download(
+        `repair-chat-${Date.now()}.json`,
+        JSON.stringify({ exported_at: new Date().toISOString(), messages: history }, null, 2),
+        "application/json"
+      );
+    }
+
+    function exportMd() {
+      const lines = ["# AI Repair Assistant chat", "", `Exported: ${new Date().toISOString()}`, ""];
+      for (const m of history) {
+        lines.push(`## ${m.role} (${m.mode})`, "", m.text || "", "");
+        if (m.citations && m.citations.length) {
+          for (const c of m.citations) {
+            lines.push(`- [${c.index}] ${c.label} — ${c.doc_id}`);
+          }
+          lines.push("");
+        }
+      }
+      download(`repair-chat-${Date.now()}.md`, lines.join("\n"), "text/markdown");
     }
 
     function updateSessionBar() {
       const mode = modeEl.value;
       if (mode === "ask") {
-        sessionBar.innerHTML = `<span class="pill">Single question — each send is independent</span>`;
+        sessionBar.innerHTML = `<span class="pill">Ask — answers stream token-by-token</span>`;
+        return;
+      }
+      if (mode === "search") {
+        sessionBar.innerHTML = `<span class="pill">Search — retrieval hits only (no LLM)</span>`;
         return;
       }
       if (sessionId) {
@@ -293,10 +348,13 @@
     }
 
     function updatePlaceholder() {
+      const mode = modeEl.value;
       input.placeholder =
-        modeEl.value === "diagnose"
+        mode === "diagnose"
           ? "Describe the symptom or reply with what you observed…"
-          : "Ask a repair question…";
+          : mode === "search"
+            ? "Search the corpus (e.g. F5E2 door lock)…"
+            : "Ask a repair question…";
     }
 
     function append(role, text, opts = {}) {
@@ -308,15 +366,19 @@
         safetyNotice = "",
         escalated = false,
         pending = false,
+        hit = false,
+        score = null,
       } = opts;
       const div = document.createElement("div");
       const classes = ["msg", role];
       if (abstained) classes.push("abstain");
       if (safetyAction === "block" || safetyAction === "escalate" || escalated) classes.push("safety");
       if (pending) classes.push("pending");
+      if (hit) classes.push("hit");
       div.className = classes.join(" ");
 
       const badges = [];
+      if (hit) badges.push(["hit", score != null ? `score ${Number(score).toFixed(3)}` : "hit"]);
       if (abstained) badges.push(["abstain", "Abstained"]);
       if (safetyAction === "block") badges.push(["safety", "Blocked"]);
       else if (safetyAction === "escalate" || escalated) badges.push(["escalate", "Escalated"]);
@@ -334,11 +396,8 @@
 
       const body = document.createElement("div");
       body.className = "body";
-      if (pending) {
-        body.innerHTML = `<span class="dots">${text}</span>`;
-      } else {
-        body.textContent = text;
-      }
+      if (pending) body.innerHTML = `<span class="dots">${text}</span>`;
+      else body.textContent = text;
       div.appendChild(body);
 
       if (abstained && abstainReason) {
@@ -372,6 +431,7 @@
     function setBusy(on, hint) {
       busy = on;
       sendBtn.disabled = on;
+      cancelBtn.disabled = !on;
       input.disabled = on;
       modeEl.disabled = on;
       newSessionBtn.disabled = on;
@@ -381,12 +441,9 @@
       }
     }
 
-    function showPending() {
+    function showPending(text) {
       removePending();
-      const cold = embedderWarm
-        ? "Looking up manufacturer docs…"
-        : "Looking up manufacturer docs (embeddings may still be warming — first request can take 30–60s)";
-      pendingEl = append("assistant", cold, { pending: true });
+      pendingEl = append("assistant", text, { pending: true });
     }
 
     function removePending() {
@@ -398,7 +455,7 @@
 
     async function checkHealth() {
       try {
-        const r = await apiFetch("/ready");
+        const r = await fetch("/ready");
         if (!r.ok) throw new Error("not ready");
         const data = await r.json().catch(() => ({}));
         embedderWarm = data.embedder === "loaded";
@@ -415,27 +472,219 @@
     async function endServerSession() {
       if (!sessionId) return;
       try {
-        await apiFetch("/v1/diagnose/" + encodeURIComponent(sessionId), {
+        await fetch("/v1/diagnose/" + encodeURIComponent(sessionId), {
           method: "DELETE",
           headers: authHeaders(),
         });
-      } catch {
-        /* best-effort */
-      }
+      } catch { /* best-effort */ }
     }
 
     async function resetChat({ announce } = { announce: true }) {
+      if (abortController) abortController.abort();
       await endServerSession();
       sessionId = null;
       turn = 0;
+      history = [];
       log.innerHTML = "";
       updateSessionBar();
       if (announce) {
+        const mode = modeEl.value;
         const msg =
-          modeEl.value === "diagnose"
+          mode === "diagnose"
             ? "New diagnostic session. Describe the symptom to begin. Sessions are in-memory and expire after idle time or API restart."
-            : "Chat cleared. Each question is answered independently.";
+            : mode === "search"
+              ? "Search mode — shows retrieval hits without calling the LLM."
+              : "Chat cleared. Ask answers stream as they generate.";
         append("system", msg);
+        record("system", msg);
+      }
+    }
+
+    function parseSseChunk(buffer) {
+      const events = [];
+      const parts = buffer.split("\n\n");
+      const rest = parts.pop() || "";
+      for (const part of parts) {
+        for (const line of part.split("\n")) {
+          if (line.startsWith("data: ")) {
+            try {
+              events.push(JSON.parse(line.slice(6)));
+            } catch { /* ignore partial */ }
+          }
+        }
+      }
+      return { events, rest };
+    }
+
+    async function runAskStream(text, model, serial, audience) {
+      const body = { question: text, model, audience };
+      if (serial) body.serial = serial;
+      abortController = new AbortController();
+      const timer = setTimeout(() => abortController.abort(), FETCH_TIMEOUT_MS);
+      showPending(embedderWarm ? "Retrieving…" : "Retrieving (embeddings may still be warming)…");
+      let streamEl = null;
+      let assembled = "";
+      try {
+        const res = await fetch("/v1/ask/stream", {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json", Accept: "text/event-stream" }),
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(errorDetail(data, res.statusText));
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const parsed = parseSseChunk(buf);
+          buf = parsed.rest;
+          for (const ev of parsed.events) {
+            if (ev.type === "status") {
+              const phase = ev.phase === "generating"
+                ? `Generating (${ev.retrieval_count || 0} hits)…`
+                : "Retrieving…";
+              statusEl.textContent = phase;
+              statusEl.className = "status busy";
+              if (pendingEl) {
+                pendingEl.querySelector(".body").innerHTML = `<span class="dots">${phase}</span>`;
+              }
+            } else if (ev.type === "token") {
+              if (!streamEl) {
+                removePending();
+                streamEl = append("assistant", "");
+              }
+              assembled += ev.text || "";
+              streamEl.querySelector(".body").textContent = assembled;
+              log.scrollTop = log.scrollHeight;
+            } else if (ev.type === "error") {
+              throw new Error(ev.detail || "stream error");
+            } else if (ev.type === "done") {
+              removePending();
+              const answer = ev.answer || assembled || "";
+              if (streamEl) {
+                streamEl.remove();
+                streamEl = null;
+              }
+              append("assistant", answer || "(empty response)", {
+                citations: ev.citations || [],
+                abstained: !!ev.abstained,
+                abstainReason: ev.abstain_reason || "",
+                safetyAction: ev.safety_action || "allow",
+                safetyNotice: ev.safety_notice || "",
+                escalated: !!ev.escalated,
+              });
+              record("assistant", answer, {
+                citations: ev.citations || [],
+                meta: {
+                  abstained: !!ev.abstained,
+                  safety_action: ev.safety_action,
+                  retrieval_count: ev.retrieval_count,
+                },
+              });
+              embedderWarm = true;
+              statusEl.textContent = ev.abstained
+                ? "Abstained — see reason above"
+                : "API ready (embedder warm)";
+              statusEl.className = ev.abstained ? "status busy" : "status ok";
+            }
+          }
+        }
+      } finally {
+        clearTimeout(timer);
+        abortController = null;
+      }
+    }
+
+    async function runDiagnose(text, model, serial, audience) {
+      const body = { message: text, model, audience };
+      if (serial) body.serial = serial;
+      if (sessionId) body.session_id = sessionId;
+      abortController = new AbortController();
+      const timer = setTimeout(() => abortController.abort(), FETCH_TIMEOUT_MS);
+      showPending("Waiting for diagnostic reply…");
+      try {
+        const res = await fetch("/v1/diagnose", {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        removePending();
+        if (res.status === 410) {
+          sessionId = null;
+          turn = 0;
+          updateSessionBar();
+          throw new Error(
+            errorDetail(data, "Session expired") +
+              " — start a new chat (diagnose sessions are not kept across API restarts)."
+          );
+        }
+        if (!res.ok) throw new Error(errorDetail(data, res.statusText));
+        if (data.session_id) sessionId = data.session_id;
+        if (typeof data.turn === "number") turn = data.turn;
+        updateSessionBar();
+        const answer = data.assistant_message || "";
+        append("assistant", answer || "(empty response)", {
+          citations: data.citations || [],
+          abstained: !!data.abstained,
+          abstainReason: data.abstain_reason || "",
+          safetyAction: data.safety_action || "allow",
+          safetyNotice: data.safety_notice || "",
+          escalated: !!data.escalated,
+        });
+        record("assistant", answer, { citations: data.citations || [] });
+        embedderWarm = true;
+        statusEl.textContent = data.abstained ? "Abstained — see reason above" : "API ready (embedder warm)";
+        statusEl.className = data.abstained ? "status busy" : "status ok";
+      } finally {
+        clearTimeout(timer);
+        abortController = null;
+      }
+    }
+
+    async function runSearch(text, model, serial) {
+      const body = { query: text, model };
+      if (serial) body.serial = serial;
+      abortController = new AbortController();
+      const timer = setTimeout(() => abortController.abort(), FETCH_TIMEOUT_MS);
+      showPending("Searching corpus…");
+      try {
+        const res = await fetch("/v1/search", {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        removePending();
+        if (!res.ok) throw new Error(errorDetail(data, res.statusText));
+        const hits = data.hits || [];
+        if (!hits.length) {
+          append("system", "No hits.");
+          record("system", "No hits.");
+        } else {
+          for (const h of hits) {
+            const label = [h.publication_number || h.doc_id, h.page != null ? `p.${h.page}` : null]
+              .filter(Boolean)
+              .join(" ");
+            const textOut = `${label}\n${h.text || ""}`;
+            append("assistant", textOut, { hit: true, score: h.score });
+            record("hit", textOut, { meta: { doc_id: h.doc_id, score: h.score, page: h.page } });
+          }
+        }
+        embedderWarm = true;
+        statusEl.textContent = `Search done — ${hits.length} hit(s); fetched ${data.fetched || 0}`;
+        statusEl.className = "status ok";
+      } finally {
+        clearTimeout(timer);
+        abortController = null;
       }
     }
 
@@ -452,6 +701,13 @@
       input.focus();
     });
 
+    cancelBtn.addEventListener("click", () => {
+      if (abortController) abortController.abort();
+    });
+
+    exportJsonBtn.addEventListener("click", exportJson);
+    exportMdBtn.addEventListener("click", exportMd);
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (busy) return;
@@ -459,65 +715,25 @@
       if (!text) return;
       input.value = "";
       append("user", text);
-      setBusy(true, "Waiting for grounded answer…");
-      showPending();
+      record("user", text);
+      setBusy(true, "Working…");
+      const model = modelEl.value.trim();
+      const serial = serialEl.value.trim() || null;
+      const audience = audienceEl.value;
+      const mode = modeEl.value;
       try {
-        const model = modelEl.value.trim();
-        const serial = serialEl.value.trim() || null;
-        const audience = audienceEl.value;
-        const mode = modeEl.value;
-        let res;
-        if (mode === "diagnose") {
-          const body = { message: text, model, audience };
-          if (serial) body.serial = serial;
-          if (sessionId) body.session_id = sessionId;
-          res = await apiFetch("/v1/diagnose", {
-            method: "POST",
-            headers: authHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify(body),
-          });
-        } else {
-          const body = { question: text, model, audience };
-          if (serial) body.serial = serial;
-          res = await apiFetch("/v1/ask", {
-            method: "POST",
-            headers: authHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify(body),
-          });
-        }
-        const data = await res.json().catch(() => ({}));
-        removePending();
-        if (res.status === 410) {
-          sessionId = null;
-          turn = 0;
-          updateSessionBar();
-          throw new Error(
-            errorDetail(data, "Session expired") +
-              " — start a new chat (diagnose sessions are not kept across API restarts)."
-          );
-        }
-        if (!res.ok) throw new Error(errorDetail(data, res.statusText));
-        if (data.session_id) sessionId = data.session_id;
-        if (typeof data.turn === "number") turn = data.turn;
-        updateSessionBar();
-        embedderWarm = true;
-        const answer = data.answer ?? data.assistant_message ?? "";
-        append("assistant", answer || "(empty response)", {
-          citations: data.citations || [],
-          abstained: !!data.abstained,
-          abstainReason: data.abstain_reason || "",
-          safetyAction: data.safety_action || "allow",
-          safetyNotice: data.safety_notice || "",
-          escalated: !!data.escalated,
-        });
-        statusEl.textContent = data.abstained
-          ? "Abstained — see reason above"
-          : "API ready (embedder warm)";
-        statusEl.className = data.abstained ? "status busy" : "status ok";
+        if (mode === "search") await runSearch(text, model, serial);
+        else if (mode === "diagnose") await runDiagnose(text, model, serial, audience);
+        else await runAskStream(text, model, serial, audience);
       } catch (err) {
         removePending();
-        append("system", "Error: " + err.message);
-        statusEl.textContent = "Request failed";
+        const msg =
+          err && err.name === "AbortError"
+            ? "Cancelled."
+            : "Error: " + (err.message || String(err));
+        append("system", msg);
+        record("system", msg);
+        statusEl.textContent = err && err.name === "AbortError" ? "Cancelled" : "Request failed";
         statusEl.className = "status err";
       } finally {
         setBusy(false);

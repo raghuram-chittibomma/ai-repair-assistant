@@ -20,10 +20,15 @@ silently on restart, and each API request opened a fresh Postgres connection.
 | API host | Always-on LAN Docker API vs laptop API | **Laptop API** remains default (2A) |
 | DB access | One connection per request vs small pool | **Small pool** (`REPAIR_DB_POOL_SIZE`, default 4) |
 
-## Consequences
+| Consequences
 
 - Second ask after process start should not reload sentence-transformers.
 - Diagnose chat does **not** survive API restart; UI must handle 410 / New chat.
 - Env knobs: `REPAIR_SESSION_TTL_SECONDS` (default 3600), `REPAIR_SESSION_MAX`
   (default 32), `REPAIR_DB_POOL_SIZE`, `REPAIR_SKIP_EMBEDDER_WARMUP=1` for tests.
 - Postgres session durability remains a later Phase 10 option if operators need it.
+
+## Follow-on (UI streaming)
+
+Ask mode uses `POST /v1/ask/stream` (SSE). Search-only mode and chat export live
+in `/ui` without changing the non-streaming `/v1/ask` contract.

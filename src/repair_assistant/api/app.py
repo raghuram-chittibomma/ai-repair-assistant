@@ -9,9 +9,10 @@ from collections.abc import AsyncIterator, Generator
 from contextlib import asynccontextmanager, contextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import json
 
 from repair_assistant.api.db_pool import DEFAULT_POOL_SIZE, DatabasePool
 from repair_assistant.api.schemas import (
@@ -36,7 +37,7 @@ from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.ingest.embeddings import get_shared_embedder, shared_embedder_loaded
 from repair_assistant.ingest.env import database_url, load_dotenv_files
 from repair_assistant.ingest.store import Database
-from repair_assistant.qa.generate import ask
+from repair_assistant.qa.generate import ask, ask_stream
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.models import Audience
 
@@ -223,6 +224,39 @@ def create_app(
             safety_action=result.safety_action,
             safety_notice=result.safety_notice,
             escalated=result.escalated,
+        )
+
+    @app.post("/v1/ask/stream", dependencies=[Depends(require_api_key)])
+    def ask_stream_route(body: AskRequest, db: Database = Depends(get_db)) -> StreamingResponse:
+        """SSE stream: status / token / done events for grounded ask()."""
+        appliance = Appliance(model=body.model, serial=body.serial) if body.model else None
+
+        def event_iter():
+            try:
+                for event in ask_stream(
+                    db,
+                    _manifest(),
+                    body.question,
+                    appliance=appliance,
+                    audience=Audience(body.audience),
+                    retrieval_limit=body.limit,
+                    overfetch=body.overfetch,
+                ):
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            except RuntimeError as exc:
+                err = {"type": "error", "detail": str(exc)}
+                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+            except Exception as exc:  # noqa: BLE001 — surface to client
+                err = {"type": "error", "detail": str(exc)}
+                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(
+            event_iter(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
         )
 
     @app.post("/v1/diagnose", response_model=DiagnoseResponse, dependencies=[Depends(require_api_key)])

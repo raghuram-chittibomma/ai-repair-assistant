@@ -164,11 +164,41 @@ def test_diagnose_unknown_session_returns_410(
     mock_session_cls.assert_not_called()
 
 
+@patch("repair_assistant.api.app.ask_stream")
+def test_ask_stream_route_sse(mock_stream: MagicMock, client: TestClient) -> None:
+    mock_stream.return_value = iter(
+        [
+            {"type": "status", "phase": "retrieving"},
+            {"type": "token", "text": "Hi"},
+            {
+                "type": "done",
+                "question": "x",
+                "answer": "Hi",
+                "abstained": False,
+                "abstain_reason": "",
+                "citations": [],
+                "retrieval_count": 1,
+                "safety_action": "allow",
+                "safety_notice": "",
+                "escalated": False,
+            },
+        ]
+    )
+    response = client.post("/v1/ask/stream", json={"question": "What is F5E2?"})
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+    assert "data: " in response.text
+    assert '"type": "token"' in response.text or '"type":"token"' in response.text
+
+
 def test_ui_page(client: TestClient) -> None:
     response = client.get("/ui", follow_redirects=False)
     assert response.status_code == 200
     assert "AI Repair Assistant" in response.text
     assert "API key" in response.text
+    assert "Search only" in response.text
+    assert "Export JSON" in response.text
+    assert "Cancel" in response.text
 
     root = client.get("/", follow_redirects=False)
     assert root.status_code in {307, 308}
