@@ -901,6 +901,50 @@ def diagnose_cmd(
                 raise click.ClickException(str(exc)) from exc
 
 
+@main.command("bench-chain")
+@click.option("--write/--no-write", default=False, help="Write scorecard under evals/chain/results/")
+@click.option(
+    "--extractor",
+    default="pdfplumber",
+    show_default=True,
+    help="Extractor for PDFs (same as parse).",
+)
+@click.option(
+    "--skip-ask",
+    is_flag=True,
+    help="Stop after retrieve (no OpenAI); still runs parse→ingest→search.",
+)
+def bench_chain_cmd(write: bool, extractor: str, skip_ask: bool) -> None:
+    """Thin parse->ingest->retrieve->ask smoke (manual; needs DB + embeddings)."""
+    from repair_assistant.eval.chain_bench import run_chain_bench, scorecard_markdown
+    from repair_assistant.ingest.env import database_url
+    from repair_assistant.ingest.store import Database
+
+    try:
+        url = database_url()
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    with Database(url) as db:
+        try:
+            results = run_chain_bench(db, extractor=extractor, skip_ask=skip_ask)
+        except (KeyError, RuntimeError) as exc:
+            raise click.ClickException(str(exc)) from exc
+
+    card = scorecard_markdown(results)
+    click.echo(card)
+
+    if write:
+        corpus = _load()
+        out = corpus.root / "evals" / "chain" / "results"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "scorecard.md").write_text(card, encoding="utf-8", newline="\n")
+        click.echo(f"Wrote {out / 'scorecard.md'}")
+
+    if any(not r.passed for r in results):
+        raise click.ClickException("chain smoke failed; see scorecard")
+
+
 @main.command("bench-qa")
 @click.option("--write/--no-write", default=False, help="Write scorecard and JSON run log.")
 @click.option("--scenario", "scenario_ids", multiple=True, help="Run only these scenario id(s).")

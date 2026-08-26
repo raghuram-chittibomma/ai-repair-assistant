@@ -1,0 +1,28 @@
+# Thin cross-layer chain smoke (E6): parse → ingest → retrieve → ask.
+# Manual only — not wired into CI. One shared precedence story across layers.
+
+version: 1
+
+docs:
+  - tsp-w11375982
+
+retrieve:
+  id: acu-led-step-10
+  question: >-
+    On a WFW5620HW0, what should the ACU diagnostic LED do during the ACU
+    power check?
+  appliance: {model: WFW5620HW0}
+  must_cite: [W11375982]
+
+ask:
+  id: acu-led-step-10
+  question: >-
+    On a WFW5620HW0, what should the ACU diagnostic LED do during the ACU
+    power check?
+  appliance: {model: WFW5620HW0}
+  expect_cites_any: [W11375982]
+  expect_contains: [blink]
+  fails_if_contains:
+    - "slow blink is a fault"
+    - "slow blink indicates a fault"
+    - "slow blink means the acu is not"

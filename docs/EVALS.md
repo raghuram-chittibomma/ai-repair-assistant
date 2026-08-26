@@ -18,6 +18,7 @@ not on PATH.
 | --- | --- | --- | --- | --- |
 | Unit / grader | `pytest` | none | `tests/` | pass/fail |
 | Parsing | `bench-parse --write` | local PDFs for fixtures | `evals/parsing/fixtures.yaml` | `evals/parsing/results/scorecard.md` |
+| Chain smoke | `bench-chain --write` | DB + embedder (+ OpenAI unless `--skip-ask`) | `evals/chain/fixtures.yaml` | `evals/chain/results/scorecard.md` |
 | Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K) |
 | Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` | stdout scorecard |
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
@@ -46,6 +47,9 @@ python -m repair_assistant.corpus.cli bench-safety
 
 # Needs LAN Postgres (DATABASE_URL in .env.local)
 python -m repair_assistant.corpus.cli bench-retrieve --write
+
+# Cross-layer: re-parse/ingest one doc → production search → ask
+python -m repair_assistant.corpus.cli bench-chain --write
 
 # Needs OpenAI as well
 python -m repair_assistant.corpus.cli bench-qa --write
@@ -172,6 +176,7 @@ leave `LANGFUSE_*` keys empty to disable tracing.
 | --- | --- | --- |
 | Safety | 10/10 | Deterministic; manual (`bench-safety`) |
 | Retrieval | 14/14 hard (`vector_apply_boost`) | Includes `production_search` strategy |
+| Chain smoke | — | `bench-chain` (parse→ingest→search→ask); run after DB up |
 | Q&A smoke | 5/5 | Live |
 | Candidates | 22/24 | Deferred: `f5e2-three-way`, `serial-inside-range` |
 
