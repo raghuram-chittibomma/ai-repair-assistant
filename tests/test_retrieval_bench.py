@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from repair_assistant.retrieval.bench import compute_ir_metrics, grade_hits
-from repair_assistant.retrieval.strategies import _rrf
+from repair_assistant.retrieval.strategies import _rrf, _union_pool, query_literals
 
 
 def test_grade_must_cite_and_must_not() -> None:
@@ -100,3 +100,52 @@ def test_rrf_prefers_shared_top_ranks() -> None:
     fused = _rrf([a, b])
     assert fused[0]["doc_id"] == "d1" or fused[0]["doc_id"] == "d2"
     assert len(fused) == 2
+
+
+def test_rrf_collapses_scores_below_boost_scale() -> None:
+    """Why RRF hybrid lets boosts dominate: fused scores are ~1/60, boosts are 0.02-0.35."""
+    fused = _rrf([[{"doc_id": "d1", "chunk_id": "c1", "score": 0.87}]])
+    assert fused[0]["score"] < 0.02
+
+
+def test_union_pool_preserves_vector_magnitude() -> None:
+    vector = [
+        {"doc_id": "d1", "chunk_id": "c1", "score": 0.90},
+        {"doc_id": "d2", "chunk_id": "c2", "score": 0.70},
+    ]
+    aux = [
+        {"doc_id": "d3", "chunk_id": "c3", "score": 0.5},
+        {"doc_id": "d4", "chunk_id": "c4", "score": 0.1},
+    ]
+    pool = _union_pool(vector, aux)
+    by_key = {h["chunk_id"]: h for h in pool}
+
+    assert by_key["c1"]["score"] == 0.90
+    assert by_key["c2"]["score"] == 0.70
+    # Auxiliary hits land inside the observed vector band, top-ranked at vmax.
+    assert by_key["c3"]["score"] == 0.90
+    assert 0.70 <= by_key["c4"]["score"] < 0.90
+
+
+def test_union_pool_keeps_better_score_on_agreement() -> None:
+    vector = [{"doc_id": "d1", "chunk_id": "c1", "score": 0.60}]
+    aux = [{"doc_id": "d1", "chunk_id": "c1", "score": 0.95}]
+    pool = _union_pool(vector, aux)
+    assert len(pool) == 1
+    assert pool[0]["score"] == 0.60
+
+
+def test_union_pool_without_aux_is_identity() -> None:
+    vector = [{"doc_id": "d1", "chunk_id": "c1", "score": 0.42}]
+    assert _union_pool(vector, [])[0]["score"] == 0.42
+
+
+def test_query_literals_extracts_mixed_alphanumerics() -> None:
+    assert query_literals("Is part number W10804741 the door lock?") == ["W10804741"]
+    assert query_literals("What connects to J36 on the ACU?") == ["J36"]
+    assert query_literals("F5E2 on a WFW5620HW0") == ["F5E2", "WFW5620HW0"]
+
+
+def test_query_literals_skips_pure_words_and_numbers() -> None:
+    assert query_literals("my washer shakes during the spin cycle") == []
+    assert query_literals("check pin 3 and pin 12") == []

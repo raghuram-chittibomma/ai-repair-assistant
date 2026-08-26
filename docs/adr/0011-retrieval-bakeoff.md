@@ -4,6 +4,11 @@
 
 Accepted (does **not** supersede [ADR-0010](0010-retrieval-applicability.md); confirms it)
 
+Amended by [ADR-0020](0020-hybrid-retrieval-retest.md): the decision stands, but
+the hard-pass numbers below no longer reproduce against the current corpus, and
+decision 2's stated reason ("hybrid diluted the ACU LED bulletin hit") is
+withdrawn. Hybrid is rejected on precision and operational cost.
+
 ## Context
 
 Charter deviation [D4](../CHARTER.md#deviations-from-this-charter) required comparing

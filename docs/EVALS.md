@@ -102,6 +102,34 @@ math. Fixtures with only `must_not_cite` leave Hit/Recall/Precision as `n/a`.
 **Release gate** = pass/fail. Use IR numbers to compare strategies and spot
 noise or missed docs — not as a substitute for hard corpus cases.
 
+### Retrieval fixture families
+
+12 fixtures, 9 hard. Ground truth for the rare-literal family was verified by
+probing the ingested `chunks` table for each literal, not inferred from the
+manifest — a fixture that asserts a document holds a token it does not hold
+measures nothing.
+
+| Family | Tests |
+| --- | --- |
+| `applicability-serial-range` | Serial-range decisions, in and out of scope |
+| `applicability-product-category` | Front-load vs top-load vs laundry tower |
+| `precedence-bulletin-over-manual` | Correcting bulletin outranks the manual |
+| `retrieval-exact-identifier` | Rare literals: error codes, connector IDs, part numbers, procedure labels |
+| `retrieval-term-mismatch` | Query term absent from the target document ("shipping" vs "transport" bolts) |
+
+The last two families are a deliberate pair. Rare literals reward an exact-match
+arm; term mismatch punishes one. A strategy that wins the first family by losing
+the second has not improved, and the scorecard should make that visible rather
+than average it away.
+
+Four strategies currently saturate the gate at 9/9 (`vector_apply_boost`,
+`hybrid_rrf_apply`, `union_literal_apply`, `union_lexical_apply`), so pass/fail
+no longer separates the leaders — compare mean Precision@K, and see
+[ADR-0020](adr/0020-hybrid-retrieval-retest.md) for why a full-text arm is not
+adopted. Note that `bench-retrieve` measures retrieval cores only:
+`run_strategy` omits the `connector_fetch` / `reference_fetch` /
+`manual_rev_fetch` recalls that `search()` uses in production.
+
 ### Live traces (optional Langfuse)
 
 Self-hosted Langfuse can record `ask` / `diagnose` runs for inspection

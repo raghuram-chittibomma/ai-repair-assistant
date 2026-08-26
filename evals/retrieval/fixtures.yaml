@@ -20,6 +20,10 @@ strategies:
     description: Postgres full-text + applicability drop
   - id: hybrid_rrf_apply
     description: RRF fusion of vector + lexical, then applicability
+  - id: union_lexical_apply
+    description: Vector ∪ OR-semantics full-text, magnitude preserved, then apply + boosts
+  - id: union_literal_apply
+    description: Vector ∪ rare-literal exact match, magnitude preserved, then apply + boosts
 
 fixtures:
   - id: acu-led-step-10
@@ -65,4 +69,77 @@ fixtures:
     question: Does the door-lock service pointer apply to my machine?
     appliance: {model: WFW3090GW2, serial: CF84900000, model_introduced: 2018}
     must_not_cite: [W11395614]
+    hard: false
+
+  # -------------------------------------------------------------------------
+  # Rare-literal recall (added 2026-08-26).
+  #
+  # Added to test the hybrid question: dense embeddings are weakest on rare
+  # alphanumeric tokens that carry the entire meaning of the query. Ground
+  # truth for every fixture below was verified by probing the ingested
+  # `chunks` table for the literal, not inferred from the manifest.
+  #
+  # The set is deliberately mixed. Part numbers and connector IDs should
+  # favour a lexical arm; `transport-bolt-vocabulary` should favour the dense
+  # arm, because the query term and the document term differ. A strategy that
+  # wins the literal fixtures by sacrificing that one has not improved.
+
+  - id: connector-j36-motor-harness
+    family: retrieval-exact-identifier
+    question: What connects to J36 on the ACU?
+    appliance: {model: WFW5620HW0}
+    # J36 is held by service-manual-w11169652 (5 chunks) and tsp-w11395614
+    # (3 chunks). The TSP is the 24in platform and must be dropped on
+    # applicability, so this fixture scores literal recall and filtering together.
+    must_cite: [W11169652]
+    must_not_cite: [W11395614]
+    hard: true
+
+  - id: part-number-door-lock
+    family: retrieval-exact-identifier
+    question: Is part number W10804741 the door lock for my washer?
+    appliance: {model: WFW5620HW0}
+    # Single chunk in the whole corpus, inside a column-mangled parts table
+    # ("15 W10804741 Lock,Door"). The embedding of that chunk carries almost
+    # no usable signal; the literal token is the only reliable route to it.
+    must_cite: [W11320547]
+    hard: true
+
+  - id: part-number-pressure-switch
+    family: retrieval-exact-identifier
+    question: What component is part W11125159 on a WFW5620HW0?
+    appliance: {model: WFW5620HW0}
+    # Same class as above, second instance, also a single chunk.
+    must_cite: [W11320547]
+    hard: true
+
+  - id: test-10a-measured-values
+    family: retrieval-exact-identifier
+    question: What are the measured values in TEST #10a?
+    appliance: {model: WFW5620HW0}
+    # "TEST #10a" appears only in the tech sheets (5 chunks each), not in the
+    # service manual. A procedure label is a literal, but a common one.
+    must_cite_any: [W11320651, W11156989]
+    hard: true
+
+  - id: transport-bolt-vocabulary
+    family: retrieval-term-mismatch
+    question: >-
+      My newly installed washer shakes violently during the spin cycle. Did I
+      forget to remove the shipping bolts?
+    appliance: {model: WFW5620HW0}
+    # Counterweight fixture. The installation instructions say "transport
+    # bolts" and never "shipping bolts", so the query's literal is absent from
+    # the target document. Lexical retrieval is expected to miss this; the
+    # dense arm plus the installation boost is expected to carry it.
+    must_cite: [W11156977]
+    hard: true
+
+  - id: connector-j13-any-source
+    family: retrieval-exact-identifier
+    question: Which connector is J13 on the ACU?
+    appliance: {model: WFW5620HW0}
+    # Lower-stakes literal: J13 is spread across both tech sheets and the
+    # service manual, so any applicable source is acceptable.
+    must_cite_any: [W11156989, W11320651, W11169652]
     hard: false

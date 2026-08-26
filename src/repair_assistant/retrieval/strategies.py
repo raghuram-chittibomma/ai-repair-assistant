@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from repair_assistant.corpus.applicability import Appliance, document_applies
@@ -55,6 +56,54 @@ def _rrf(rank_lists: list[list[dict]], *, k: int = 60) -> list[dict]:
         row["score"] = score
         fused.append(row)
     return fused
+
+
+def _union_pool(
+    vector_hits: list[dict],
+    aux_hits: list[dict],
+    *,
+    weight: float = 1.0,
+) -> list[dict]:
+    """Union two candidate pools without collapsing scores onto a rank scale.
+
+    RRF (see ``_rrf``) overwrites ``score`` with ~1/60-scale reciprocal ranks,
+    which is an order of magnitude below the 0.02-0.35 boosts in
+    ``filter_and_rank``. Boosts then dominate ranking outright. Here the vector
+    arm keeps its true cosine similarity and the auxiliary arm is affine-mapped
+    onto the observed vector band, so the combined pool stays on the scale the
+    boosts were tuned against. Chunks found by both arms take the better score.
+    """
+    pool = [dict(h) for h in vector_hits]
+    if not aux_hits:
+        return pool
+
+    scores = [float(h["score"]) for h in pool]
+    vmax = max(scores) if scores else 1.0
+    vmin = min(scores) if scores else 0.0
+    amax = max(float(h["score"]) for h in aux_hits) or 1.0
+
+    by_key = {(h["doc_id"], h["chunk_id"]): h for h in pool}
+    for hit in aux_hits:
+        mapped = vmin + (vmax - vmin) * weight * (float(hit["score"]) / amax)
+        key = (hit["doc_id"], hit["chunk_id"])
+        existing = by_key.get(key)
+        if existing is not None:
+            existing["score"] = max(float(existing["score"]), mapped)
+            continue
+        row = dict(hit)
+        row["score"] = mapped
+        pool.append(row)
+        by_key[key] = row
+    return pool
+
+
+def query_literals(query: str) -> list[str]:
+    """Mixed alphanumeric tokens from the query (part numbers, connectors, codes)."""
+    out: list[str] = []
+    for token in re.findall(r"[A-Za-z0-9]{3,}", query):
+        if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
+            out.append(token.upper())
+    return list(dict.fromkeys(out))
 
 
 def _apply_only(
@@ -134,6 +183,100 @@ def lexical_fetch(db: Database, query: str, *, limit: int) -> list[dict]:
     ]
 
 
+_LEXICAL_COLUMNS = """
+    doc_id, chunk_id, text, page, kind, error_codes, publication_number, revision
+"""
+
+
+def _rows_to_hits(rows: list[Any]) -> list[dict]:
+    return [
+        {
+            "doc_id": r[0],
+            "chunk_id": r[1],
+            "text": r[2],
+            "page": r[3],
+            "kind": r[4],
+            "error_codes": list(r[5] or []),
+            "publication_number": r[6],
+            "revision": r[7],
+            "score": float(r[8] or 0.0),
+        }
+        for r in rows
+    ]
+
+
+def lexical_or_fetch(db: Database, query: str, *, limit: int) -> list[dict]:
+    """Full-text search with OR semantics over the query's lexemes.
+
+    ``lexical_fetch`` uses ``plainto_tsquery``, which ANDs every lexeme; a
+    natural-language question therefore matches nothing in a terse table chunk.
+    This variant relaxes the conjunction so the arm contributes recall instead
+    of empty results.
+    """
+    rows = db.fetchall(
+        f"""
+        WITH q AS (
+            SELECT to_tsquery(
+                'english',
+                nullif(replace(plainto_tsquery('english', %s)::text, ' & ', ' | '), '')
+            ) AS tsq
+        )
+        SELECT {_LEXICAL_COLUMNS},
+               ts_rank_cd(to_tsvector('english', coalesce(text, '')), q.tsq) AS score
+        FROM chunks, q
+        WHERE q.tsq IS NOT NULL
+          AND to_tsvector('english', coalesce(text, '')) @@ q.tsq
+        ORDER BY score DESC
+        LIMIT %s
+        """,
+        (query, limit),
+    )
+    return _rows_to_hits(rows)
+
+
+def literal_fetch(
+    db: Database,
+    query: str,
+    *,
+    limit: int,
+    max_chunks: int = 40,
+) -> list[dict]:
+    """Exact-match recall for rare alphanumeric literals in the query.
+
+    Generalises the hand-rolled ``code_fetch`` / ``connector_fetch`` side doors.
+    Postgres ``ts_rank_cd`` carries no IDF term, so a once-occurring part number
+    ranks below common words; rarity is therefore enforced directly by skipping
+    any literal that appears in more than ``max_chunks`` chunks (model numbers,
+    common step labels), which keeps the arm precise rather than noisy.
+    """
+    hits: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for literal in query_literals(query):
+        pattern = f"%{literal}%"
+        (count_row,) = db.fetchall(
+            "SELECT count(*) FROM chunks WHERE text ILIKE %s", (pattern,)
+        )
+        frequency = int(count_row[0] or 0)
+        if frequency == 0 or frequency > max_chunks:
+            continue
+        rows = db.fetchall(
+            f"""
+            SELECT {_LEXICAL_COLUMNS}, 0.95 AS score
+            FROM chunks
+            WHERE text ILIKE %s
+            LIMIT %s
+            """,
+            (pattern, limit),
+        )
+        for hit in _rows_to_hits(rows):
+            key = (hit["doc_id"], hit["chunk_id"])
+            if key in seen:
+                continue
+            seen.add(key)
+            hits.append(hit)
+    return hits
+
+
 def run_strategy(
     strategy_id: str,
     db: Database,
@@ -191,6 +334,38 @@ def run_strategy(
         )
         ranked = filter_and_rank(
             fused, manifest, appliance, limit=k, query=query, query_error_codes=codes
+        )
+        return _hits_from_ranked(ranked)
+
+    if strategy_id == "union_lexical_apply":
+        vectors = embedder.embed([query])[0]
+        pool = _union_pool(
+            vector_fetch(db, vectors, limit=overfetch),
+            lexical_or_fetch(db, query, limit=overfetch),
+        )
+        ranked = filter_and_rank(
+            merge_hits(code_fetch(db, codes), pool),
+            manifest,
+            appliance,
+            limit=k,
+            query=query,
+            query_error_codes=codes,
+        )
+        return _hits_from_ranked(ranked)
+
+    if strategy_id == "union_literal_apply":
+        vectors = embedder.embed([query])[0]
+        pool = _union_pool(
+            vector_fetch(db, vectors, limit=overfetch),
+            literal_fetch(db, query, limit=overfetch),
+        )
+        ranked = filter_and_rank(
+            merge_hits(code_fetch(db, codes), pool),
+            manifest,
+            appliance,
+            limit=k,
+            query=query,
+            query_error_codes=codes,
         )
         return _hits_from_ranked(ranked)
 
