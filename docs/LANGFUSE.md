@@ -52,7 +52,7 @@ python -m repair_assistant.corpus.cli ask "What does F5E2 mean?" --model WFW5620
 Open the Langfuse UI → Traces. You should see an `ask` (and later `diagnose`)
 span with question, retrieval count, citations, and safety metadata.
 
-## Optional: LAN Docker host (e.g. LAN_HOST)
+## Optional: LAN Docker host
 
 Use this when you want Langfuse always on and have spare host RAM (32 GiB is
 plenty alongside repair Postgres). App still runs on the laptop.
@@ -81,7 +81,7 @@ LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_HOST=http://LAN_HOST:3000
 ```
 
-(Replace the IP with your host from `INFRASTRUCTURE.local.md`.)
+(Replace `LAN_HOST` with your host from `INFRASTRUCTURE.local.md`.)
 
 Then smoke-test with `ask` as above; traces appear in the LAN Langfuse UI.
 

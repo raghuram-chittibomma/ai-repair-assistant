@@ -1,4 +1,4 @@
-# Deploy API on the LAN Docker host (LAN_HOST)
+# Deploy API on the LAN Docker host (see docs/INFRASTRUCTURE.local.md)
 #
 # Run this script **on the Docker host** (RDP / local shell), from the repo root.
 # Postgres is already running on HOST_PORT (default 5436); this starts the API on

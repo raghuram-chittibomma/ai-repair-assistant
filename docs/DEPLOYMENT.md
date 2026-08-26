@@ -8,7 +8,7 @@ This is the supported workflow:
 
 | Component | Where it runs |
 | --- | --- |
-| **Postgres + pgvector** | LAN Docker host (e.g. `LAN_HOST:5436`) |
+| **Postgres + pgvector** | LAN Docker host (e.g. `LAN_HOST:5436` — see `INFRASTRUCTURE.local.md`) |
 | **CLI, API, web UI, BGE embeddings** | Your laptop / workstation |
 
 ### 1. Configure `.env.local`
