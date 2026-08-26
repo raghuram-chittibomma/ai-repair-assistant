@@ -26,6 +26,7 @@ class AnswerResult:
     answer: str
     abstained: bool
     abstain_reason: str = ""
+    abstain_code: str = ""
     citations: list[Citation] = field(default_factory=list)
     retrieval_count: int = 0
     safety_action: str = "allow"

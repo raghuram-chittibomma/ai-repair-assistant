@@ -9,6 +9,13 @@ from langgraph.graph import END, START, StateGraph
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
+from repair_assistant.corpus.support import (
+    ABSTAIN_NO_EVIDENCE,
+    ABSTAIN_UNSUPPORTED_MODEL,
+    corpus_supports_appliance,
+    no_evidence_message,
+    unsupported_appliance_message,
+)
 from repair_assistant.diagnostic.prompts import build_diagnostic_user_prompt
 from repair_assistant.prompts import diagnose_system
 from repair_assistant.diagnostic.state import DiagnosticGraphState
@@ -41,7 +48,12 @@ def _apply_delta(state: DiagnosticGraphState, delta: dict) -> DiagnosticGraphSta
     return new
 
 
-def _done_payload(state: DiagnosticGraphState, assistant: str) -> dict[str, Any]:
+def _done_payload(
+    state: DiagnosticGraphState,
+    assistant: str,
+    *,
+    abstain_code: str = "",
+) -> dict[str, Any]:
     abstained = bool(state.get("abstained"))
     cited = [] if abstained else citations_for_turn(state, assistant)
     return {
@@ -49,6 +61,7 @@ def _done_payload(state: DiagnosticGraphState, assistant: str) -> dict[str, Any]
         "assistant_message": assistant,
         "abstained": abstained,
         "abstain_reason": state.get("abstain_reason") or "",
+        "abstain_code": abstain_code,
         "citations": [
             {
                 "index": c.index,
@@ -162,7 +175,7 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 "citations_available": [],
                 "retrieval_count": 0,
                 "abstained": True,
-                "abstain_reason": "No applicable manufacturer evidence was retrieved.",
+                "abstain_reason": "No matching manufacturer evidence for this question.",
             }
         evidence_text, citations = format_evidence(result.hits)
         return {
@@ -180,12 +193,17 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
 def make_respond_node(llm: LLMClient):
     def respond(state: DiagnosticGraphState) -> dict:
         if state.get("abstained") and not state.get("evidence_text"):
-            reason = state.get("abstain_reason") or "No evidence available."
-            content = f"ABSTAIN: {reason}"
+            appliance = None
+            if state.get("appliance_model"):
+                appliance = Appliance(
+                    model=state["appliance_model"],
+                    serial=state.get("appliance_serial"),
+                )
+            content = no_evidence_message(appliance)
             return {
                 "messages": [AIMessage(content=content)],
                 "abstained": True,
-                "abstain_reason": reason,
+                "abstain_reason": "No matching manufacturer evidence for this question.",
             }
 
         assessment = SafetyAssessment(
@@ -262,6 +280,24 @@ def diagnose_turn_stream(
         yield _done_payload(state, _latest_ai(state["messages"]))
         return
 
+    if state.get("appliance_model"):
+        appliance = Appliance(
+            model=state["appliance_model"],
+            serial=state.get("appliance_serial"),
+        )
+        if not corpus_supports_appliance(manifest, appliance).supported:
+            msg = unsupported_appliance_message(appliance)
+            state = _apply_delta(
+                state,
+                {
+                    "messages": [AIMessage(content=msg)],
+                    "abstained": True,
+                    "abstain_reason": "This model is not covered by our documentation set.",
+                },
+            )
+            yield _done_payload(state, msg, abstain_code=ABSTAIN_UNSUPPORTED_MODEL)
+            return
+
     yield {"type": "status", "phase": "retrieving"}
     state = _apply_delta(
         state,
@@ -269,17 +305,22 @@ def diagnose_turn_stream(
     )
 
     if state.get("abstained") and not state.get("evidence_text"):
-        reason = state.get("abstain_reason") or "No evidence available."
-        content = f"ABSTAIN: {reason}"
+        appliance = None
+        if state.get("appliance_model"):
+            appliance = Appliance(
+                model=state["appliance_model"],
+                serial=state.get("appliance_serial"),
+            )
+        msg = no_evidence_message(appliance)
         state = _apply_delta(
             state,
             {
-                "messages": [AIMessage(content=content)],
+                "messages": [AIMessage(content=msg)],
                 "abstained": True,
-                "abstain_reason": reason,
+                "abstain_reason": "No matching manufacturer evidence for this question.",
             },
         )
-        yield _done_payload(state, content)
+        yield _done_payload(state, msg, abstain_code=ABSTAIN_NO_EVIDENCE)
         return
 
     _trace_evidence_prompt(

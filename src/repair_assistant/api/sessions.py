@@ -65,6 +65,7 @@ class SessionStore:
                 audience=audience,
                 retrieval_limit=retrieval_limit,
                 overfetch=overfetch,
+                session_id=sid,
             )
             self._sessions[sid] = _Entry(session=session, last_access=now)
             return sid, session

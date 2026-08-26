@@ -70,6 +70,35 @@ def test_observation_merges_eval_trace_context(monkeypatch) -> None:
     assert meta["scenario_id"] == "acu-led-step-10"
 
 
+def test_observation_passes_session_id_to_propagate_attributes(monkeypatch) -> None:
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
+
+    fake_span = MagicMock()
+    fake_client = MagicMock()
+    fake_client.start_as_current_observation.return_value.__enter__.return_value = fake_span
+    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+
+    propagate_cm = MagicMock()
+    propagate_cm.__enter__ = MagicMock(return_value=None)
+    propagate_cm.__exit__ = MagicMock(return_value=None)
+
+    with (
+        patch.object(tracing, "_client", return_value=fake_client),
+        patch("langfuse.propagate_attributes", return_value=propagate_cm) as propagate,
+    ):
+        with tracing.observation(
+            "diagnose",
+            input={"user_message": "F5E2"},
+            session_id="abc-123-session",
+        ):
+            pass
+
+    propagate.assert_called_once_with(session_id="abc-123-session")
+    meta = fake_client.start_as_current_observation.call_args.kwargs["metadata"]
+    assert meta["diagnose_session_id"] == "abc-123-session"
+
+
 def test_child_observation_does_not_flush(monkeypatch) -> None:
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
@@ -103,3 +132,67 @@ def test_generation_observation_uses_generation_type(monkeypatch) -> None:
     kwargs = fake_client.start_as_current_observation.call_args.kwargs
     assert kwargs["as_type"] == "generation"
     assert kwargs["model"] == "gpt-4o-mini"
+
+
+def test_child_observation_passes_trace_context_under_root(monkeypatch) -> None:
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
+
+    root_span = MagicMock()
+    root_span.trace_id = "trace-root"
+    root_span.id = "span-root"
+    child_span = MagicMock()
+    fake_client = MagicMock()
+    fake_client.start_as_current_observation.return_value.__enter__.side_effect = [
+        root_span,
+        child_span,
+    ]
+    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+
+    with patch.object(tracing, "_client", return_value=fake_client):
+        with tracing.observation("ask", input={"question": "door"}):
+            with tracing.child_observation("retrieval", input={"query": "door"}):
+                pass
+
+    child_kwargs = fake_client.start_as_current_observation.call_args_list[1].kwargs
+    assert child_kwargs["trace_context"] == {
+        "trace_id": "trace-root",
+        "parent_span_id": "span-root",
+    }
+
+
+def test_trace_context_survives_generator_yield(monkeypatch) -> None:
+    """Streaming ask yields before retrieval; explicit trace stack must still nest."""
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
+
+    root_span = MagicMock()
+    root_span.trace_id = "trace-stream"
+    root_span.id = "span-stream"
+    child_span = MagicMock()
+    fake_client = MagicMock()
+    fake_client.start_as_current_observation.return_value.__enter__.side_effect = [
+        root_span,
+        child_span,
+    ]
+    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+
+    def stream_like_ask():
+        with tracing.observation("ask", input={"stream": True}):
+            yield "status"
+            with tracing.child_observation("retrieval"):
+                pass
+
+    gen = stream_like_ask()
+    with patch.object(tracing, "_client", return_value=fake_client):
+        next(gen)
+        try:
+            gen.send(None)
+        except StopIteration:
+            pass
+
+    child_kwargs = fake_client.start_as_current_observation.call_args_list[1].kwargs
+    assert child_kwargs["trace_context"] == {
+        "trace_id": "trace-stream",
+        "parent_span_id": "span-stream",
+    }

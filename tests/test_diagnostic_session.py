@@ -123,4 +123,4 @@ def test_diagnostic_session_abstains_without_hits(mock_search: MagicMock) -> Non
     )
     result = session.send(db, "What is ZZ99?")
     assert result.abstained
-    assert "No applicable" in result.abstain_reason
+    assert "manufacturer evidence" in result.assistant_message.lower()

@@ -115,5 +115,18 @@ When `bench-qa` / `bench-candidates` run with Langfuse keys set, spans also carr
 `eval_bench`, `eval_run_id` (matches the JSON filename stamp), and `scenario_id`
 (E11). Interactive `ask` / `diagnose` leave those fields unset.
 
+### Diagnostic sessions in Langfuse
+
+Each **diagnose** turn is still one trace, but turns that share the same app
+`session_id` (from `/v1/diagnose` or the CLI) are grouped in Langfuse **Sessions**:
+
+1. Run several turns in **Diagnostic chat** mode (same chat — do not click New chat).
+2. In Langfuse, open **Sessions** (or filter traces by `session_id`).
+3. Click the session whose id matches the UI pill (`Session …xxxxxxxx`) — all
+   turns for that conversation appear together.
+
+Each trace also carries `metadata.diagnose_session_id` for search/filter backup.
+Ask mode has no session grouping (one trace per question).
+
 Benches (`bench-qa`, `bench-candidates`, …) do **not** require Langfuse. If keys
 are set during a bench run, traces will also be sent (OpenAI cost unchanged).

@@ -34,6 +34,11 @@ from repair_assistant.api.sessions import (
 )
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
+from repair_assistant.corpus.support import (
+    ABSTAIN_UNSUPPORTED_MODEL,
+    corpus_supports_appliance,
+    unsupported_appliance_message,
+)
 from repair_assistant.ingest.embeddings import get_shared_embedder, shared_embedder_loaded
 from repair_assistant.ingest.env import database_url, load_dotenv_files
 from repair_assistant.ingest.store import Database
@@ -172,6 +177,15 @@ def create_app(
     @app.post("/v1/search", response_model=SearchResponse, dependencies=[Depends(require_api_key)])
     def search_route(body: SearchRequest, db: Database = Depends(get_db)) -> SearchResponse:
         appliance = Appliance(model=body.model, serial=body.serial) if body.model else None
+        if appliance is not None and not corpus_supports_appliance(_manifest(), appliance).supported:
+            return SearchResponse(
+                query=body.query,
+                hits=[],
+                fetched=0,
+                filtered_out=0,
+                notice=unsupported_appliance_message(appliance),
+                abstain_code=ABSTAIN_UNSUPPORTED_MODEL,
+            )
         result = search(
             db,
             _manifest(),
@@ -219,6 +233,7 @@ def create_app(
             answer=result.answer,
             abstained=result.abstained,
             abstain_reason=result.abstain_reason,
+            abstain_code=result.abstain_code,
             citations=[_citation_out(c) for c in result.citations],
             retrieval_count=result.retrieval_count,
             safety_action=result.safety_action,
@@ -289,6 +304,7 @@ def create_app(
             assistant_message=turn.assistant_message,
             abstained=turn.abstained,
             abstain_reason=turn.abstain_reason,
+            abstain_code=turn.abstain_code,
             citations=[_citation_out(c) for c in turn.citations],
             retrieval_count=turn.retrieval_count,
             safety_action=turn.safety_action,

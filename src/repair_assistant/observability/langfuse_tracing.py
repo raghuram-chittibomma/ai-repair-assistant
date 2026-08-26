@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -11,6 +12,11 @@ from repair_assistant.ingest.env import load_dotenv_files
 from repair_assistant.observability.eval_context import merge_eval_metadata
 
 _DEFAULT_TRACE_MAX = 12_000
+
+# Mutable span stack per thread — avoids ContextVar token reset errors when SSE
+# generators yield/resume across asyncio context copies.
+_tls = threading.local()
+_langfuse_client: Any | None = None
 
 
 class _NoOpSpan:
@@ -51,8 +57,55 @@ def truncate_for_trace(value: Any, *, max_chars: int | None = None) -> Any:
     return value
 
 
+def _span_ids(span: Any) -> tuple[str, str] | None:
+    trace_id = getattr(span, "trace_id", None)
+    span_id = getattr(span, "id", None)
+    if trace_id and span_id:
+        return str(trace_id), str(span_id)
+    return None
+
+
+def _trace_stack() -> list[tuple[str, str]]:
+    stack = getattr(_tls, "trace_stack", None)
+    if stack is None:
+        stack = []
+        _tls.trace_stack = stack
+    return stack
+
+
+def _clear_trace_stack() -> None:
+    _tls.trace_stack = []
+
+
+def _parent_trace_context() -> dict[str, str] | None:
+    stack = _trace_stack()
+    if not stack:
+        return None
+    trace_id, parent_span_id = stack[-1]
+    return {"trace_id": trace_id, "parent_span_id": parent_span_id}
+
+
+@contextmanager
+def _push_span(span: Any) -> Iterator[None]:
+    ids = _span_ids(span)
+    if ids is None:
+        yield
+        return
+    stack = _trace_stack()
+    stack.append(ids)
+    try:
+        yield
+    finally:
+        if stack and stack[-1] == ids:
+            stack.pop()
+
+
 def _client() -> Any:
-    """Return a process-local Langfuse client configured from the environment."""
+    """Return a singleton Langfuse client configured from the environment."""
+    global _langfuse_client
+    if _langfuse_client is not None:
+        return _langfuse_client
+
     try:
         from langfuse import Langfuse
     except Exception as exc:  # pragma: no cover - depends on local Python/pydantic
@@ -63,12 +116,36 @@ def _client() -> Any:
         ) from exc
 
     load_dotenv_files()
-    return Langfuse(
+    _langfuse_client = Langfuse(
         public_key=os.environ["LANGFUSE_PUBLIC_KEY"].strip(),
         secret_key=os.environ["LANGFUSE_SECRET_KEY"].strip(),
         host=os.environ.get("LANGFUSE_HOST", "http://localhost:3000").strip()
         or "http://localhost:3000",
     )
+    return _langfuse_client
+
+
+def _start_observation(
+    client: Any,
+    *,
+    name: str,
+    as_type: str,
+    input: Any = None,
+    metadata: dict[str, Any] | None = None,
+    model: str | None = None,
+) -> Any:
+    trace_context = _parent_trace_context()
+    kwargs: dict[str, Any] = {
+        "as_type": as_type,
+        "name": name,
+        "input": truncate_for_trace(input) if input is not None else None,
+        "metadata": merge_eval_metadata(metadata),
+    }
+    if trace_context is not None:
+        kwargs["trace_context"] = trace_context
+    if model is not None:
+        kwargs["model"] = model
+    return client.start_as_current_observation(**kwargs)
 
 
 @contextmanager
@@ -77,20 +154,37 @@ def observation(
     *,
     input: Any = None,
     metadata: dict[str, Any] | None = None,
+    session_id: str | None = None,
 ) -> Iterator[Any]:
     """Context manager for a root span. Yields a no-op when tracing is off."""
     if not tracing_enabled():
         yield _NoOpSpan()
         return
 
+    merged_meta = merge_eval_metadata(metadata)
+    if session_id:
+        merged_meta = {**merged_meta, "diagnose_session_id": session_id}
+
     client = _client()
-    with client.start_as_current_observation(
-        as_type="span",
-        name=name,
-        input=truncate_for_trace(input) if input is not None else None,
-        metadata=merge_eval_metadata(metadata),
-    ) as span:
-        yield span
+    _clear_trace_stack()
+    try:
+        with _start_observation(
+            client,
+            name=name,
+            as_type="span",
+            input=input,
+            metadata=merged_meta,
+        ) as span:
+            with _push_span(span):
+                if session_id:
+                    from langfuse import propagate_attributes
+
+                    with propagate_attributes(session_id=session_id):
+                        yield span
+                else:
+                    yield span
+    finally:
+        _clear_trace_stack()
     client.flush()
 
 
@@ -108,13 +202,15 @@ def child_observation(
         return
 
     client = _client()
-    with client.start_as_current_observation(
-        as_type=as_type,
+    with _start_observation(
+        client,
         name=name,
-        input=truncate_for_trace(input) if input is not None else None,
-        metadata=merge_eval_metadata(metadata),
+        as_type=as_type,
+        input=input,
+        metadata=metadata,
     ) as span:
-        yield span
+        with _push_span(span):
+            yield span
 
 
 @contextmanager
@@ -131,14 +227,16 @@ def generation(
         return
 
     client = _client()
-    with client.start_as_current_observation(
-        as_type="generation",
+    with _start_observation(
+        client,
         name=name,
+        as_type="generation",
+        input=input,
+        metadata=metadata,
         model=model,
-        input=truncate_for_trace(input),
-        metadata=merge_eval_metadata(metadata),
     ) as span:
-        yield span
+        with _push_span(span):
+            yield span
 
 
 def update_span(span: Any, **kwargs: Any) -> None:

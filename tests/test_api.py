@@ -128,6 +128,7 @@ def test_diagnose_route_returns_session_id(mock_session_cls: MagicMock, client: 
         assistant_message="Check TEST #4 [1].",
         abstained=False,
         abstain_reason="",
+        abstain_code="",
         citations=[],
         retrieval_count=4,
         safety_action="allow",
@@ -244,11 +245,11 @@ def test_ui_page(client: TestClient) -> None:
     response = client.get("/ui", follow_redirects=False)
     assert response.status_code == 200
     assert "AI Repair Assistant" in response.text
-    assert "API key" in response.text
     assert "Search only" in response.text
     assert "Diagnostic chat (streaming)" in response.text
     assert "Export JSON" in response.text
     assert "Cancel" in response.text
+    assert "API key" not in response.text
 
     root = client.get("/", follow_redirects=False)
     assert root.status_code in {307, 308}

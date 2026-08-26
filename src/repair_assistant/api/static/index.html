@@ -57,7 +57,7 @@
     }
     .controls-secondary {
       display: grid;
-      grid-template-columns: 1fr 1fr 1.2fr;
+      grid-template-columns: 1fr 2fr;
       gap: 0.75rem;
       align-items: end;
     }
@@ -218,10 +218,6 @@
           <option value="technician">Technician</option>
         </select>
       </div>
-      <div>
-        <label for="apiKey">API key (optional)</label>
-        <input id="apiKey" type="password" placeholder="If REPAIR_API_KEY is set" autocomplete="off" />
-      </div>
       <div id="sessionBar" aria-live="polite"></div>
     </div>
     <div id="status" class="status">Checking API…</div>
@@ -243,7 +239,6 @@
     const serialEl = document.getElementById("serial");
     const modeEl = document.getElementById("mode");
     const audienceEl = document.getElementById("audience");
-    const apiKeyEl = document.getElementById("apiKey");
     const sendBtn = document.getElementById("send");
     const cancelBtn = document.getElementById("cancel");
     const newSessionBtn = document.getElementById("newSession");
@@ -252,7 +247,6 @@
     const exportMdBtn = document.getElementById("exportMd");
 
     const FETCH_TIMEOUT_MS = 180000;
-    const API_KEY_STORAGE = "repair_api_key";
 
     let sessionId = null;
     let turn = 0;
@@ -263,18 +257,8 @@
     /** @type {{ts:string, role:string, mode:string, text:string, citations?:any[], meta?:object}[]} */
     let history = [];
 
-    apiKeyEl.value = localStorage.getItem(API_KEY_STORAGE) || "";
-    apiKeyEl.addEventListener("change", () => {
-      const v = apiKeyEl.value.trim();
-      if (v) localStorage.setItem(API_KEY_STORAGE, v);
-      else localStorage.removeItem(API_KEY_STORAGE);
-    });
-
     function authHeaders(extra = {}) {
-      const headers = { ...extra };
-      const key = apiKeyEl.value.trim();
-      if (key) headers["X-API-Key"] = key;
-      return headers;
+      return { ...extra };
     }
 
     function errorDetail(data, fallback) {
@@ -585,9 +569,12 @@
         },
       });
       embedderWarm = true;
-      statusEl.textContent = ev.abstained
-        ? "Abstained — see reason above"
-        : "API ready (embedder warm)";
+      const code = ev.abstain_code || "";
+      statusEl.textContent = code === "unsupported_model"
+        ? "Model not covered by this documentation"
+        : ev.abstained
+          ? "Abstained — see reason above"
+          : "API ready (embedder warm)";
       statusEl.className = ev.abstained ? "status busy" : "status ok";
       return { answer, streamEl };
     }
@@ -673,6 +660,18 @@
         const data = await res.json().catch(() => ({}));
         removePending();
         if (!res.ok) throw new Error(errorDetail(data, res.statusText));
+        if (data.notice) {
+          append("assistant", data.notice, {
+            abstained: true,
+            abstainReason: data.abstain_code === "unsupported_model"
+              ? "Model not covered by our documentation set."
+              : "",
+          });
+          record("assistant", data.notice, { meta: { abstain_code: data.abstain_code } });
+          statusEl.textContent = "Model not covered by this documentation";
+          statusEl.className = "status busy";
+          return;
+        }
         const hits = data.hits || [];
         if (!hits.length) {
           append("system", "No hits.");

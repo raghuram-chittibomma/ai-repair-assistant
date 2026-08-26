@@ -9,6 +9,11 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
+from repair_assistant.corpus.support import (
+    ABSTAIN_UNSUPPORTED_MODEL,
+    corpus_supports_appliance,
+    unsupported_appliance_message,
+)
 from repair_assistant.diagnostic.graph import (
     build_diagnostic_graph,
     citations_for_turn,
@@ -33,8 +38,10 @@ class DiagnosticSession:
         llm: LLMClient | None = None,
         retrieval_limit: int = 8,
         overfetch: int = 40,
+        session_id: str | None = None,
     ) -> None:
         self._manifest = manifest
+        self._session_id = session_id
         self._llm = llm
         self._retrieval_limit = retrieval_limit
         self._overfetch = overfetch
@@ -61,6 +68,10 @@ class DiagnosticSession:
     def turn_count(self) -> int:
         return self._turn
 
+    @property
+    def session_id(self) -> str | None:
+        return self._session_id
+
     def send(self, db: Database, user_message: str) -> TurnResult:
         """Process one user message and return the assistant turn."""
         self._turn += 1
@@ -74,7 +85,42 @@ class DiagnosticSession:
             "diagnose",
             input={"user_message": user_message, "turn": self._turn},
             metadata=meta,
+            session_id=self._session_id,
         ) as span:
+            if self._state.get("appliance_model"):
+                appliance = Appliance(
+                    model=self._state["appliance_model"],
+                    serial=self._state.get("appliance_serial"),
+                )
+                if not corpus_supports_appliance(self._manifest, appliance).supported:
+                    msg = unsupported_appliance_message(appliance)
+                    self._state["messages"] = [
+                        *self._state["messages"],
+                        HumanMessage(content=user_message),
+                        AIMessage(content=msg),
+                    ]
+                    turn = TurnResult(
+                        user_message=user_message,
+                        assistant_message=msg,
+                        abstained=True,
+                        abstain_reason="This model is not covered by our documentation set.",
+                        abstain_code=ABSTAIN_UNSUPPORTED_MODEL,
+                        turn=self._turn,
+                    )
+                    update_span(
+                        span,
+                        output={
+                            "abstained": True,
+                            "answer_preview": msg[:500],
+                            "abstain_code": ABSTAIN_UNSUPPORTED_MODEL,
+                        },
+                        metadata={
+                            **meta,
+                            "duration_ms": int((time.perf_counter() - started) * 1000),
+                        },
+                    )
+                    return turn
+
             graph = build_diagnostic_graph(
                 db,
                 self._manifest,
@@ -139,6 +185,7 @@ class DiagnosticSession:
             "diagnose",
             input={"user_message": user_message, "turn": self._turn, "stream": True},
             metadata=meta,
+            session_id=self._session_id,
         ) as span:
             invoke_state: DiagnosticGraphState = {
                 **self._state,

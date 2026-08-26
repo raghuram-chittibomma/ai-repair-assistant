@@ -38,6 +38,8 @@ class SearchResponse(BaseModel):
     hits: list[SearchHitOut]
     fetched: int
     filtered_out: int
+    notice: str = ""
+    abstain_code: str = ""
 
 
 class AskRequest(BaseModel):
@@ -54,6 +56,7 @@ class AskResponse(BaseModel):
     answer: str
     abstained: bool
     abstain_reason: str = ""
+    abstain_code: str = ""
     citations: list[CitationOut] = Field(default_factory=list)
     retrieval_count: int = 0
     safety_action: str = "allow"
@@ -77,6 +80,7 @@ class DiagnoseResponse(BaseModel):
     assistant_message: str
     abstained: bool
     abstain_reason: str = ""
+    abstain_code: str = ""
     citations: list[CitationOut] = Field(default_factory=list)
     retrieval_count: int = 0
     safety_action: str = "allow"

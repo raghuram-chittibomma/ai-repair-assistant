@@ -22,7 +22,9 @@ LLM_MODEL=gpt-4o-mini
 REPAIR_API_KEY=
 ```
 
-Leave `REPAIR_API_KEY` empty (LAN-only, no auth needed).
+Leave `REPAIR_API_KEY` empty for the default LAN-only setup (no API auth).
+The web UI does not expose this; set it only if you need to lock `/v1/*` routes
+and call the API with an `X-API-Key` header from scripts or other clients.
 
 ### 2. Confirm the database is reachable
 

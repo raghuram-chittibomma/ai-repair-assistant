@@ -8,6 +8,13 @@ from typing import Any, Iterator, Protocol
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
+from repair_assistant.corpus.support import (
+    ABSTAIN_NO_EVIDENCE,
+    ABSTAIN_UNSUPPORTED_MODEL,
+    corpus_supports_appliance,
+    no_evidence_message,
+    unsupported_appliance_message,
+)
 from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import (
     child_observation,
@@ -115,6 +122,75 @@ def build_user_prompt(
     lines.append("Evidence:")
     lines.append(evidence_text or "(none)")
     return "\n".join(lines)
+
+
+def _unsupported_appliance_answer(
+    question: str,
+    appliance: Appliance,
+    *,
+    assessment,
+) -> AnswerResult:
+    msg = unsupported_appliance_message(appliance)
+    return AnswerResult(
+        question=question,
+        answer=msg,
+        abstained=True,
+        abstain_reason="This model is not covered by our documentation set.",
+        abstain_code=ABSTAIN_UNSUPPORTED_MODEL,
+        citations=[],
+        retrieval_count=0,
+        safety_action=assessment.action.value,
+        safety_notice=assessment.reason,
+    )
+
+
+def _no_evidence_answer(question: str, appliance: Appliance | None, *, assessment) -> AnswerResult:
+    msg = no_evidence_message(appliance)
+    return AnswerResult(
+        question=question,
+        answer=msg,
+        abstained=True,
+        abstain_reason="No matching manufacturer evidence for this question.",
+        abstain_code=ABSTAIN_NO_EVIDENCE,
+        citations=[],
+        retrieval_count=0,
+        safety_action=assessment.action.value,
+        safety_notice=assessment.reason,
+    )
+
+
+def _stream_done_unsupported(question: str, appliance: Appliance, *, assessment) -> dict[str, Any]:
+    msg = unsupported_appliance_message(appliance)
+    return {
+        "type": "done",
+        "question": question,
+        "answer": msg,
+        "abstained": True,
+        "abstain_reason": "This model is not covered by our documentation set.",
+        "abstain_code": ABSTAIN_UNSUPPORTED_MODEL,
+        "citations": [],
+        "retrieval_count": 0,
+        "safety_action": assessment.action.value,
+        "safety_notice": assessment.reason,
+        "escalated": False,
+    }
+
+
+def _stream_done_no_evidence(question: str, appliance: Appliance | None, *, assessment) -> dict[str, Any]:
+    msg = no_evidence_message(appliance)
+    return {
+        "type": "done",
+        "question": question,
+        "answer": msg,
+        "abstained": True,
+        "abstain_reason": "No matching manufacturer evidence for this question.",
+        "abstain_code": ABSTAIN_NO_EVIDENCE,
+        "citations": [],
+        "retrieval_count": 0,
+        "safety_action": assessment.action.value,
+        "safety_notice": assessment.reason,
+        "escalated": False,
+    }
 
 
 def _trace_safety_assess(question: str, audience: Audience, assessment) -> None:
@@ -257,6 +333,9 @@ def _ask_impl(
             escalated=True,
         )
 
+    if appliance is not None and not corpus_supports_appliance(manifest, appliance).supported:
+        return _unsupported_appliance_answer(question, appliance, assessment=assessment)
+
     result = search(
         db,
         manifest,
@@ -267,16 +346,7 @@ def _ask_impl(
     )
 
     if not result.hits:
-        return AnswerResult(
-            question=question,
-            answer="",
-            abstained=True,
-            abstain_reason="No applicable manufacturer evidence was retrieved.",
-            citations=[],
-            retrieval_count=0,
-            safety_action=assessment.action.value,
-            safety_notice=assessment.reason,
-        )
+        return _no_evidence_answer(question, appliance, assessment=assessment)
 
     evidence_text, available = _trace_evidence(result.hits, query=question)
     system = ask_system()
@@ -358,6 +428,10 @@ def ask_stream(
             }
             return
 
+        if appliance is not None and not corpus_supports_appliance(manifest, appliance).supported:
+            yield _stream_done_unsupported(question, appliance, assessment=assessment)
+            return
+
         yield {"type": "status", "phase": "retrieving"}
         result = search(
             db,
@@ -368,18 +442,7 @@ def ask_stream(
             overfetch=overfetch,
         )
         if not result.hits:
-            yield {
-                "type": "done",
-                "question": question,
-                "answer": "",
-                "abstained": True,
-                "abstain_reason": "No applicable manufacturer evidence was retrieved.",
-                "citations": [],
-                "retrieval_count": 0,
-                "safety_action": assessment.action.value,
-                "safety_notice": assessment.reason,
-                "escalated": False,
-            }
+            yield _stream_done_no_evidence(question, appliance, assessment=assessment)
             return
 
         evidence_text, available = _trace_evidence(result.hits, query=question)

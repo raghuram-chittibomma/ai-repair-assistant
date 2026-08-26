@@ -827,6 +827,8 @@ def diagnose_cmd(
     overfetch: int,
 ) -> None:
     """Multi-turn grounded troubleshooting (Phase 6 LangGraph)."""
+    import uuid
+
     from repair_assistant.corpus.applicability import Appliance
     from repair_assistant.diagnostic.session import DiagnosticSession
     from repair_assistant.ingest.env import database_url
@@ -869,6 +871,7 @@ def diagnose_cmd(
             audience=Audience(audience),
             retrieval_limit=limit,
             overfetch=overfetch,
+            session_id=str(uuid.uuid4()),
         )
 
         if message:

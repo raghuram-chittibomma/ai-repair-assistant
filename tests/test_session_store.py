@@ -30,6 +30,32 @@ def _create(store: SessionStore, session_id: str | None = None):
         )
 
 
+def test_new_session_receives_store_session_id() -> None:
+    from pathlib import Path
+
+    from repair_assistant.corpus.manifest import Document, Manifest
+
+    doc = Document(
+        data={
+            "doc_id": "tech-sheet-w11320651",
+            "title": "Tech sheet",
+            "doc_type": "tech_sheet",
+            "applicability": {"models": ["WFW5620HW*"], "serial_ranges": [{"scope": "all"}]},
+        },
+        path=Path("tech-sheet-w11320651.yaml"),
+    )
+    store = SessionStore(ttl_seconds=3600, max_sessions=8)
+    sid, session = store.get_or_create(
+        None,
+        manifest=Manifest(documents=[doc]),
+        appliance=Appliance(model="WFW5620HW0"),
+        audience=Audience.OWNER,
+        retrieval_limit=8,
+        overfetch=40,
+    )
+    assert session.session_id == sid
+
+
 def test_unknown_session_raises(store: SessionStore) -> None:
     with pytest.raises(KeyError):
         _create(store, "missing")

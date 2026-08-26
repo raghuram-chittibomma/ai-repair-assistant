@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Document, Manifest
+from repair_assistant.corpus.support import ABSTAIN_NO_EVIDENCE
 from repair_assistant.qa.generate import ask, build_user_prompt
 from repair_assistant.retrieval.search import Hit, SearchResult
 
@@ -71,7 +72,24 @@ def test_ask_abstains_when_no_hits(mock_search: MagicMock) -> None:
     db = MagicMock()
     result = ask(db, _manifest(), "What is F5E2?", llm=FakeLLM("unused"))
     assert result.abstained
-    assert "No applicable" in result.abstain_reason
+    assert result.abstain_code == ABSTAIN_NO_EVIDENCE
+    assert "manufacturer evidence" in result.answer.lower()
+
+
+@patch("repair_assistant.qa.generate.search")
+def test_ask_rejects_unknown_model_before_search(mock_search: MagicMock) -> None:
+    db = MagicMock()
+    result = ask(
+        db,
+        _manifest(),
+        "doesn't turn on",
+        appliance=Appliance(model="WTW4816FW0"),
+        llm=FakeLLM("unused"),
+    )
+    assert result.abstained
+    assert result.abstain_code == "unsupported_model"
+    assert "Customer Care" in result.answer
+    mock_search.assert_not_called()
 
 
 @patch("repair_assistant.qa.generate.search")

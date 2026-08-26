@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from langchain_core.messages import HumanMessage
 
+from repair_assistant.corpus.support import CorpusSupportResult
 from repair_assistant.diagnostic.graph import diagnose_turn_stream
 from repair_assistant.diagnostic.state import DiagnosticGraphState
 from repair_assistant.retrieval.search import Hit, SearchResult
@@ -58,9 +59,11 @@ def test_diagnose_turn_stream_emits_status_tokens_done():
         )
     ]
     with (
+        patch("repair_assistant.diagnostic.graph.corpus_supports_appliance") as support,
         patch("repair_assistant.diagnostic.graph.search") as search,
         patch("repair_assistant.diagnostic.graph.gate_answer") as gate,
     ):
+        support.return_value = CorpusSupportResult(True, 1, "ok", "1 doc")
         search.return_value = SearchResult(query="F5E2", hits=hits, fetched=1, filtered_out=0)
         gated = MagicMock()
         gated.text = "Check door lock wiring [1]."

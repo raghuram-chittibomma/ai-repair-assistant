@@ -40,6 +40,7 @@ class TurnResult:
     assistant_message: str
     abstained: bool
     abstain_reason: str = ""
+    abstain_code: str = ""
     citations: list[Citation] = field(default_factory=list)
     retrieval_count: int = 0
     turn: int = 0
