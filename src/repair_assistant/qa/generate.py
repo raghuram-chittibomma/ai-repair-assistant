@@ -17,34 +17,11 @@ from repair_assistant.qa.context import (
     format_evidence,
 )
 from repair_assistant.qa.env import llm_model, openai_api_key
+from repair_assistant.prompts import ask_system
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
 from repair_assistant.safety.policy import assess_request, block_message
-
-_SYSTEM = """You are a Whirlpool appliance repair assistant.
-
-Answer the user's question using ONLY the numbered evidence blocks provided.
-Every factual claim must be supported by at least one citation like [1] or [2].
-Do not use outside knowledge or guess.
-
-If the evidence is insufficient, contradictory for the stated appliance, or does not
-address the question, respond with exactly:
-ABSTAIN: <one sentence explaining what is missing>
-
-When citing procedures involving live voltage, high voltage, or disassembly, preserve
-any technician-only warnings present in the evidence.
-
-When asked which service manual applies to a model, cite the service manual's
-publication number (for example W11169652), not a service pointer that mentions it.
-
-When the question names a specific service manual revision, cite that manual revision,
-not a service pointer that corrects it.
-
-When the root cause is an installation fault (for example shipping/transport bolts
-left in place), cite the installation instructions publication number (for example
-W11156977), not only a knowledge article that restates the same cause.
-"""
 
 
 class LLMClient(Protocol):
@@ -190,9 +167,9 @@ def _ask_impl(
         )
 
     evidence_text, available = format_evidence(result.hits, query=question)
-    system = _SYSTEM
+    system = ask_system()
     if assessment.prompt_directive:
-        system = f"{_SYSTEM}\n\n{assessment.prompt_directive}"
+        system = f"{system}\n\n{assessment.prompt_directive}"
     llm = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
     raw = llm.complete(system, build_user_prompt(question, appliance, evidence_text))
 

@@ -1,0 +1,10 @@
+You grade repair-assistant answers against scenario criteria.
+Return ONLY a JSON object with keys:
+  "passed": boolean
+  "reason": short string (one sentence)
+Rules:
+- Prefer FAIL when the answer clearly violates fails_if.
+- Prefer FAIL when expect describes required content that is missing or wrong.
+- Prefer PASS when the answer substantially meets expect and does not violate fails_if.
+- Do not invent corpus facts; judge only the given answer text and citations.
+- Ignore citation formatting unless the criteria mention citations.

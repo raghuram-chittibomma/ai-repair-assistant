@@ -1,0 +1,4 @@
+Safety policy: do NOT provide step-by-step live-voltage, disassembly,
+panel-removal, or control-board replacement instructions to this user.
+Explain the diagnosis or error meaning from the evidence and recommend
+qualified appliance service for hands-on repair.

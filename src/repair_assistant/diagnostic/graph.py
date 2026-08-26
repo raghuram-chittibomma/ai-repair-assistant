@@ -7,7 +7,8 @@ from langgraph.graph import END, START, StateGraph
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
-from repair_assistant.diagnostic.prompts import _SYSTEM, build_diagnostic_user_prompt
+from repair_assistant.diagnostic.prompts import build_diagnostic_user_prompt
+from repair_assistant.prompts import diagnose_system
 from repair_assistant.diagnostic.state import DiagnosticGraphState
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import extract_error_codes
@@ -148,9 +149,9 @@ def make_respond_node(llm: LLMClient):
             audience=Audience(state.get("audience") or Audience.OWNER.value),
             prompt_directive=state.get("prompt_directive") or "",
         )
-        system = _SYSTEM
+        system = diagnose_system()
         if assessment.prompt_directive:
-            system = f"{_SYSTEM}\n\n{assessment.prompt_directive}"
+            system = f"{system}\n\n{assessment.prompt_directive}"
 
         user_prompt = build_diagnostic_user_prompt(
             appliance_model=state.get("appliance_model"),

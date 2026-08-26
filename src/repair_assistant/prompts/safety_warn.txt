@@ -1,0 +1,2 @@
+Safety policy: if the evidence includes shock, voltage, or disassembly
+warnings, reproduce them verbatim. Do not omit disconnect-power guidance.

@@ -13,20 +13,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from repair_assistant.prompts import judge_system
 from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.qa.generate import OpenAIClient
-
-_SYSTEM = """You grade repair-assistant answers against scenario criteria.
-Return ONLY a JSON object with keys:
-  "passed": boolean
-  "reason": short string (one sentence)
-Rules:
-- Prefer FAIL when the answer clearly violates fails_if.
-- Prefer FAIL when expect describes required content that is missing or wrong.
-- Prefer PASS when the answer substantially meets expect and does not violate fails_if.
-- Do not invent corpus facts; judge only the given answer text and citations.
-- Ignore citation formatting unless the criteria mention citations.
-"""
 
 
 class JudgeClient(Protocol):
@@ -118,7 +107,7 @@ def judge_answer(
         return JudgeVerdict(passed=True, reason="no prose criteria")
     client: JudgeClient = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
     raw = client.complete(
-        _SYSTEM,
+        judge_system(),
         build_judge_user_prompt(
             scenario,
             answer=answer,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from repair_assistant.prompts import safety_escalate, safety_technician, safety_warn
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
 
 # Ordered highest-severity first within each audience.
@@ -93,23 +94,6 @@ _BLOCK_TEMPLATE = (
     "BLOCK: {reason} Contact qualified appliance service for this issue."
 )
 
-_PROMPT_ESCALATE = (
-    "Safety policy: do NOT provide step-by-step live-voltage, disassembly, "
-    "panel-removal, or control-board replacement instructions to this user. "
-    "Explain the diagnosis or error meaning from the evidence and recommend "
-    "qualified appliance service for hands-on repair."
-)
-
-_PROMPT_WARN = (
-    "Safety policy: if the evidence includes shock, voltage, or disassembly "
-    "warnings, reproduce them verbatim. Do not omit disconnect-power guidance."
-)
-
-_PROMPT_TECH = (
-    "Audience: qualified appliance service personnel. Procedural steps from "
-    "the evidence may be cited, but never omit manufacturer warnings."
-)
-
 
 @dataclass(frozen=True)
 class _Rule:
@@ -155,7 +139,7 @@ def assess_request(question: str, *, audience: Audience = Audience.OWNER) -> Saf
                 best = rule
 
     if best is None:
-        directive = _PROMPT_TECH if audience == Audience.TECHNICIAN else ""
+        directive = safety_technician() if audience == Audience.TECHNICIAN else ""
         return SafetyAssessment(
             action=SafetyAction.ALLOW,
             rule_id="allow",
@@ -166,13 +150,13 @@ def assess_request(question: str, *, audience: Audience = Audience.OWNER) -> Saf
 
     directive = ""
     if best.action == SafetyAction.ESCALATE:
-        directive = _PROMPT_ESCALATE
+        directive = safety_escalate()
     elif best.action == SafetyAction.WARN:
-        directive = _PROMPT_WARN
+        directive = safety_warn()
     elif best.action == SafetyAction.BLOCK:
         directive = ""
     elif audience == Audience.TECHNICIAN:
-        directive = _PROMPT_TECH
+        directive = safety_technician()
 
     return SafetyAssessment(
         action=best.action,
