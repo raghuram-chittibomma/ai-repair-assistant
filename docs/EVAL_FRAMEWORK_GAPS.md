@@ -20,7 +20,7 @@ can slip between layers.
 | Retrieval IR (`bench-retrieve`, ADR-0011/0020) | strong | Manual pass/fail (14 hard) | Measures cores only — omits `connector_fetch` / `reference_fetch` / `manual_rev_fetch`; leaders tied → weak discrimination | P0 |
 | Safety (`bench-safety`, ADR-0014) | adequate | Weak in practice | Offline-capable but **not in CI** | P1 |
 | Q&A smoke (`bench-qa`, ADR-0015) | adequate | Manual | Only one diagnose case; later-turn notes unenforced | P1 |
-| Candidates (`bench-candidates`, ADR-0017) | adequate | Soft | Overlay covers a minority of ready scenarios; prose-critical cases pass without `--judge` | P0 |
+| Candidates (`bench-candidates`, ADR-0017) | adequate | Soft | Every ready has ≥1 det rule (E2); prose-critical still need `--judge` (`requires_judge`) | P1 |
 | LLM judge + promote (ADR-0019) | thin | Opt-in only | No calibration set; promote drafts unused as discipline | P1 |
 | Observability (Langfuse ADR-0018) | thin | None for eval | Benches never score into Langfuse; no failure→dataset loop | P2 |
 | CI / release | thin | Unit + copyright only | ADR-0015 overclaimed live CI benches; EVALS.md can lag scorecard counts | P0 |
@@ -31,7 +31,9 @@ can slip between layers.
 ## Cross-cutting gaps
 
 1. **Production ≠ bake-off path** — `bench-retrieve` → `run_strategy` omits side doors that `search()` uses (ADR-0020).
-2. **Prose criteria are not gates by default** — `grade_answer` ignores `expect`/`fails_if` unless `--judge`.
+2. **Prose criteria are not full gates by default** — `grade_answer` ignores
+   prose `expect`/`fails_if` unless `--judge`; ready scenarios now always have
+   ≥1 det rule (E2), and prose-heavy overlays set `requires_judge`.
 3. **`must_not_cite_as_current` is dead for grading** — Present in candidates; not handled in `grade_answer`.
 4. **Scenario ID / ownership mismatch** — e.g. IR `f5e2-front-load-not-top-load` vs candidates `f5e2-three-way`; IR soft serial vs candidates hard serial; synthetic supersession vs `needs_document` real case.
 5. **Parse → ingest → retrieve → answer can slip** — No single chain smoke.
@@ -50,7 +52,7 @@ can slip between layers.
 | ID | Action | Effort | Layer |
 | --- | --- | --- | --- |
 | **E1** | IR strategy/flag grading **production `search()`** (side doors); keep cores separate | M | Retrieval |
-| **E2** | Every `ready` candidate gets ≥1 deterministic rule (or require `--judge` for prose-only) | M | Candidates |
+| **E2** | ~~Every `ready` candidate gets ≥1 deterministic rule~~ **Done** — overlay + unit gate; `requires_judge` for prose | — | Candidates |
 | **E3** | ~~Wire `bench-safety` into CI~~ **Skipped** — all evals remain manual | — | Safety / CI |
 | **E4** | Align IR↔candidates IDs + hardness; demote or fix ready-but-failing fog | S | Cross-layer |
 | **E5** | Implement or drop `must_not_cite_as_current` in `grade_answer` | S | Grading |
@@ -66,8 +68,10 @@ can slip between layers.
 
 **Slice status (2026-08-26):** Report filed; docs claims corrected;
 `must_not_cite_as_current` graded; IR↔candidates crosswalk; `production_search`
-on the retrieve bake-off. **E3 (CI safety) skipped by policy.** Remaining
-backlog starts at **E2**.
+on the retrieve bake-off. **E3 (CI safety) skipped by policy** (all evals
+manual). **E2 done** — every ready candidate has ≥1 deterministic rule via
+`candidates-grading.yaml` (+ unit test); prose-heavy cases set `requires_judge`.
+Next backlog: E6 / E7 / E9–E12 as needed.
 
 ---
 

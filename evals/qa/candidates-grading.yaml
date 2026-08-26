@@ -68,3 +68,92 @@ scenarios:
   code-to-procedure-hop:
     expect_cites_any: [W11320651, W11169652]
     expect_contains_any: [temperature sensor, thermistor, j15, ntc, resistance]
+
+  # --- E2: previously prose-only ready scenarios (det gate minimum) ----------
+  # requires_judge: true means prose expect/fails_if still need --judge for a
+  # full human-grade pass; deterministic rules below always run.
+
+  serial-unknown-must-ask:
+    expect_contains_any: [serial]
+    fails_if_contains:
+      - "yes, the door-lock"
+      - "no, the door-lock"
+    requires_judge: true
+
+  door-lock-part-number:
+    must_cite: [W11320547]
+    expect_contains: [W10804741]
+    expect_contains_any:
+      - confirm
+      - catalog
+      - catalogue
+      - supersed
+      - 2020
+      - current
+      - may have changed
+    requires_judge: true
+
+  error-code-lookup:
+    expect_cites_any: [W11320651, W11156989]
+    expect_contains_any: [valve, "test #6", inlet]
+
+  error-code-orphaned-by-extraction:
+    expect_cites_any: [W11320651, W11156989]
+    expect_contains_any: [HMI, communication, "test #2", ACU]
+
+  publication-number-lookup:
+    must_cite: [W11375982]
+    expect_contains_any: [LED, ACU, pointer, bulletin, service]
+
+  unresponsive-control-panel:
+    expect_contains_any: [control lock, "LOC", lock]
+    fails_if_contains:
+      - replace the ACU
+      - replace the HMI
+      - replace the control board
+      - replace the main control
+    requires_judge: true
+
+  digit-sensitive-document:
+    expect_contains_any:
+      - WFW5620HW0
+      - engineering
+      - full model
+      - complete model
+      - exact model
+    requires_judge: true
+
+  adjacent-base-model-must-not-match:
+    expect_contains_any:
+      - not cover
+      - does not cover
+      - different
+      - 7MWFW
+      - "no,"
+      - "No,"
+    requires_judge: true
+
+  shared-pages-deduplicated:
+    expect_cites_any: [W11320651, W11156989]
+    requires_judge: true
+
+  reflow-is-not-a-revision:
+    expect_contains_any: [same, identical, both, unchanged, no difference, not differ]
+    fails_if_contains:
+      - substantive difference
+      - revised the voltage
+      - content changed
+    requires_judge: true
+
+  language-must-be-filtered:
+    expect_cites_any: [W11156989, W11320651]
+    fails_if_contains:
+      - "filtre d"
+      - interférence
+      - "pour le technicien"
+    requires_judge: true
+
+  symbol-font-list-structure:
+    expect_cites_any: [W11320651, W11156989]
+    requires_judge: true
+

@@ -180,3 +180,31 @@ def test_the_anchor_model_is_the_one_the_corpus_was_built_for(seeds):
 def test_enough_ready_scenarios_to_be_useful(seeds):
     ready = [s for _, s in _all_scenarios(seeds) if s["status"] == "ready"]
     assert len(ready) >= 12
+
+
+def test_every_ready_scenario_has_deterministic_grading(seeds):
+    """E2: ready scenarios must not be prose-empty (auto-pass without --judge).
+
+    Overlay: evals/qa/candidates-grading.yaml. Prose-heavy cases may also set
+    requires_judge: true — that does not replace a det rule.
+    """
+    from repair_assistant.eval.candidates_bench import (
+        _merge_scenario,
+        load_grading_overlay,
+    )
+    from repair_assistant.eval.grading import has_deterministic_grading
+
+    grading = load_grading_overlay()
+    bare: list[str] = []
+    for _family, scenario in _all_scenarios(seeds):
+        if scenario.get("status") != "ready":
+            continue
+        if not scenario.get("question"):
+            continue
+        merged = _merge_scenario(scenario, grading.get(scenario["id"], {}))
+        if not has_deterministic_grading(merged):
+            bare.append(scenario["id"])
+    assert not bare, (
+        "ready scenarios missing deterministic grading (overlay or inline): "
+        + ", ".join(bare)
+    )

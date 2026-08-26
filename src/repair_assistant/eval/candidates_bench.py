@@ -121,6 +121,8 @@ def run_candidates_bench(
             llm=judge_llm,
             deterministic_grade=grade_answer,
         )
+        if scenario.get("requires_judge") and not use_judge:
+            detail = f"{detail}; det-only (needs --judge for prose)"
         results.append(
             CandidateBenchResult(
                 scenario_id=scenario["id"],

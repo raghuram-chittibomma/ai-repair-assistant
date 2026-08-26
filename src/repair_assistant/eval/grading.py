@@ -5,6 +5,25 @@ from __future__ import annotations
 import re
 from typing import Any
 
+# Machine-checkable keys that grade_answer enforces without --judge.
+# Prose `expect` / `fails_if` are separate and need the LLM judge.
+DETERMINISTIC_KEYS: tuple[str, ...] = (
+    "must_cite",
+    "must_not_cite",
+    "must_not_cite_as_current",
+    "expect_contains",
+    "expect_contains_any",
+    "expect_cites_any",
+    "fails_if_contains",
+    "expect_abstain",
+)
+
+
+def has_deterministic_grading(scenario: dict[str, Any]) -> bool:
+    """True if the scenario (after overlay merge) has ≥1 det grading rule."""
+    return any(scenario.get(key) for key in DETERMINISTIC_KEYS)
+
+
 _SUPERSESSION_ACK = re.compile(
     r"\b("
     r"superseded|no longer current|previous (?:revision|manual|edition|version)|"

@@ -26,9 +26,11 @@ not on PATH.
 
 Hard corpus scenarios live in `evals/scenarios/candidates.yaml` (`status: ready`).
 Deterministic overlays for the candidate bench are in
-`evals/qa/candidates-grading.yaml`. Prose `fails_if` / `expect` fields are still
-authoritative for humans; pass `--judge` to have an LLM grade them after the
-deterministic gate (ADR-0019).
+`evals/qa/candidates-grading.yaml`. Every `ready` scenario must have ≥1
+machine-checkable rule after merge (unit-tested). Overlay entries may set
+`requires_judge: true` when prose `fails_if` / `expect` still matter — pass
+`--judge` to grade those after the deterministic gate (ADR-0019). All eval
+benches stay **manual** (not CI-scheduled).
 
 ---
 
