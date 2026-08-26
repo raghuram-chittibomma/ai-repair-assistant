@@ -67,6 +67,8 @@ python -m repair_assistant.corpus.cli bench-qa --write
 python -m repair_assistant.corpus.cli bench-candidates --write
 ```
 
+Optional live traces (not required for benches): [LANGFUSE.md](LANGFUSE.md).
+
 ---
 
 ## Troubleshooting (local app)

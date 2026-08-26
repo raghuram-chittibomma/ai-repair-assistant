@@ -81,6 +81,12 @@ math. Fixtures with only `must_not_cite` leave Hit/Recall/Precision as `n/a`.
 **Release gate** = pass/fail. Use IR numbers to compare strategies and spot
 noise or missed docs — not as a substitute for hard corpus cases.
 
+### Live traces (optional Langfuse)
+
+Self-hosted Langfuse can record `ask` / `diagnose` runs for inspection
+([LANGFUSE.md](LANGFUSE.md), ADR-0018). Benches do **not** require Langfuse;
+leave `LANGFUSE_*` keys empty to disable tracing.
+
 ### Recent baselines (hand-run)
 
 | Bench | Result | Notes |

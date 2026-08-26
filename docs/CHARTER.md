@@ -597,9 +597,9 @@ Useful observability may include:
 * latency
 * failures
 
-Do not select an observability platform yet.
-
-Evaluate open-source options when the project reaches the appropriate phase.
+**Selected (Phase 9):** self-hosted [Langfuse](https://langfuse.com) (MIT core) —
+see [ADR-0018](adr/0018-langfuse-observability.md) and [LANGFUSE.md](LANGFUSE.md).
+Manual eval benches remain separate ([EVALS.md](EVALS.md)).
 
 ---
 

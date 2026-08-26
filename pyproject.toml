@@ -33,6 +33,9 @@ dependencies = [
     # Phase 9 HTTP API (charter Phase 10).
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.32,<1",
+    # Phase 9 observability (ADR-0018) — opt-in via LANGFUSE_* env vars.
+    # v4+ required for Python 3.14+ (v3 hits pydantic.v1 import errors).
+    "langfuse>=4.0,<5",
 ]
 
 [project.optional-dependencies]

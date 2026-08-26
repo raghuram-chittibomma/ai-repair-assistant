@@ -78,3 +78,12 @@ Endpoints: `GET /health`, `GET /ready`, `POST /v1/search`, `/v1/ask`, `/v1/diagn
 
 **Optional:** run the API as a Docker container on the LAN host — see
 [DEPLOYMENT.md](DEPLOYMENT.md) (`docker/deploy-api.ps1`). Not needed for normal use.
+
+## Langfuse (optional observability)
+
+**Default:** self-host on the **laptop** via upstream Langfuse Docker Compose
+(`http://localhost:3000`). Not part of this repo’s `docker/compose.yaml`.
+
+See [LANGFUSE.md](LANGFUSE.md) and [ADR-0018](adr/0018-langfuse-observability.md).
+LAN-host Langfuse is optional later; keep LAN-only (D8).
+

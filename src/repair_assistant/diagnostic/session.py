@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from langchain_core.messages import AIMessage, HumanMessage
 
 from repair_assistant.corpus.applicability import Appliance
@@ -9,6 +11,7 @@ from repair_assistant.corpus.manifest import Manifest
 from repair_assistant.diagnostic.graph import build_diagnostic_graph, citations_for_turn
 from repair_assistant.diagnostic.state import DiagnosticGraphState, TurnResult
 from repair_assistant.ingest.store import Database
+from repair_assistant.observability.langfuse_tracing import observation, update_span
 from repair_assistant.qa.generate import LLMClient
 from repair_assistant.safety.models import Audience, SafetyAction
 
@@ -56,36 +59,64 @@ class DiagnosticSession:
     def send(self, db: Database, user_message: str) -> TurnResult:
         """Process one user message and return the assistant turn."""
         self._turn += 1
-        graph = build_diagnostic_graph(
-            db,
-            self._manifest,
-            llm=self._llm,
-            retrieval_limit=self._retrieval_limit,
-            overfetch=self._overfetch,
-        )
-        invoke_state: DiagnosticGraphState = {
-            **self._state,
-            "messages": [*self._state["messages"], HumanMessage(content=user_message)],
+        meta = {
+            "turn": self._turn,
+            "appliance_model": self._state.get("appliance_model"),
+            "audience": self._state.get("audience"),
         }
-        result = graph.invoke(invoke_state)
-        self._state = result
+        started = time.perf_counter()
+        with observation(
+            "diagnose",
+            input={"user_message": user_message, "turn": self._turn},
+            metadata=meta,
+        ) as span:
+            graph = build_diagnostic_graph(
+                db,
+                self._manifest,
+                llm=self._llm,
+                retrieval_limit=self._retrieval_limit,
+                overfetch=self._overfetch,
+            )
+            invoke_state: DiagnosticGraphState = {
+                **self._state,
+                "messages": [*self._state["messages"], HumanMessage(content=user_message)],
+            }
+            result = graph.invoke(invoke_state)
+            self._state = result
 
-        assistant = ""
-        for msg in reversed(result["messages"]):
-            if isinstance(msg, AIMessage):
-                assistant = str(msg.content)
-                break
+            assistant = ""
+            for msg in reversed(result["messages"]):
+                if isinstance(msg, AIMessage):
+                    assistant = str(msg.content)
+                    break
 
-        cited = [] if result.get("abstained") else citations_for_turn(result, assistant)
-        return TurnResult(
-            user_message=user_message,
-            assistant_message=assistant,
-            abstained=bool(result.get("abstained")),
-            abstain_reason=result.get("abstain_reason", ""),
-            citations=cited,
-            retrieval_count=int(result.get("retrieval_count") or 0),
-            turn=self._turn,
-            safety_action=result.get("safety_action", SafetyAction.ALLOW.value),
-            safety_notice=result.get("safety_notice", ""),
-            escalated=bool(result.get("escalated")),
-        )
+            cited = [] if result.get("abstained") else citations_for_turn(result, assistant)
+            turn = TurnResult(
+                user_message=user_message,
+                assistant_message=assistant,
+                abstained=bool(result.get("abstained")),
+                abstain_reason=result.get("abstain_reason", ""),
+                citations=cited,
+                retrieval_count=int(result.get("retrieval_count") or 0),
+                turn=self._turn,
+                safety_action=result.get("safety_action", SafetyAction.ALLOW.value),
+                safety_notice=result.get("safety_notice", ""),
+                escalated=bool(result.get("escalated")),
+            )
+            update_span(
+                span,
+                output={
+                    "abstained": turn.abstained,
+                    "answer_preview": (turn.assistant_message or "")[:500],
+                    "citations": [c.label for c in turn.citations],
+                    "retrieval_count": turn.retrieval_count,
+                    "safety_action": turn.safety_action,
+                    "escalated": turn.escalated,
+                },
+                metadata={
+                    **meta,
+                    "duration_ms": int((time.perf_counter() - started) * 1000),
+                    "abstain_reason": turn.abstain_reason,
+                },
+            )
+            return turn

@@ -27,8 +27,9 @@ logs until LLM-as-judge evaluators land.
    timestamped JSON run log under `evals/qa/results/runs/` (answer text,
    citations, latency, pass/fail).
 4. **Grader unit tests** in CI (`tests/test_qa_bench.py`) — no OpenAI calls.
-5. **Deferred:** LangSmith or other trace exporters; LLM-as-judge for
-   groundedness/completeness; automated runs of full `evals/scenarios/candidates.yaml`.
+5. **Deferred:** LLM-as-judge for groundedness/completeness; automated runs of
+   full `evals/scenarios/candidates.yaml`. Trace exporters: see
+   [ADR-0018](0018-langfuse-observability.md) (Langfuse; not LangSmith).
 
 **Charter alignment:** implements Phase 9 (README Phase 8) incrementally. No
 new deviations.

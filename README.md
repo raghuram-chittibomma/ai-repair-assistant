@@ -11,7 +11,8 @@ many understood superficially.
 > **Status: Phase 9 of 10.** Run the app on your machine; Postgres lives on the LAN
 > Docker host. CLI, API, and web UI at `http://localhost:8080/ui` (see
 > [Deployment](docs/DEPLOYMENT.md)). Eval harnesses at every layer — **manual runs**
-> only ([Evaluation](docs/EVALS.md)). **LAN-only** (D8) — not internet-facing.
+> only ([Evaluation](docs/EVALS.md)). Optional self-hosted **Langfuse** traces
+> ([LANGFUSE.md](docs/LANGFUSE.md), ADR-0018). **LAN-only** (D8) — not internet-facing.
 
 ---
 
@@ -135,6 +136,7 @@ tests/                   deterministic tests
 - [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker + Compose; real host/ports in gitignored local file
 - [Deployment](docs/DEPLOYMENT.md) — local app + remote Postgres; optional LAN Docker API
 - [Evaluation](docs/EVALS.md) — manual benches at every pipeline layer
+- [Langfuse](docs/LANGFUSE.md) — optional self-hosted tracing (ADR-0018)
 - [Architecture decision records](docs/adr/) — decisions; must note charter deviations when they occur
 
 ## Fixed technology constraints

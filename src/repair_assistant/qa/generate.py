@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Protocol
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
 from repair_assistant.ingest.store import Database
+from repair_assistant.observability.langfuse_tracing import observation, update_span
 from repair_assistant.qa.context import (
     AnswerResult,
     Citation,
@@ -98,6 +100,60 @@ def ask(
     llm: LLMClient | None = None,
 ) -> AnswerResult:
     """Retrieve applicable chunks, then generate a cited answer or abstain."""
+    model_name = getattr(llm, "model", None) if llm is not None else None
+    if model_name is None:
+        try:
+            model_name = llm_model()
+        except Exception:
+            model_name = None
+    meta = {
+        "audience": audience.value,
+        "appliance_model": appliance.model if appliance else None,
+        "appliance_serial": appliance.serial if appliance else None,
+        "llm_model": model_name,
+    }
+    started = time.perf_counter()
+    with observation("ask", input={"question": question}, metadata=meta) as span:
+        outcome = _ask_impl(
+            db,
+            manifest,
+            question,
+            appliance=appliance,
+            audience=audience,
+            retrieval_limit=retrieval_limit,
+            overfetch=overfetch,
+            llm=llm,
+        )
+        update_span(
+            span,
+            output={
+                "abstained": outcome.abstained,
+                "answer_preview": (outcome.answer or "")[:500],
+                "citations": [c.label for c in outcome.citations],
+                "retrieval_count": outcome.retrieval_count,
+                "safety_action": outcome.safety_action,
+                "escalated": outcome.escalated,
+            },
+            metadata={
+                **meta,
+                "duration_ms": int((time.perf_counter() - started) * 1000),
+                "abstain_reason": outcome.abstain_reason,
+            },
+        )
+        return outcome
+
+
+def _ask_impl(
+    db: Database,
+    manifest: Manifest,
+    question: str,
+    *,
+    appliance: Appliance | None = None,
+    audience: Audience = Audience.OWNER,
+    retrieval_limit: int = 8,
+    overfetch: int = 40,
+    llm: LLMClient | None = None,
+) -> AnswerResult:
     assessment = assess_request(question, audience=audience)
     if assessment.action == SafetyAction.BLOCK:
         return AnswerResult(
