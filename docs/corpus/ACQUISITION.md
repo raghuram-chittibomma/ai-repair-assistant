@@ -2,6 +2,10 @@
 
 How to assemble the local corpus for Whirlpool WFW5620HW0.
 
+For the end-to-end CLI sequence (status → intake → parse → ingest → ask), see
+[Reference corpus build](../REFERENCE_CORPUS_BUILD.md). Product capabilities and
+day-to-day app use: [README](../README.md).
+
 Read [../CORPUS_LICENSING.md](../CORPUS_LICENSING.md) first. In short: these documents are
 copyrighted, this repository does not contain them, and it does not download them for you.
 You acquire them through your own browser and the tool verifies what you have.

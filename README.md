@@ -1,116 +1,94 @@
 # AI Repair Assistant
 
-An open-source, self-hostable assistant that helps diagnose and troubleshoot household
-appliances using authoritative manufacturer documentation, with grounded answers and
-traceable citations.
+Self-hostable **framework** for building a grounded appliance repair assistant:
+answers and multi-turn diagnosis over **your** manufacturer documentation, with
+citations, model/serial applicability, and safety checks.
 
-Initial scope is deliberately narrow: **Whirlpool front-load washers, WFW5620H family,
-anchor model WFW5620HW0.** The aim is one product family understood deeply rather than
-many understood superficially.
+This repository was proven with a **Whirlpool front-load washer** reference
+corpus (WFW5620H / WFW5620HW0). The app code is reusable; the PDFs and manifest
+are the brand-specific layer. To reproduce that reference build, see
+[Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) — not required reading
+to understand what the product does.
 
-> **Status: Phase 10 of 10 (hardening).** Run the app on your machine; Postgres
-> lives on the LAN Docker host. CLI, API, and web UI at `http://localhost:8080/ui`
-> (see [Deployment](docs/DEPLOYMENT.md)). Eval harnesses at every layer — **manual
-> runs** only ([Evaluation](docs/EVALS.md)). Optional self-hosted **Langfuse**
-> traces ([LANGFUSE.md](docs/LANGFUSE.md), ADR-0018). **LAN-only** (D8) — not
+> **Status: Phase 10 of 10 (hardening).** App on your machine; Postgres on a LAN
+> Docker host. Web UI at `http://localhost:8080/ui`
+> ([Deployment](docs/DEPLOYMENT.md)). Manual evals ([Evaluation](docs/EVALS.md)).
+> Optional [Langfuse](docs/LANGFUSE.md) traces. **LAN-only** (D8) — not
 > internet-facing.
 
 ---
 
-## The one thing to understand first
+## Capabilities
 
-**This repository contains no manufacturer documents, and never will.**
+- **Grounded ask** — one-shot Q&A from retrieved manufacturer chunks, with
+  numbered citations; streaming answers in the UI/API
+- **Multi-turn diagnose** — session-based troubleshooting (LangGraph) with the
+  same citation and applicability rules
+- **Hybrid retrieval** — vector + identifier/code/connector paths, ranked with
+  authority and applicability filters (wrong model/serial docs stay out)
+- **Safety gate** — blocks or escalates unsafe guidance (e.g. live-voltage /
+  technician-only procedures) before or after generation
+- **Local embeddings** — open-source `BAAI/bge-base-en-v1.5`; OpenAI only for
+  LLM generation
+- **HTTP API + web UI** — LAN chat for ask and diagnose, search, export, cancel
+- **Observability** — optional self-hosted Langfuse traces (retrieval audit, LLM
+  I/O, safety spans)
+- **Eval harnesses** — parsing, retrieval, QA, safety, chain benches (manual runs)
 
-Whirlpool service manuals, tech sheets, and service pointers are copyrighted. This project
-commits a *manifest* that describes each document — publication number, revision, model
-applicability, serial ranges, source, and cryptographic hash — and ships a tool that tells
-you what is missing and verifies what you have. You acquire the documents yourself.
-
-This follows the same pattern as Nixpkgs `requireFile` and MAME's software lists. See
-[docs/CORPUS_LICENSING.md](docs/CORPUS_LICENSING.md) for the full reasoning, including why
-the project ships no downloader.
+Applicability and document precedence are first-class in the corpus manifest
+([ADR-0004](docs/adr/0004-applicability-and-precedence.md)), not left to
+similarity alone.
 
 ---
 
-## Quick start
+## Use it
+
+Assumes Postgres is up, `.env.local` is configured, and a corpus is already
+ingested. Full install and DB layout: [Deployment](docs/DEPLOYMENT.md).
 
 ```bash
 pip install -e ".[dev]"
-git config core.hooksPath .githooks   # refuses to commit document artefacts
 
-repair-corpus status                  # what the corpus needs and what you have
+# API + UI (same machine)
+python -m repair_assistant.api.main
+# open http://localhost:8080/ui
 ```
 
-On a fresh clone every document will be reported as missing, with instructions:
-
-```
-missing   service_manual            W11169652 Rev A   27in Front-Load Washers (L-97)
-          how to obtain: oem_public_pdf
-          https://www.whirlpool.com/content/dam/global/documents/201905/...
-          save as: corpus/documents/W11169652A.pdf
-```
-
-Download them wherever your browser puts them, then let the tool sort them out —
-it identifies each file by its publication number and renames it correctly:
-
-```bash
-repair-corpus intake ~/Downloads/whirlpool   # dry run
-repair-corpus intake ~/Downloads/whirlpool --apply
-
-repair-corpus verify                  # hash and check against the manifest
-repair-corpus pin --write             # record hashes for newly acquired files
-repair-corpus show W11375982          # full metadata for one document
-repair-corpus applies --model WFW5620HW0
-
-repair-corpus bench-parse             # re-score extractors against parsing fixtures
-repair-corpus parse tech-sheet-w11320651
-repair-corpus parse --all             # chunks under corpus/parsed/ (gitignored)
-
-# Phase 3 — copy .env.example → .env.local (DATABASE_URL → LAN Postgres), then:
-repair-corpus db-migrate
-repair-corpus ingest --all                # + local BGE embeddings (free)
-repair-corpus search "F5E1 door lock" --model WFW5620HW0
-
-# Phase 5+ — OPENAI_API_KEY in .env.local, app runs on your machine:
-repair-corpus ask "What does F5E2 mean?" --model WFW5620HW0
-repair-corpus diagnose --model WFW5620HW0
-
-# Web UI — same machine as CLI/API (see docs/DEPLOYMENT.md):
-python -m repair_assistant.api.main       # then open http://localhost:8080/ui
-```
-
-`repair-corpus` has no `fetch` or `download` subcommand. That is intentional.
-
-**Windows:** if PowerShell says `repair-corpus` is not recognized, the console script
-is not on your PATH (common after `pip install -e`). Either add your Python
-`Scripts` folder to PATH, or invoke the CLI as a module:
+CLI (Windows-friendly module form):
 
 ```powershell
-python -m repair_assistant.corpus.cli status
+python -m repair_assistant.corpus.cli search "door won't lock" --model WFW5620HW0
 python -m repair_assistant.corpus.cli ask "What does F5E2 mean?" --model WFW5620HW0
 python -m repair_assistant.corpus.cli diagnose --model WFW5620HW0
 ```
 
+If `repair-corpus` is on your PATH, those commands work without `python -m …`.
+
+**No corpus yet?** Follow [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md)
+(acquire → parse → ingest), then return here.
+
 ---
 
-## Why applicability is the hard part
+## As a framework
 
-A repair instruction can be perfectly correct and still be wrong for your machine. The
-corpus is built to make that failure mode visible and testable.
+1. Describe documents in `corpus/manifest/` (identity, applicability, precedence).
+2. Acquire manufacturer files yourself; store under `corpus/documents/` (gitignored).
+3. `parse` → `ingest` → use ask / diagnose / UI.
+4. Keep eval fixtures and ADRs as the quality bar when you change chunking or
+   retrieval.
 
-Two real examples from this corpus:
+Vision and constraints: [Project charter](docs/CHARTER.md).
 
-- **Technical Service Pointer W11375982** exists specifically to say that service manual
-  W11169652 contains *incorrect information* at "Test #1: ACU Power Check, Step 10". The
-  manual is the more detailed, more authoritative-looking document. The bulletin is right
-  and the manual is wrong. Relevance and authority are not the same thing.
-- **TSP W11395614** is a highly relevant-sounding front-load washer bulletin about a door
-  that locks but will not run. It applies to 24-inch models within serial range
-  `CF81500000`–`CF84510000`. For a WFW5620HW0 it is simply the wrong document, and
-  retrieving it would be a failure no matter how well it matches semantically.
+---
 
-The manifest therefore models model applicability, engineering-digit wildcards, serial
-ranges, document revisions, and precedence relationships as first-class data.
+## Documents are not in this repository
+
+Manufacturer manuals and tech sheets are copyrighted and **never** committed
+here. The repo ships a **manifest** (what should exist, hashes, applicability)
+and tools to verify what you acquired — the same idea as Nixpkgs `requireFile`
+or MAME software lists. There is no `fetch` / `download` command.
+
+Details: [Corpus licensing](docs/CORPUS_LICENSING.md).
 
 ---
 
@@ -120,40 +98,33 @@ ranges, document revisions, and precedence relationships as first-class data.
 corpus/manifest/         document manifest (committed)
 corpus/documents/        acquired PDFs (gitignored, never committed)
 docs/adr/                architecture decision records
-docs/corpus/             corpus study and acquisition guide
-evals/scenarios/         candidate evaluation scenarios
+docs/corpus/             acquisition guide and corpus study
+evals/                   evaluation fixtures and scorecards
 src/repair_assistant/    application code
 tests/                   deterministic tests
 ```
 
 ## Documentation
 
-- [Project charter](docs/CHARTER.md) — vision, constraints, principles, roadmap; ADRs record deviations
-- [Corpus licensing and acquisition](docs/CORPUS_LICENSING.md) — copyright, terms of use,
-  ServiceMatters confidentiality, why there is no downloader
-- [Acquisition guide](docs/corpus/ACQUISITION.md) — how to obtain each document
-- [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is actually in these documents
-- [Parsing bake-off](evals/parsing/results/scorecard.md) — extractor scores; decision in ADR-0007
-- [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker + Compose; real host/ports in gitignored local file
-- [Deployment](docs/DEPLOYMENT.md) — local app + remote Postgres; optional LAN Docker API
+- [Deployment](docs/DEPLOYMENT.md) — run API/UI/CLI against LAN Postgres
 - [Evaluation](docs/EVALS.md) — manual benches at every pipeline layer
-- [Langfuse](docs/LANGFUSE.md) — optional self-hosted tracing (ADR-0018)
-- [Architecture decision records](docs/adr/) — decisions; must note charter deviations when they occur
+- [Project charter](docs/CHARTER.md) — vision, constraints, roadmap
+- [Langfuse](docs/LANGFUSE.md) — optional self-hosted tracing
+- [Architecture decision records](docs/adr/) — design decisions
+- [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker / Compose
+- [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) — Whirlpool acquire → ingest CLI sequence
+- [Acquisition guide](docs/corpus/ACQUISITION.md) — per-document obtain notes
+- [Corpus licensing](docs/CORPUS_LICENSING.md) — copyright; no downloader
+- [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is in the reference docs
 
-## Fixed technology constraints
+## Stack
 
-Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are predetermined in the
-[charter](docs/CHARTER.md) (with [documented deviations](docs/CHARTER.md#deviations-from-this-charter)).
-
-**Typical layout:** Postgres on a shared **LAN Docker host**; CLI, API, web UI, and
-BGE embeddings on **your machine** — see [Deployment](docs/DEPLOYMENT.md) and
-[Infrastructure](docs/INFRASTRUCTURE.md). **LAN-only** (D8); not internet-facing.
-
-Embeddings are local open-source (`BAAI/bge-base-en-v1.5`, ADR-0009 / D1); OpenAI is
-reserved for LLM inference. Copy `docs/INFRASTRUCTURE.local.md.example` to
-`docs/INFRASTRUCTURE.local.md` for LAN host addresses (gitignored).
+Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are set in the
+[charter](docs/CHARTER.md). Typical layout: Postgres on a **LAN Docker host**;
+CLI, API, UI, and BGE embeddings on **your machine**. Embeddings are local
+open-source (ADR-0009); OpenAI is for LLM inference only.
 
 ## Licence
 
-Application code and project metadata: Apache-2.0. Manufacturer documentation remains the
-copyright of its respective owners and is not distributed here.
+Application code and project metadata: Apache-2.0. Manufacturer documentation
+remains the copyright of its respective owners and is not distributed here.

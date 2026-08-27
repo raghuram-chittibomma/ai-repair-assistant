@@ -2,6 +2,9 @@
 
 How to run the app day-to-day. **LAN-only** (D8) — not exposed to the internet.
 
+Building or refreshing the Whirlpool **reference** corpus (acquire → parse →
+ingest): [REFERENCE_CORPUS_BUILD.md](REFERENCE_CORPUS_BUILD.md).
+
 ## Default: app on your machine, Postgres on the LAN host
 
 This is the supported workflow:
