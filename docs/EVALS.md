@@ -178,7 +178,9 @@ Do not treat synthetic pubs as real literature in docs or demos.
 
 Self-hosted Langfuse can record `ask` / `diagnose` runs for inspection
 ([LANGFUSE.md](LANGFUSE.md), ADR-0018). Benches do **not** require Langfuse;
-leave `LANGFUSE_*` keys empty to disable tracing.
+leave `LANGFUSE_*` keys empty to disable tracing. Full offline mine of traces
+into draft eval fixtures / improvement notes is **Phase 11** (E13)—not in
+scope yet.
 
 ### Recent baselines (hand-run)
 
@@ -199,5 +201,6 @@ Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 - CI / scheduled eval benches of any kind (including offline `bench-safety`) —
   operators run the EVALS.md sequence by hand
 - Auto-merging promoted drafts into live overlay keys (always human review)
+- Langfuse trace → draft fixture / improvement mining (**Phase 11** / E13)
 
 See ADR-0015, ADR-0017, and ADR-0019 for Q&A benches, candidates, and judge/promote.

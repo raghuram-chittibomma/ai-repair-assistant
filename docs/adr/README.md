@@ -85,6 +85,12 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0021](0021-api-hardening-embedder-sessions.md) | Shared embedder + warmup; in-memory session TTL/max; DB pool | Day-to-day LAN reliability |
 
+## Phase 11 — Trace-driven evaluation (future)
+
+Deferred per [CHARTER.md](../CHARTER.md) Phase 11 / E13. No ADR until
+implementation: offline Langfuse mine → draft eval fixtures and improvement
+notes; human promote only (same discipline as ADR-0019).
+
 ## Infrastructure
 
 | ADR | Decision | Driver |

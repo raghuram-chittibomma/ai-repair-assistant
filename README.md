@@ -10,11 +10,11 @@ are the brand-specific layer. To reproduce that reference build, see
 [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) — not required reading
 to understand what the product does.
 
-> **Status: Phase 10 of 10 (hardening).** App on your machine; Postgres on a LAN
+> **Status: Phase 10 of 11 (hardening).** App on your machine; Postgres on a LAN
 > Docker host. Web UI at `http://localhost:8080/ui`
 > ([Deployment](docs/DEPLOYMENT.md)). Manual evals ([Evaluation](docs/EVALS.md)).
-> Optional [Langfuse](docs/LANGFUSE.md) traces. **LAN-only** (D8) — not
-> internet-facing.
+> Optional [Langfuse](docs/LANGFUSE.md) traces. Phase 11 (trace → draft evals)
+> is deferred. **LAN-only** (D8) — not internet-facing.
 
 ---
 
