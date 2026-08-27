@@ -51,6 +51,9 @@ folded into parse phase), [D3](../CHARTER.md#deviations-from-this-charter)
   and synthetic PDFs without requiring the manufacturer corpus.
 - Phase 3 ingestion must read these chunks (or re-parse with the same defaults),
   not invent a second extraction path.
+- **Follow-on (ADR-0022):** contextual enrichment of chunk text (doc/section/table
+  headers) plus a bounded audit→repair→re-audit quality gate; split boundaries
+  unchanged.
 - pypdf remains for identity/metadata only in the corpus package; content
   extraction goes through the parsing package.
 - **Follow-on (2026-08-26):** optional experimental extractor `docling`

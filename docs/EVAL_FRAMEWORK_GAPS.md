@@ -65,7 +65,7 @@ can slip between layers.
 | **E9** | ~~Run-log retention~~ **Done** — `prune-eval-runs` + runs README (manual) | — | Ops |
 | **E10** | ~~Judge calibration pack~~ **Done** — 10 frozen cases + `bench-judge-calibrate` | — | Judge |
 | **E11** | ~~Langfuse bench metadata~~ **Done** — `eval_bench` / `eval_run_id` / `scenario_id` | — | Observability |
-| **E12** | ~~Chunking micro-bake~~ **Skipped / deferred** — no chain or boundary failure under default path; reopen if triggers below fire | — | Parsing / Retrieval |
+| **E12** | **Thin reopen (ADR-0022)** — contextual enrichment + bounded audit/repair; not a full D4 chunker bake | 2026-08-27 | Parsing |
 
 **Suggested first slice:** E8 → E5 → E4 → E1 (E3 skipped — no scheduled/CI evals).
 
@@ -74,17 +74,25 @@ audited slice. E3 skipped (no CI evals); E12 deferred (no boundary failure).
 **E4 done** — `f5e2-three-way` uses `expect_cites_any` (wrong-KB bans kept);
 `serial-inside-range` is `status: deferred` to match soft IR. No remaining
 open E-items.
+
+**E12 update (2026-08-27):** Reopened thinly for Langfuse-observed opaque
+numeric table rows (`14 | -10 | 111.6` without column labels). ADR-0022 keeps
+ADR-0007 split boundaries; enriches embed/LLM text with doc/section/headers;
+`audit_and_improve` allows at most one repair pass (no while-loop). Binding
+fixtures must stay PASS.
+
 ### E12 reopen triggers (then thin micro-bake, not a full D4 redo)
 
-Reopen chunking only if any of these regress under the **default** extractor /
-production path:
+Reopen **further** chunking work only if any of these regress under the
+**default** extractor / production path:
 
 1. `bench-parse` fixture `error-codes-bound` fails (F6E1 / F8E1 unbound)
 2. IR `error-code-f6e1` fails on `production_search` or `vector_apply_boost`
 3. Candidate `error-code-orphaned-by-extraction` fails det grading
 4. `bench-chain` fails in a way that points at severed code↔remedy chunks
 
-Until then, leave ADR-0007 / D3 interim as-is; do not invent a bake.
+ADR-0022 enrichment is the accepted thin response to opaque numeric rows;
+do not invent a full splitter bake without the triggers above.
 
 ---
 
@@ -96,7 +104,7 @@ Until then, leave ADR-0007 / D3 interim as-is; do not invent a bake.
 - `promote-eval` draft-only (no auto-merge)
 - Safety fixture quality; ranking unit tests
 - Docling non-default; hybrid-as-default decision (ADR-0020)
-- Chunking micro-bake without a boundary/chain failure (E12 deferred)
+- Chunking micro-bake without a boundary/chain failure (full D4 still deferred; ADR-0022 is the thin path)
 
 ---
 
@@ -104,7 +112,7 @@ Until then, leave ADR-0007 / D3 interim as-is; do not invent a bake.
 
 | Topic | Warranted? | Why |
 | --- | --- | --- |
-| Chunking | **No (E12 deferred)** | Boundary guards pass; reopen only on listed triggers — not a full D4 redo |
+| Chunking | **Thin (ADR-0022)** | Contextual enrichment + bounded quality; full splitter bake still only on E12 triggers |
 | Retrieval strategy | No | `production_search` already on the IR bake-off (E1) |
 | Judge calibration | Done (E10) | 10-case pack + `bench-judge-calibrate` |
 

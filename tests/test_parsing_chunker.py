@@ -49,7 +49,7 @@ def test_structured_chunker_binds_error_code_from_table_row():
         pages=[
             ExtractedPage(
                 number=8,
-                text="ignored",
+                text="ERROR CODE DISPLAY\nSee table below.",
                 tables=[
                     Table(
                         headers=["Error Code", "Problem", "Checks & Tests"],
@@ -69,12 +69,94 @@ def test_structured_chunker_binds_error_code_from_table_row():
             )
         ],
     )
-    chunks = chunk_document(document, strategy="structured", doc_id="tech-sheet-w11320651")
+    chunks = chunk_document(
+        document,
+        strategy="structured",
+        doc_id="tech-sheet-w11320651",
+        publication_number="W11320651",
+        revision="B",
+        doc_title="Tech Sheet",
+    )
     table_chunks = [c for c in chunks if c.kind == "table_row"]
     assert table_chunks
     assert table_chunks[0].error_codes == ["F6E1"]
     assert "No communication from the HMI" in table_chunks[0].text
     assert "Test #2" in table_chunks[0].text
+    assert "Error Code:" in table_chunks[0].text
+    assert "W11320651" in table_chunks[0].text
+    assert "ERROR CODE DISPLAY" in table_chunks[0].text or "Section:" in table_chunks[0].text
+    assert table_chunks[0].metadata.get("body_text")
+    assert table_chunks[0].metadata.get("headers") == [
+        "Error Code",
+        "Problem",
+        "Checks & Tests",
+    ]
+
+
+def test_numeric_table_row_includes_column_headers():
+    document = ExtractedDocument(
+        path="synthetic",
+        extractor="test",
+        pages=[
+            ExtractedPage(
+                number=20,
+                text="THERMISTOR\nResistance chart",
+                tables=[
+                    Table(
+                        headers=["Temp F", "Temp C", "Resistance kOhm"],
+                        rows=[
+                            TableRow(cells=["70", "21", "3.4"], page=20),
+                            TableRow(cells=["14", "-10", "111.6"], page=20),
+                        ],
+                        page=20,
+                    )
+                ],
+            )
+        ],
+    )
+    chunks = chunk_document(
+        document,
+        strategy="structured",
+        publication_number="W11169652",
+        revision="B",
+    )
+    rows = [c for c in chunks if c.kind == "table_row"]
+    assert len(rows) == 2
+    assert "Temp F: 70" in rows[0].text
+    assert "Resistance kOhm: 3.4" in rows[0].text
+    assert "14" in rows[1].text
+    assert "Temp F" in rows[1].text
+    # Must not be bare digits-only for embedding.
+    assert any(ch.isalpha() for ch in rows[1].text)
+
+
+def test_section_inherited_on_prose_under_heading():
+    document = ExtractedDocument(
+        path="synthetic",
+        extractor="test",
+        pages=[
+            ExtractedPage(
+                number=4,
+                text=(
+                    "TEST #4 DRAIN SYSTEM\n"
+                    "Check the drain pump for blockage.\n"
+                    "Verify the hose is clear."
+                ),
+            )
+        ],
+    )
+    chunks = chunk_document(
+        document,
+        strategy="structured",
+        publication_number="W11320651",
+    )
+    prose = [c for c in chunks if c.kind in {"prose", "procedure", "heading"}]
+    assert prose
+    # Heading-aware split keeps heading with body, or inherits on following pieces.
+    joined = "\n".join(c.text for c in prose)
+    assert "TEST #4" in joined
+    assert "drain pump" in joined.lower() or "DRAIN" in joined
+    assert any(c.metadata.get("section_path") for c in prose)
 
 
 def test_naive_fixed_chunker_can_split_code_from_remedy():

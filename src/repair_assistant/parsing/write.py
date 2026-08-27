@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from repair_assistant.corpus import manifest as manifest_mod
+from repair_assistant.parsing.chunk_quality import audit_and_improve
 from repair_assistant.parsing.chunker import chunk_document
 from repair_assistant.parsing.extractors import get_extractor
 from repair_assistant.parsing.mhtml import html_to_visible_text, load_mhtml
@@ -41,6 +42,7 @@ def parse_document(
 
     if source.suffix.lower() in {".mhtml", ".mht", ".html", ".htm"}:
         chunks = _chunks_from_mhtml(source, document)
+        quality = None
     else:
         extractor = get_extractor(extractor_name)
         extracted = extractor.extract(source)
@@ -49,8 +51,11 @@ def parse_document(
             doc_id=document.doc_id,
             publication_number=document.publication_number,
             revision=document.revision,
+            doc_title=document.title,
+            doc_type=document.doc_type,
             strategy="structured",
         )
+        chunks, quality = audit_and_improve(chunks)
 
     with dest.open("w", encoding="utf-8", newline="\n") as handle:
         for chunk in chunks:
@@ -62,6 +67,15 @@ def parse_document(
         "chunk_count": len(chunks),
         "source": document.local_filename,
     }
+    if quality is not None:
+        meta["quality_stop_reason"] = quality.stop_reason
+        meta["quality_critical_count"] = sum(
+            1 for f in quality.findings if f.severity == "critical"
+        )
+        (dest_dir / "chunk_quality.json").write_text(
+            json.dumps({"doc_id": document.doc_id, **quality.to_json()}, indent=2) + "\n",
+            encoding="utf-8",
+        )
     (dest_dir / "meta.json").write_text(
         json.dumps(meta, indent=2) + "\n", encoding="utf-8"
     )

@@ -29,6 +29,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | ADR | Decision | Driver |
 | --- | --- | --- |
 | [0007](0007-parser-and-chunker.md) | pdfplumber + structured table-row chunking; pypdf fixed-size is the failing control | Tech-sheet error table and F6E1 binding measured in bake-off |
+| [0022](0022-contextual-chunk-enrichment.md) | Contextual text enrichment + bounded chunk quality self-check | Opaque numeric rows; headers were metadata-only |
 
 ## Phase 3 — Ingestion
 

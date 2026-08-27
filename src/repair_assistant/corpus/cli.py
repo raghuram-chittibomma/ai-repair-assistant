@@ -522,6 +522,65 @@ def parse_cmd(doc_id: str | None, parse_all: bool, extractor: str) -> None:
     click.echo(f"Wrote chunks for {written} document(s).")
 
 
+@main.command("audit-chunks")
+@click.argument("doc_id", required=False)
+@click.option("--all", "audit_all", is_flag=True, help="Audit every corpus/parsed document.")
+@click.option(
+    "--repair/--no-repair",
+    default=False,
+    help="Apply at most one safe repair pass (ADR-0022); default audit-only.",
+)
+def audit_chunks_cmd(doc_id: str | None, audit_all: bool, repair: bool) -> None:
+    """Audit (and optionally repair once) existing corpus/parsed JSONL chunks."""
+    import json
+    from pathlib import Path
+
+    from repair_assistant.parsing.chunk_quality import audit_and_improve, audit_chunks
+    from repair_assistant.parsing.models import Chunk
+    from repair_assistant.parsing.write import parsed_dir
+
+    corpus = _load()
+    if audit_all == bool(doc_id):
+        raise click.ClickException("pass a doc_id or --all")
+
+    root = parsed_dir(corpus.root)
+    if audit_all:
+        targets = sorted(p.parent.name for p in root.glob("*/chunks.jsonl"))
+    else:
+        targets = [doc_id] if (root / doc_id / "chunks.jsonl").is_file() else []
+        if not targets:
+            raise click.ClickException(f"no chunks.jsonl for {doc_id!r} under {root}")
+
+    for did in targets:
+        path = root / did / "chunks.jsonl"
+        chunks: list[Chunk] = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            data = json.loads(line)
+            data.pop("content_hash", None)
+            chunks.append(Chunk(**{k: data[k] for k in data if k in Chunk.__dataclass_fields__}))
+        if repair:
+            chunks, report = audit_and_improve(chunks)
+            with path.open("w", encoding="utf-8", newline="\n") as handle:
+                for chunk in chunks:
+                    handle.write(json.dumps(chunk.to_json(), ensure_ascii=False) + "\n")
+        else:
+            report = audit_chunks(chunks)
+            report.stop_reason = "audit_only"
+        quality_path = root / did / "chunk_quality.json"
+        quality_path.write_text(
+            json.dumps({"doc_id": did, **report.to_json()}, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        crit = sum(1 for f in report.findings if f.severity == "critical")
+        _echo_status(
+            "ok" if crit == 0 else "mismatch",
+            did,
+            f"{report.stop_reason} findings={len(report.findings)} critical={crit}",
+        )
+
+
 @main.command("db-migrate")
 def db_migrate_cmd() -> None:
     """Apply Postgres / pgvector schema migrations (Phase 3)."""
