@@ -6,7 +6,10 @@ import re
 from dataclasses import dataclass
 
 from repair_assistant.retrieval.intent import QueryIntent, extract_intent
-from repair_assistant.retrieval.query_expand import expansion_phrases_for_polarity
+from repair_assistant.retrieval.query_expand import (
+    expansion_phrases_for_polarity,
+    expansion_phrases_for_query,
+)
 
 # Shared with rank polarity heuristics (OEM wording).
 _UNLOCK_EVIDENCE = re.compile(
@@ -69,7 +72,10 @@ def suggest_plan_codes(intent: QueryIntent) -> tuple[str, ...]:
 def plan_retrieval(intent: QueryIntent) -> RetrievalPlan:
     """Build a retrieval plan from structured intent (no free-form guessing)."""
     q = intent.raw_query
-    phrases = expansion_phrases_for_polarity(intent.door_polarity)
+    phrases = expansion_phrases_for_query(q)
+    # Keep polarity helper available for callers that only know polarity.
+    if not phrases and intent.door_polarity:
+        phrases = expansion_phrases_for_polarity(intent.door_polarity)
     embed = f"{q} {phrases}".strip() if phrases else q
 
     plan_codes = suggest_plan_codes(intent)

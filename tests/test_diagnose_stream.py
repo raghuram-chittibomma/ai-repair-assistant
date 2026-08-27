@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from langchain_core.messages import HumanMessage
 
 from repair_assistant.corpus.support import CorpusSupportResult
-from repair_assistant.diagnostic.graph import diagnose_turn_stream
+from repair_assistant.diagnostic.graph import _retrieval_query, diagnose_turn_stream
 from repair_assistant.diagnostic.state import DiagnosticGraphState
 from repair_assistant.retrieval.search import Hit, SearchResult
 from repair_assistant.safety.models import Audience, SafetyAction
@@ -113,3 +113,14 @@ def test_diagnose_turn_stream_blocks_without_retrieval():
     assert events[0]["abstained"] is True
     assert events[0]["safety_action"] == "block"
     search.assert_not_called()
+
+
+def test_retrieval_query_keeps_prior_user_turns() -> None:
+    messages = [
+        HumanMessage(content="stops after 10 minutes of running without finishing the wash"),
+        HumanMessage(content="no error code. whole machine shuts down."),
+    ]
+    q = _retrieval_query(messages)
+    assert "stops after 10 minutes" in q
+    assert "no error code" in q
+    assert "shuts down" in q

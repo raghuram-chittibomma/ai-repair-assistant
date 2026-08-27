@@ -40,6 +40,16 @@ _WRONG_UNLOCK_POLARITY = re.compile(
     r"door not closed",
     re.I,
 )
+_DIAG_ENTRY_EVIDENCE = re.compile(
+    r"Activating Service Diagnostic Mode|"
+    r"Select any three \(3\) buttons|"
+    r"wait 30 seconds before\s+activating Service Diagnostic",
+    re.I,
+)
+_DIAG_PAUSE_ENUM = re.compile(
+    r"Enumeration:\s*\d+.{0,80}Pauses the machine",
+    re.I | re.S,
+)
 _OWNER_DOC_TYPES = frozenset(
     {
         "owners_manual",
@@ -160,7 +170,10 @@ def filter_and_rank(
     audience: str | None = None,
 ) -> list[RankedHit]:
     """Drop inapplicable docs; boost correcting / pointer literature and error-code matches."""
-    from repair_assistant.retrieval.query_expand import door_lock_polarity
+    from repair_assistant.retrieval.query_expand import (
+        door_lock_polarity,
+        is_mid_cycle_stop_query,
+    )
 
     by_id = _doc_by_id(manifest)
     query_codes = {c.upper() for c in (query_error_codes or [])}
@@ -172,6 +185,7 @@ def filter_and_rank(
     named_pubs = queried_publications(query)
     technician = is_technician_depth_query(query)
     lock_polarity = door_lock_polarity(query)
+    mid_cycle = is_mid_cycle_stop_query(query)
     prefer_owner = (audience or "").lower() == "owner"
 
     ranked: list[RankedHit] = []
@@ -282,6 +296,13 @@ def filter_and_rank(
         elif lock_polarity == "lock":
             if _WRONG_UNLOCK_POLARITY.search(text):
                 boost += 0.12
+
+        if mid_cycle:
+            if _DIAG_ENTRY_EVIDENCE.search(text):
+                boost += 0.38
+            elif _DIAG_PAUSE_ENUM.search(text):
+                # Pause-test enumeration rows are not "how to enter diagnostics".
+                boost -= 0.20
 
         codes = [str(c).upper() for c in (hit.get("error_codes") or [])]
         kind = hit.get("kind") or ""

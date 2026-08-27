@@ -32,6 +32,14 @@ def test_expand_retrieval_query_adds_unlock_phrases() -> None:
     assert "Door Won't Lock" not in expanded
 
 
+def test_expand_retrieval_query_mid_cycle_stop() -> None:
+    expanded = expand_retrieval_query(
+        "stops after 10 minutes randomly in the middle of the wash no error code"
+    )
+    assert "Activating Service Diagnostic Mode" in expanded
+    assert "Diagnostic Guide" in expanded
+
+
 def test_unlock_polarity_prefers_unlock_evidence_over_wont_lock() -> None:
     owners = _doc(
         "use-and-care",

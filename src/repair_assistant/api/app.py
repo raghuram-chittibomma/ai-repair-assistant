@@ -14,7 +14,11 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import json
 
-from repair_assistant.api.db_pool import DEFAULT_POOL_SIZE, DatabasePool
+from repair_assistant.api.db_pool import (
+    DEFAULT_POOL_SIZE,
+    DEFAULT_POOL_TIMEOUT_SECONDS,
+    DatabasePool,
+)
 from repair_assistant.api.schemas import (
     AskRequest,
     AskResponse,
@@ -42,12 +46,18 @@ from repair_assistant.corpus.support import (
 from repair_assistant.ingest.embeddings import get_shared_embedder, shared_embedder_loaded
 from repair_assistant.ingest.env import database_url, load_dotenv_files
 from repair_assistant.ingest.store import Database
-from repair_assistant.qa.generate import ask, ask_stream
+from repair_assistant.qa.generate import LLMTimeoutError, ask, ask_stream
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.models import Audience
 
 _log = logging.getLogger("repair_assistant.api")
 
+
+def _llm_timeout_http(exc: BaseException) -> HTTPException:
+    return HTTPException(
+        status_code=504,
+        detail=str(exc) or "LLM request timed out",
+    )
 
 def _citation_out(cite) -> CitationOut:
     return CitationOut(
@@ -73,6 +83,17 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
 def create_app(
     *,
     session_store: SessionStore | None = None,
@@ -90,6 +111,10 @@ def create_app(
             pool = DatabasePool(
                 database_url(),
                 size=_env_int("REPAIR_DB_POOL_SIZE", DEFAULT_POOL_SIZE),
+                timeout_seconds=_env_float(
+                    "REPAIR_DB_POOL_TIMEOUT_SECONDS",
+                    DEFAULT_POOL_TIMEOUT_SECONDS,
+                ),
             )
         except RuntimeError:
             pool = None
@@ -226,6 +251,8 @@ def create_app(
                 retrieval_limit=body.limit,
                 overfetch=body.overfetch,
             )
+        except LLMTimeoutError as exc:
+            raise _llm_timeout_http(exc) from exc
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return AskResponse(
@@ -258,6 +285,9 @@ def create_app(
                     overfetch=body.overfetch,
                 ):
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            except LLMTimeoutError as exc:
+                err = {"type": "error", "detail": str(exc)}
+                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
             except RuntimeError as exc:
                 err = {"type": "error", "detail": str(exc)}
                 yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
@@ -296,6 +326,8 @@ def create_app(
             ) from None
         try:
             turn = session.send(db, body.message)
+        except LLMTimeoutError as exc:
+            raise _llm_timeout_http(exc) from exc
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return DiagnoseResponse(
@@ -340,6 +372,9 @@ def create_app(
                     if event.get("type") == "done":
                         event["session_id"] = sid
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            except LLMTimeoutError as exc:
+                err = {"type": "error", "detail": str(exc)}
+                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
             except RuntimeError as exc:
                 err = {"type": "error", "detail": str(exc)}
                 yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"

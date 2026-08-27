@@ -13,7 +13,12 @@ from repair_assistant.prompts import (
 
 def test_load_prompt_files() -> None:
     assert "Whirlpool appliance repair assistant" in ask_system()
-    assert "diagnostic assistant" in diagnose_system()
+    diag = diagnose_system()
+    assert "diagnostic assistant" in diag
+    assert "Clarifying vs abstaining" in diag
+    assert "Do NOT use the ABSTAIN: prefix" in diag
+    assert "MUST include the concrete steps" in diag or "MUST quote the concrete steps" in diag
+    assert "Do not invent button sequences" in diag
     assert '"passed"' in judge_system()
     assert "live-voltage" in safety_escalate()
     assert "disconnect-power" in safety_warn()

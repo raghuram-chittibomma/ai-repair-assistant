@@ -98,6 +98,7 @@ def _transcript(messages: list) -> str:
 
 
 def _retrieval_query(messages: list) -> str:
+    """Build a retrieval query from recent user turns (symptom context carries forward)."""
     parts: list[str] = []
     codes: list[str] = []
     for msg in messages:
@@ -105,7 +106,9 @@ def _retrieval_query(messages: list) -> str:
             text = str(msg.content)
             parts.append(text)
             codes.extend(extract_error_codes(text))
-    query = parts[-1] if parts else ""
+    # Last turn alone drops earlier symptoms (e.g. "no error code" after mid-cycle stop).
+    recent = parts[-3:] if parts else []
+    query = " ".join(recent).strip()
     if codes:
         unique = sorted(set(codes))
         query = f"{' '.join(unique)} {query}".strip()

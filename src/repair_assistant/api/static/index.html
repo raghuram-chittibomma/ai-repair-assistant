@@ -386,10 +386,16 @@
       div.appendChild(body);
 
       if (abstained && abstainReason) {
-        const r = document.createElement("div");
-        r.className = "reason";
-        r.textContent = "Why: " + abstainReason;
-        div.appendChild(r);
+        const normalizedAnswer = String(text || "").replace(/^ABSTAIN:\s*/i, "").trim();
+        const sameAsAnswer =
+          normalizedAnswer &&
+          normalizedAnswer.toLowerCase() === String(abstainReason).trim().toLowerCase();
+        if (!sameAsAnswer) {
+          const r = document.createElement("div");
+          r.className = "reason";
+          r.textContent = "Why: " + abstainReason;
+          div.appendChild(r);
+        }
       }
       if (safetyNotice) {
         const r = document.createElement("div");
@@ -572,10 +578,12 @@
       const code = ev.abstain_code || "";
       statusEl.textContent = code === "unsupported_model"
         ? "Model not covered by this documentation"
-        : ev.abstained
-          ? "Abstained — see reason above"
-          : "API ready (embedder warm)";
-      statusEl.className = ev.abstained ? "status busy" : "status ok";
+        : code === "clarify"
+          ? "Needs a clarifying detail — see the reply"
+          : ev.abstained
+            ? "Abstained — see the reply"
+            : "API ready (embedder warm)";
+      statusEl.className = (ev.abstained || code === "clarify") ? "status busy" : "status ok";
       return { answer, streamEl };
     }
 

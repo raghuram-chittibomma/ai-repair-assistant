@@ -134,10 +134,16 @@ def _start_observation(
     metadata: dict[str, Any] | None = None,
     model: str | None = None,
 ) -> Any:
+    """Create a Langfuse observation without binding OTEL current context.
+
+    ``start_as_current_observation`` attaches ContextVar tokens that break when
+    SSE generators yield across asyncio context copies (``Failed to detach
+    context``). Explicit ``trace_context`` + thread-local stack keep nesting.
+    """
     trace_context = _parent_trace_context()
     kwargs: dict[str, Any] = {
-        "as_type": as_type,
         "name": name,
+        "as_type": as_type,
         "input": truncate_for_trace(input) if input is not None else None,
         "metadata": merge_eval_metadata(metadata),
     }
@@ -145,7 +151,47 @@ def _start_observation(
         kwargs["trace_context"] = trace_context
     if model is not None:
         kwargs["model"] = model
-    return client.start_as_current_observation(**kwargs)
+    return client.start_observation(**kwargs)
+
+
+def _set_trace_session_id(span: Any, session_id: str) -> None:
+    """Set Langfuse session.id on the underlying OTEL span (no context attach)."""
+    otel = getattr(span, "_otel_span", None)
+    if otel is None:
+        return
+    set_attr = getattr(otel, "set_attribute", None)
+    if callable(set_attr):
+        set_attr("session.id", session_id)
+
+
+@contextmanager
+def _managed_observation(
+    client: Any,
+    *,
+    name: str,
+    as_type: str,
+    input: Any = None,
+    metadata: dict[str, Any] | None = None,
+    model: str | None = None,
+    session_id: str | None = None,
+) -> Iterator[Any]:
+    span = _start_observation(
+        client,
+        name=name,
+        as_type=as_type,
+        input=input,
+        metadata=metadata,
+        model=model,
+    )
+    if session_id:
+        _set_trace_session_id(span, session_id)
+    try:
+        with _push_span(span):
+            yield span
+    finally:
+        end = getattr(span, "end", None)
+        if callable(end):
+            end()
 
 
 @contextmanager
@@ -168,21 +214,15 @@ def observation(
     client = _client()
     _clear_trace_stack()
     try:
-        with _start_observation(
+        with _managed_observation(
             client,
             name=name,
             as_type="span",
             input=input,
             metadata=merged_meta,
+            session_id=session_id,
         ) as span:
-            with _push_span(span):
-                if session_id:
-                    from langfuse import propagate_attributes
-
-                    with propagate_attributes(session_id=session_id):
-                        yield span
-                else:
-                    yield span
+            yield span
     finally:
         _clear_trace_stack()
     client.flush()
@@ -202,15 +242,14 @@ def child_observation(
         return
 
     client = _client()
-    with _start_observation(
+    with _managed_observation(
         client,
         name=name,
         as_type=as_type,
         input=input,
         metadata=metadata,
     ) as span:
-        with _push_span(span):
-            yield span
+        yield span
 
 
 @contextmanager
@@ -227,7 +266,7 @@ def generation(
         return
 
     client = _client()
-    with _start_observation(
+    with _managed_observation(
         client,
         name=name,
         as_type="generation",
@@ -235,8 +274,7 @@ def generation(
         metadata=metadata,
         model=model,
     ) as span:
-        with _push_span(span):
-            yield span
+        yield span
 
 
 def update_span(span: Any, **kwargs: Any) -> None:

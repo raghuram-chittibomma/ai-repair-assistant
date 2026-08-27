@@ -25,8 +25,26 @@ silently on restart, and each API request opened a fresh Postgres connection.
 - Second ask after process start should not reload sentence-transformers.
 - Diagnose chat does **not** survive API restart; UI must handle 410 / New chat.
 - Env knobs: `REPAIR_SESSION_TTL_SECONDS` (default 3600), `REPAIR_SESSION_MAX`
-  (default 32), `REPAIR_DB_POOL_SIZE`, `REPAIR_SKIP_EMBEDDER_WARMUP=1` for tests.
-- Postgres session durability remains a later Phase 10 option if operators need it.
+  (default 32), `REPAIR_DB_POOL_SIZE`, `REPAIR_DB_POOL_TIMEOUT_SECONDS`
+  (default 30; wait then `PoolTimeoutError` → HTTP 503),
+  `LLM_TIMEOUT_SECONDS` (default 120; OpenAI → `LLMTimeoutError` → HTTP 504),
+  `REPAIR_SKIP_EMBEDDER_WARMUP=1` for tests.
+- Postgres session durability remains deferred (single-user LAN; multi-user
+  later). Operators use New chat after API restart (HTTP 410).
+
+## Timeouts (Phase 10 reliability)
+
+Hung OpenAI or unbounded pool waits freeze the laptop UI for a single operator.
+Bound both:
+
+1. **LLM** — `OpenAI(..., timeout=LLM_TIMEOUT_SECONDS)` on complete and stream;
+   map `APITimeoutError` → `LLMTimeoutError` → HTTP **504** (SSE `error` event
+   on stream routes).
+2. **DB pool** — `queue.get(timeout=REPAIR_DB_POOL_TIMEOUT_SECONDS)` after the
+   pool is at capacity; raise `PoolTimeoutError` → HTTP **503**.
+
+Single-user for the near future: do not add multi-tenant session durability or
+shared-API fairness in this ADR.
 
 ## Follow-on (UI streaming)
 

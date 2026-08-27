@@ -67,9 +67,12 @@ Open **http://localhost:8080/ui** in your browser.
 The API on your laptop connects to Postgres on the LAN host via `DATABASE_URL`.
 
 **Phase 10 notes:** the API process keeps a shared BGE embedder (warmed at
-startup) and a small Postgres pool. Diagnose sessions are **in-memory** (TTL +
-max cap) — they do not survive API restart; the UI shows a clear error (HTTP
-410) and you start a new chat. See [ADR-0021](adr/0021-api-hardening-embedder-sessions.md).
+startup) and a small Postgres pool with a bounded wait
+(`REPAIR_DB_POOL_TIMEOUT_SECONDS`, default 30s → HTTP 503 if exhausted).
+OpenAI calls are bounded by `LLM_TIMEOUT_SECONDS` (default 120s → HTTP 504).
+Diagnose sessions are **in-memory** (TTL + max cap) — they do not survive API
+restart; the UI shows a clear error (HTTP 410) and you start a new chat. See
+[ADR-0021](adr/0021-api-hardening-embedder-sessions.md).
 
 ### 5. Eval benches (manual)
 
@@ -93,6 +96,8 @@ Optional live traces (not required for benches): [LANGFUSE.md](LANGFUSE.md).
 | `DATABASE_URL` / connection errors | Check `.env.local`; confirm port 5436 open on LAN host |
 | API `503` on `/ready` | Postgres not running on the LAN host |
 | First ask/search after process start slow | BGE cold load (~30–60s once per process; later asks reuse the singleton) |
+| Ask/diagnose HTTP 504 / “timed out” | OpenAI exceeded `LLM_TIMEOUT_SECONDS` (default 120); retry or raise the limit |
+| Ask/diagnose HTTP 503 pool exhausted | Wait briefly and retry; raise `REPAIR_DB_POOL_SIZE` only if needed |
 | Diagnose “session expired” after restart | Expected — sessions are in-memory; click **New chat** |
 | UI 401 with API key set | Enter the same value in the UI **API key** field (stored in localStorage) |
 | UI works but answers fail | Check `OPENAI_API_KEY` in `.env.local` |

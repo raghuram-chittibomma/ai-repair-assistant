@@ -30,11 +30,15 @@ from repair_assistant.qa.context import (
     format_evidence,
     format_label,
 )
-from repair_assistant.qa.env import llm_model, openai_api_key
+from repair_assistant.qa.env import llm_model, llm_timeout_seconds, openai_api_key
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
 from repair_assistant.safety.policy import assess_request, block_message
+
+
+class LLMTimeoutError(TimeoutError):
+    """OpenAI request exceeded LLM_TIMEOUT_SECONDS (or client timeout)."""
 
 
 class LLMClient(Protocol):
@@ -51,9 +55,20 @@ class StreamingLLMClient(Protocol):
 class OpenAIClient:
     api_key: str
     model: str
+    timeout: float | None = None
+
+    def _timeout_seconds(self) -> float:
+        if self.timeout is not None:
+            return float(self.timeout)
+        return llm_timeout_seconds()
+
+    def _client(self):
+        from openai import OpenAI
+
+        return OpenAI(api_key=self.api_key, timeout=self._timeout_seconds())
 
     def complete(self, system: str, user: str) -> str:
-        from openai import OpenAI
+        from openai import APITimeoutError
 
         messages = [
             {"role": "system", "content": system},
@@ -64,19 +79,24 @@ class OpenAIClient:
             model=self.model,
             input={"messages": messages},
         ) as span:
-            client = OpenAI(api_key=self.api_key)
-            response = client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.2,
-            )
+            client = self._client()
+            try:
+                response = client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.2,
+                )
+            except APITimeoutError as exc:
+                raise LLMTimeoutError(
+                    f"OpenAI request timed out after {self._timeout_seconds():g}s"
+                ) from exc
             text = (response.choices[0].message.content or "").strip()
             update_span(span, output={"content": text})
             return text
 
     def stream(self, system: str, user: str):
         """Yield text deltas from OpenAI chat completions."""
-        from openai import OpenAI
+        from openai import APITimeoutError
 
         messages = [
             {"role": "system", "content": system},
@@ -87,24 +107,29 @@ class OpenAIClient:
             model=self.model,
             input={"messages": messages, "stream": True},
         ) as span:
-            client = OpenAI(api_key=self.api_key)
-            response = client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.2,
-                stream=True,
-            )
-            parts: list[str] = []
-            for chunk in response:
-                choices = getattr(chunk, "choices", None) or []
-                if not choices:
-                    continue
-                delta = getattr(choices[0], "delta", None)
-                text = getattr(delta, "content", None) if delta is not None else None
-                if text:
-                    parts.append(text)
-                    yield text
-            update_span(span, output={"content": "".join(parts).strip()})
+            client = self._client()
+            try:
+                response = client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.2,
+                    stream=True,
+                )
+                parts: list[str] = []
+                for chunk in response:
+                    choices = getattr(chunk, "choices", None) or []
+                    if not choices:
+                        continue
+                    delta = getattr(choices[0], "delta", None)
+                    text = getattr(delta, "content", None) if delta is not None else None
+                    if text:
+                        parts.append(text)
+                        yield text
+                update_span(span, output={"content": "".join(parts).strip()})
+            except APITimeoutError as exc:
+                raise LLMTimeoutError(
+                    f"OpenAI request timed out after {self._timeout_seconds():g}s"
+                ) from exc
 
 
 def build_user_prompt(
@@ -659,6 +684,7 @@ def ask_stream(
 __all__ = [
     "AnswerResult",
     "Citation",
+    "LLMTimeoutError",
     "OpenAIClient",
     "ask",
     "ask_stream",

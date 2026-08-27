@@ -26,20 +26,20 @@ def test_observation_uses_langfuse_when_keys_set(monkeypatch) -> None:
 
     fake_span = MagicMock()
     fake_client = MagicMock()
-    fake_client.start_as_current_observation.return_value.__enter__.return_value = fake_span
-    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+    fake_client.start_observation.return_value = fake_span
 
     with patch.object(tracing, "_client", return_value=fake_client):
         with tracing.observation("ask", input={"question": "hi"}, metadata={"m": 1}) as span:
             tracing.update_span(span, output={"abstained": False})
             assert span is fake_span
 
-    fake_client.start_as_current_observation.assert_called_once()
-    kwargs = fake_client.start_as_current_observation.call_args.kwargs
+    fake_client.start_observation.assert_called_once()
+    kwargs = fake_client.start_observation.call_args.kwargs
     assert kwargs["name"] == "ask"
     assert kwargs["as_type"] == "span"
     assert kwargs["metadata"]["m"] == 1
     fake_span.update.assert_called()
+    fake_span.end.assert_called_once()
     fake_client.flush.assert_called_once()
 
 
@@ -51,8 +51,7 @@ def test_observation_merges_eval_trace_context(monkeypatch) -> None:
 
     fake_span = MagicMock()
     fake_client = MagicMock()
-    fake_client.start_as_current_observation.return_value.__enter__.return_value = fake_span
-    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+    fake_client.start_observation.return_value = fake_span
 
     with patch.object(tracing, "_client", return_value=fake_client):
         with eval_trace_context(
@@ -63,40 +62,34 @@ def test_observation_merges_eval_trace_context(monkeypatch) -> None:
             with tracing.observation("ask", metadata={"audience": "owner"}):
                 pass
 
-    meta = fake_client.start_as_current_observation.call_args.kwargs["metadata"]
+    meta = fake_client.start_observation.call_args.kwargs["metadata"]
     assert meta["audience"] == "owner"
     assert meta["eval_bench"] == "qa"
     assert meta["eval_run_id"] == "20260101T000000Z"
     assert meta["scenario_id"] == "acu-led-step-10"
 
 
-def test_observation_passes_session_id_to_propagate_attributes(monkeypatch) -> None:
+def test_observation_sets_session_id_on_otel_span(monkeypatch) -> None:
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
 
+    fake_otel = MagicMock()
     fake_span = MagicMock()
+    fake_span._otel_span = fake_otel
     fake_client = MagicMock()
-    fake_client.start_as_current_observation.return_value.__enter__.return_value = fake_span
-    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+    fake_client.start_observation.return_value = fake_span
 
-    propagate_cm = MagicMock()
-    propagate_cm.__enter__ = MagicMock(return_value=None)
-    propagate_cm.__exit__ = MagicMock(return_value=None)
-
-    with (
-        patch.object(tracing, "_client", return_value=fake_client),
-        patch("langfuse.propagate_attributes", return_value=propagate_cm) as propagate,
-    ):
+    with patch.object(tracing, "_client", return_value=fake_client):
         with tracing.observation(
             "diagnose",
-            input={"user_message": "F5E2"},
-            session_id="abc-123-session",
-        ):
-            pass
+            input={"message": "hi"},
+            session_id="sess-abc",
+        ) as span:
+            assert span is fake_span
 
-    propagate.assert_called_once_with(session_id="abc-123-session")
-    meta = fake_client.start_as_current_observation.call_args.kwargs["metadata"]
-    assert meta["diagnose_session_id"] == "abc-123-session"
+    fake_otel.set_attribute.assert_called_with("session.id", "sess-abc")
+    meta = fake_client.start_observation.call_args.kwargs["metadata"]
+    assert meta["diagnose_session_id"] == "sess-abc"
 
 
 def test_child_observation_does_not_flush(monkeypatch) -> None:
@@ -105,15 +98,15 @@ def test_child_observation_does_not_flush(monkeypatch) -> None:
 
     fake_span = MagicMock()
     fake_client = MagicMock()
-    fake_client.start_as_current_observation.return_value.__enter__.return_value = fake_span
-    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+    fake_client.start_observation.return_value = fake_span
 
     with patch.object(tracing, "_client", return_value=fake_client):
         with tracing.child_observation("retrieval", input={"query": "F5E2"}):
             pass
 
     fake_client.flush.assert_not_called()
-    assert fake_client.start_as_current_observation.call_args.kwargs["name"] == "retrieval"
+    assert fake_client.start_observation.call_args.kwargs["name"] == "retrieval"
+    fake_span.end.assert_called_once()
 
 
 def test_generation_observation_uses_generation_type(monkeypatch) -> None:
@@ -122,14 +115,13 @@ def test_generation_observation_uses_generation_type(monkeypatch) -> None:
 
     fake_span = MagicMock()
     fake_client = MagicMock()
-    fake_client.start_as_current_observation.return_value.__enter__.return_value = fake_span
-    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+    fake_client.start_observation.return_value = fake_span
 
     with patch.object(tracing, "_client", return_value=fake_client):
         with tracing.generation("llm", model="gpt-4o-mini", input={"messages": []}):
             tracing.update_span(fake_span, output={"content": "hi"})
 
-    kwargs = fake_client.start_as_current_observation.call_args.kwargs
+    kwargs = fake_client.start_observation.call_args.kwargs
     assert kwargs["as_type"] == "generation"
     assert kwargs["model"] == "gpt-4o-mini"
 
@@ -143,18 +135,14 @@ def test_child_observation_passes_trace_context_under_root(monkeypatch) -> None:
     root_span.id = "span-root"
     child_span = MagicMock()
     fake_client = MagicMock()
-    fake_client.start_as_current_observation.return_value.__enter__.side_effect = [
-        root_span,
-        child_span,
-    ]
-    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+    fake_client.start_observation.side_effect = [root_span, child_span]
 
     with patch.object(tracing, "_client", return_value=fake_client):
         with tracing.observation("ask", input={"question": "door"}):
             with tracing.child_observation("retrieval", input={"query": "door"}):
                 pass
 
-    child_kwargs = fake_client.start_as_current_observation.call_args_list[1].kwargs
+    child_kwargs = fake_client.start_observation.call_args_list[1].kwargs
     assert child_kwargs["trace_context"] == {
         "trace_id": "trace-root",
         "parent_span_id": "span-root",
@@ -171,11 +159,7 @@ def test_trace_context_survives_generator_yield(monkeypatch) -> None:
     root_span.id = "span-stream"
     child_span = MagicMock()
     fake_client = MagicMock()
-    fake_client.start_as_current_observation.return_value.__enter__.side_effect = [
-        root_span,
-        child_span,
-    ]
-    fake_client.start_as_current_observation.return_value.__exit__.return_value = None
+    fake_client.start_observation.side_effect = [root_span, child_span]
 
     def stream_like_ask():
         with tracing.observation("ask", input={"stream": True}):
@@ -191,7 +175,7 @@ def test_trace_context_survives_generator_yield(monkeypatch) -> None:
         except StopIteration:
             pass
 
-    child_kwargs = fake_client.start_as_current_observation.call_args_list[1].kwargs
+    child_kwargs = fake_client.start_observation.call_args_list[1].kwargs
     assert child_kwargs["trace_context"] == {
         "trace_id": "trace-stream",
         "parent_span_id": "span-stream",

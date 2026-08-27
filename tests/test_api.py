@@ -69,6 +69,16 @@ def test_api_key_required_when_configured(client: TestClient, monkeypatch: pytes
 
 
 @patch("repair_assistant.api.app.ask")
+def test_ask_llm_timeout_returns_504(mock_ask: MagicMock, client: TestClient) -> None:
+    from repair_assistant.qa.generate import LLMTimeoutError
+
+    mock_ask.side_effect = LLMTimeoutError("OpenAI request timed out after 120s")
+    response = client.post("/v1/ask", json={"question": "What is F5E2?"})
+    assert response.status_code == 504
+    assert "timed out" in response.json()["detail"]
+
+
+@patch("repair_assistant.api.app.ask")
 def test_ask_route(mock_ask: MagicMock, client: TestClient) -> None:
     mock_ask.return_value = AnswerResult(
         question="What is F5E2?",
