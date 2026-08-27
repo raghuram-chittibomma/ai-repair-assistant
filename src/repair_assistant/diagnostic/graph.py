@@ -153,6 +153,8 @@ def make_blocked_node():
 
 def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int, overfetch: int):
     def retrieve(state: DiagnosticGraphState) -> dict:
+        from repair_assistant.retrieval.planner import plan_for_query
+
         query = _retrieval_query(state["messages"])
         appliance = None
         if state.get("appliance_model"):
@@ -160,6 +162,8 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 model=state["appliance_model"],
                 serial=state.get("appliance_serial"),
             )
+        audience = str(state.get("audience") or Audience.OWNER.value)
+        plan = plan_for_query(query, audience=audience)
         result = search(
             db,
             manifest,
@@ -167,6 +171,8 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
             appliance=appliance,
             limit=retrieval_limit,
             overfetch=overfetch,
+            audience=audience,
+            plan=plan,
         )
         if not result.hits:
             return {

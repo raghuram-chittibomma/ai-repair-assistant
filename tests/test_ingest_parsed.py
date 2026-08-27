@@ -7,6 +7,7 @@ from pathlib import Path
 
 from repair_assistant.ingest.embeddings import NullEmbedder, build_embedder
 from repair_assistant.ingest.parsed import ParsedChunk, load_parsed_document
+from repair_assistant.parsing.pua import strip_nul_chars
 
 
 def _write_parsed(tmp: Path, doc_id: str, chunks: list[dict]) -> Path:
@@ -83,3 +84,31 @@ def test_build_embedder_skip() -> None:
     null = build_embedder(skip=True, model="BAAI/bge-base-en-v1.5")
     assert isinstance(null, NullEmbedder)
     assert null.embed(["hi"]) == [[]]
+
+
+def test_load_parsed_strips_nul_from_text_and_metadata(tmp_path: Path) -> None:
+    row = {
+        "chunk_id": "a",
+        "text": "Ac\u0000on Required",
+        "page": 1,
+        "kind": "prose",
+        "error_codes": [],
+        "language": "en",
+        "doc_id": "tsp-w11533288",
+        "publication_number": "W11533288",
+        "revision": None,
+        "metadata": {"body_text": "Informa\u0000on Only"},
+        "content_hash": "stale-hash-with-nuls",
+    }
+    doc = load_parsed_document(_write_parsed(tmp_path, "tsp-w11533288", [row]))
+    assert "\x00" not in doc.chunks[0].text
+    assert doc.chunks[0].text == "Acon Required"
+    assert doc.chunks[0].metadata["body_text"] == "Informaon Only"
+    assert "\x00" not in json.dumps(doc.chunks[0].metadata)
+    # Hash recomputed from cleaned text (not the stale on-disk hash).
+    assert doc.chunks[0].content_hash != "stale-hash-with-nuls"
+
+
+def test_strip_nul_chars_recursive() -> None:
+    assert strip_nul_chars("a\x00b") == "ab"
+    assert strip_nul_chars({"x": "a\x00b", "y": ["c\x00"]}) == {"x": "ab", "y": ["c"]}

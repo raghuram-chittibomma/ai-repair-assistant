@@ -30,6 +30,25 @@ _TECHNICIAN_DEPTH = re.compile(
     r")\b",
     re.I,
 )
+_UNLOCK_EVIDENCE = re.compile(
+    r"will not unlock|won'?t unlock|door will not unlock|add garment|"
+    r"door locks when cycle|touch (?:start/)?pause|f5\s*e2|lock failure",
+    re.I,
+)
+_WRONG_UNLOCK_POLARITY = re.compile(
+    r"door won'?t lock|door will not lock|ensure that door is completely closed|"
+    r"door not closed",
+    re.I,
+)
+_OWNER_DOC_TYPES = frozenset(
+    {
+        "owners_manual",
+        "quick_start_guide",
+        "knowledge_article",
+        "warranty",
+        "cycle_guide",
+    }
+)
 
 
 def is_bibliographic_query(query: str) -> bool:
@@ -138,8 +157,11 @@ def filter_and_rank(
     query: str = "",
     query_error_codes: list[str] | None = None,
     audit: RankAudit | None = None,
+    audience: str | None = None,
 ) -> list[RankedHit]:
     """Drop inapplicable docs; boost correcting / pointer literature and error-code matches."""
+    from repair_assistant.retrieval.query_expand import door_lock_polarity
+
     by_id = _doc_by_id(manifest)
     query_codes = {c.upper() for c in (query_error_codes or [])}
     bibliographic = is_bibliographic_query(query)
@@ -149,6 +171,8 @@ def filter_and_rank(
     acu_led = is_acu_led_query(query)
     named_pubs = queried_publications(query)
     technician = is_technician_depth_query(query)
+    lock_polarity = door_lock_polarity(query)
+    prefer_owner = (audience or "").lower() == "owner"
 
     ranked: list[RankedHit] = []
     for hit in hits:
@@ -214,6 +238,13 @@ def filter_and_rank(
                 boost += 0.30
             if technician and doc.doc_type == "knowledge_article":
                 boost -= 0.45
+            if prefer_owner and doc.doc_type in _OWNER_DOC_TYPES:
+                boost += 0.12
+            if prefer_owner and lock_polarity == "unlock" and doc.doc_type in {
+                "owners_manual",
+                "knowledge_article",
+            }:
+                boost += 0.10
 
         pub = hit.get("publication_number")
         if named_pubs:
@@ -241,6 +272,16 @@ def filter_and_rank(
                 boost += 0.30
             if re.search(r"TEST #1.*ACU Power Check", text, re.I):
                 boost += 0.15
+
+        text = hit.get("text") or ""
+        if lock_polarity == "unlock":
+            if _UNLOCK_EVIDENCE.search(text):
+                boost += 0.28
+            if _WRONG_UNLOCK_POLARITY.search(text) and not _UNLOCK_EVIDENCE.search(text):
+                boost -= 0.22
+        elif lock_polarity == "lock":
+            if _WRONG_UNLOCK_POLARITY.search(text):
+                boost += 0.12
 
         codes = [str(c).upper() for c in (hit.get("error_codes") or [])]
         kind = hit.get("kind") or ""

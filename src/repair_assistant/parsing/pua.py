@@ -8,6 +8,7 @@ codepoints in place; a parser that does not map them loses list boundaries.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 # Observed on W11156989A / W11320651B. Values are the structural meaning we
 # assign, not a claim about Wingdings' public mapping table.
@@ -40,7 +41,19 @@ def map_pua(text: str, *, replace_unknown: str = "") -> str:
             return PUA_LIST_MARKERS[ch]
         return replace_unknown
 
-    return collapse_overdrawn_connector_labels(_PUA_RE.sub(_sub, text))
+    cleaned = strip_nul_chars(text)
+    return collapse_overdrawn_connector_labels(_PUA_RE.sub(_sub, cleaned))
+
+
+def strip_nul_chars(value: Any) -> Any:
+    """Remove U+0000 from strings (Postgres text/jsonb reject NUL). Recurse dict/list."""
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        return {k: strip_nul_chars(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [strip_nul_chars(v) for v in value]
+    return value
 
 
 

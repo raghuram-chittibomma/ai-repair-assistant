@@ -377,8 +377,11 @@ def _make_chunk(
     extractor: str | None,
     metadata: dict | None = None,
 ) -> Chunk:
+    from repair_assistant.parsing.pua import strip_nul_chars
+
+    text = strip_nul_chars(text)
     digest = hashlib.sha256(f"{page}:{kind}:{text}".encode()).hexdigest()[:12]
-    meta = dict(metadata or {})
+    meta = strip_nul_chars(dict(metadata or {}))
     if extractor:
         meta["extractor"] = extractor
     return Chunk(

@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator
 
+from repair_assistant.parsing.pua import strip_nul_chars
+
 
 @dataclass(frozen=True)
 class ParsedChunk:
@@ -25,9 +27,17 @@ class ParsedChunk:
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> ParsedChunk:
-        # Postgres rejects NUL (0x00) in text; PDF extractors occasionally emit them.
-        text = str(data["text"]).replace("\x00", "")
-        content_hash = data.get("content_hash") or _hash_text(text)
+        # Postgres rejects NUL (0x00) in text and jsonb; PDF extractors
+        # occasionally emit them (e.g. "Action" → "Ac\\u0000on").
+        raw_text = str(data["text"])
+        text = strip_nul_chars(raw_text)
+        metadata = strip_nul_chars(dict(data.get("metadata") or {}))
+        had_nul = raw_text != text or metadata != dict(data.get("metadata") or {})
+        content_hash = (
+            _hash_text(text)
+            if had_nul or not data.get("content_hash")
+            else str(data["content_hash"])
+        )
         return cls(
             chunk_id=data["chunk_id"],
             text=text,
@@ -38,7 +48,7 @@ class ParsedChunk:
             doc_id=data["doc_id"],
             publication_number=data.get("publication_number"),
             revision=data.get("revision"),
-            metadata=dict(data.get("metadata") or {}),
+            metadata=metadata,
             content_hash=content_hash,
         )
 

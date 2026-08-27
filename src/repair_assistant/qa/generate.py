@@ -111,13 +111,23 @@ def build_user_prompt(
     question: str,
     appliance: Appliance | None,
     evidence_text: str,
+    *,
+    user_codes: tuple[str, ...] | list[str] | None = None,
+    plan_codes: tuple[str, ...] | list[str] | None = None,
 ) -> str:
+    from repair_assistant.retrieval.planner import provenance_prompt_block
+
     lines = [f"Question: {question}"]
     if appliance:
         line = f"Appliance model: {appliance.model}"
         if appliance.serial:
             line += f"  Serial: {appliance.serial}"
         lines.append(line)
+    uc = tuple(user_codes or ())
+    pc = tuple(plan_codes or ())
+    if uc or pc:
+        lines.append("")
+        lines.append(provenance_prompt_block(user_codes=uc, plan_codes=pc))
     lines.append("")
     lines.append("Evidence:")
     lines.append(evidence_text or "(none)")
@@ -307,6 +317,22 @@ def ask(
         return outcome
 
 
+
+def _clarification_result(question: str, clarify: str, *, assessment) -> AnswerResult:
+    return AnswerResult(
+        question=question,
+        answer=clarify,
+        abstained=False,
+        abstain_reason="",
+        abstain_code="clarify",
+        citations=[],
+        retrieval_count=0,
+        safety_action=assessment.action.value,
+        safety_notice=assessment.reason,
+        escalated=False,
+    )
+
+
 def _ask_impl(
     db: Database,
     manifest: Manifest,
@@ -318,6 +344,13 @@ def _ask_impl(
     overfetch: int = 40,
     llm: LLMClient | None = None,
 ) -> AnswerResult:
+    from repair_assistant.retrieval.intent import extract_intent, intent_to_dict
+    from repair_assistant.retrieval.planner import (
+        check_evidence_fit,
+        plan_retrieval,
+        plan_to_dict,
+    )
+
     assessment = assess_request(question, audience=audience)
     _trace_safety_assess(question, audience, assessment)
     if assessment.action == SafetyAction.BLOCK:
@@ -336,6 +369,24 @@ def _ask_impl(
     if appliance is not None and not corpus_supports_appliance(manifest, appliance).supported:
         return _unsupported_appliance_answer(question, appliance, assessment=assessment)
 
+    intent = extract_intent(question, audience=audience.value)
+    if intent.needs_clarification and intent.clarify_question:
+        with child_observation(
+            "intent",
+            input={"question": question},
+            metadata={"audience": audience.value},
+        ) as span:
+            update_span(span, output=intent_to_dict(intent))
+        return _clarification_result(question, intent.clarify_question, assessment=assessment)
+
+    plan = plan_retrieval(intent)
+    with child_observation(
+        "retrieval_plan",
+        input={"question": question},
+        metadata={"audience": audience.value},
+    ) as span:
+        update_span(span, output=plan_to_dict(plan))
+
     result = search(
         db,
         manifest,
@@ -343,17 +394,29 @@ def _ask_impl(
         appliance=appliance,
         limit=retrieval_limit,
         overfetch=overfetch,
+        audience=audience.value,
+        plan=plan,
     )
 
     if not result.hits:
         return _no_evidence_answer(question, appliance, assessment=assessment)
+
+    fit = check_evidence_fit(intent, [h.text for h in result.hits])
+    if not fit.ok and fit.clarify_question:
+        return _clarification_result(question, fit.clarify_question, assessment=assessment)
 
     evidence_text, available = _trace_evidence(result.hits, query=question)
     system = ask_system()
     if assessment.prompt_directive:
         system = f"{system}\n\n{assessment.prompt_directive}"
     llm = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
-    user_prompt = build_user_prompt(question, appliance, evidence_text)
+    user_prompt = build_user_prompt(
+        question,
+        appliance,
+        evidence_text,
+        user_codes=plan.user_codes,
+        plan_codes=plan.plan_codes,
+    )
     raw = llm.complete(system, user_prompt)
 
     if raw.upper().startswith("ABSTAIN:"):
@@ -366,6 +429,7 @@ def _ask_impl(
             retrieval_count=len(result.hits),
             safety_action=assessment.action.value,
             safety_notice=assessment.reason,
+            escalated=False,
         )
 
     gated = _trace_gate(assessment, raw, evidence_text)
@@ -432,6 +496,44 @@ def ask_stream(
             yield _stream_done_unsupported(question, appliance, assessment=assessment)
             return
 
+        from repair_assistant.retrieval.intent import extract_intent, intent_to_dict
+        from repair_assistant.retrieval.planner import (
+            check_evidence_fit,
+            plan_retrieval,
+            plan_to_dict,
+        )
+
+        intent = extract_intent(question, audience=audience.value)
+        if intent.needs_clarification and intent.clarify_question:
+            with child_observation(
+                "intent",
+                input={"question": question},
+                metadata={"audience": audience.value},
+            ) as span:
+                update_span(span, output=intent_to_dict(intent))
+            yield {
+                "type": "done",
+                "question": question,
+                "answer": intent.clarify_question,
+                "abstained": False,
+                "abstain_reason": "",
+                "abstain_code": "clarify",
+                "citations": [],
+                "retrieval_count": 0,
+                "safety_action": assessment.action.value,
+                "safety_notice": assessment.reason,
+                "escalated": False,
+            }
+            return
+
+        plan = plan_retrieval(intent)
+        with child_observation(
+            "retrieval_plan",
+            input={"question": question},
+            metadata={"audience": audience.value},
+        ) as span:
+            update_span(span, output=plan_to_dict(plan))
+
         yield {"type": "status", "phase": "retrieving"}
         result = search(
             db,
@@ -440,9 +542,28 @@ def ask_stream(
             appliance=appliance,
             limit=retrieval_limit,
             overfetch=overfetch,
+            audience=audience.value,
+            plan=plan,
         )
         if not result.hits:
             yield _stream_done_no_evidence(question, appliance, assessment=assessment)
+            return
+
+        fit = check_evidence_fit(intent, [h.text for h in result.hits])
+        if not fit.ok and fit.clarify_question:
+            yield {
+                "type": "done",
+                "question": question,
+                "answer": fit.clarify_question,
+                "abstained": False,
+                "abstain_reason": "",
+                "abstain_code": "clarify",
+                "citations": [],
+                "retrieval_count": len(result.hits),
+                "safety_action": assessment.action.value,
+                "safety_notice": assessment.reason,
+                "escalated": False,
+            }
             return
 
         evidence_text, available = _trace_evidence(result.hits, query=question)
@@ -450,7 +571,13 @@ def ask_stream(
         if assessment.prompt_directive:
             system = f"{system}\n\n{assessment.prompt_directive}"
         client = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
-        user_prompt = build_user_prompt(question, appliance, evidence_text)
+        user_prompt = build_user_prompt(
+            question,
+            appliance,
+            evidence_text,
+            user_codes=plan.user_codes,
+            plan_codes=plan.plan_codes,
+        )
         yield {
             "type": "status",
             "phase": "generating",

@@ -335,18 +335,31 @@ def search(
     overfetch: int = 40,
     embedder: Embedder | None = None,
     include_synthetic: bool = False,
+    audience: str | None = None,
+    plan: "RetrievalPlan | None" = None,
 ) -> SearchResult:
     """Embed query, fetch neighbours, apply applicability + light precedence boosts.
 
     ``include_synthetic`` is for bake-off only. Production ask/diagnose leave it
     false so ``synth-*`` / ``SYNTH-*`` eval docs never surface.
+
+    When ``plan`` is omitted, a :class:`RetrievalPlan` is built from
+    :func:`extract_intent` (query expansion, extra codes, audience).
     """
+    from repair_assistant.retrieval.planner import RetrievalPlan, plan_for_query
+
+    if plan is None:
+        plan = plan_for_query(query, audience=audience)
+    elif not isinstance(plan, RetrievalPlan):
+        plan = plan_for_query(query, audience=audience)
+
     embedder = embedder or get_shared_embedder(model=embedding_model())
-    vectors = embedder.embed([query])
+    embed_query = plan.embed_query or query
+    vectors = embedder.embed([embed_query])
     if not vectors or not vectors[0]:
         return SearchResult(query=query)
 
-    codes = extract_error_codes(query)
+    codes = list(plan.codes) if plan.codes else extract_error_codes(query)
     code_hits = code_fetch(db, codes)
     connector_hits = connector_fetch(db, extract_connector_ids(query))
     rev_letter = requested_revision(query)
@@ -408,6 +421,7 @@ def search(
     from repair_assistant.observability.retrieval_trace import build_retrieval_trace_output
 
     audit = RankAudit() if tracing_enabled() else None
+    rank_audience = plan.audience or audience
     all_ranked = filter_and_rank(
         raw,
         manifest,
@@ -416,6 +430,7 @@ def search(
         query=query,
         query_error_codes=codes,
         audit=audit,
+        audience=rank_audience,
     )
     filtered_out = (len(raw) - len(all_ranked)) if appliance is not None else 0
     ranked = all_ranked[:limit]
