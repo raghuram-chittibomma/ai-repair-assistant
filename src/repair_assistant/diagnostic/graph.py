@@ -29,7 +29,7 @@ from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
-from repair_assistant.safety.policy import assess_request, block_message
+from repair_assistant.safety.policy import assess_request, block_message, apply_owner_evidence_policy
 
 
 def _latest_ai(messages: list) -> str:
@@ -284,6 +284,9 @@ def make_respond_node(llm: LLMClient):
             audience=Audience(state.get("audience") or Audience.OWNER.value),
             prompt_directive=state.get("prompt_directive") or "",
         )
+        assessment = apply_owner_evidence_policy(
+            assessment, state.get("evidence_text") or ""
+        )
         system = diagnose_system()
         if assessment.prompt_directive:
             system = f"{system}\n\n{assessment.prompt_directive}"
@@ -331,6 +334,7 @@ def make_respond_node(llm: LLMClient):
             "safety_action": gated.action.value,
             "safety_notice": gated.notice,
             "escalated": gated.escalated,
+            "prompt_directive": assessment.prompt_directive,
         }
 
     return respond
@@ -434,6 +438,9 @@ def diagnose_turn_stream(
         reason=state.get("safety_notice") or "",
         audience=Audience(state.get("audience") or Audience.OWNER.value),
         prompt_directive=state.get("prompt_directive") or "",
+    )
+    assessment = apply_owner_evidence_policy(
+        assessment, state.get("evidence_text") or ""
     )
     system = diagnose_system()
     if assessment.prompt_directive:

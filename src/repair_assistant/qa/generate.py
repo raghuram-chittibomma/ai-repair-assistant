@@ -35,7 +35,7 @@ from repair_assistant.qa.env import llm_model, llm_timeout_seconds, openai_api_k
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
-from repair_assistant.safety.policy import assess_request, block_message
+from repair_assistant.safety.policy import assess_request, block_message, apply_owner_evidence_policy
 
 
 class LLMTimeoutError(TimeoutError):
@@ -435,6 +435,7 @@ def _ask_impl(
         return _clarification_result(question, fit.clarify_question, assessment=assessment)
 
     evidence_text, available = _trace_evidence(result.hits, query=question)
+    assessment = apply_owner_evidence_policy(assessment, evidence_text)
     system = ask_system()
     if assessment.prompt_directive:
         system = f"{system}\n\n{assessment.prompt_directive}"
@@ -612,6 +613,7 @@ def ask_stream(
             return
 
         evidence_text, available = _trace_evidence(result.hits, query=question)
+        assessment = apply_owner_evidence_policy(assessment, evidence_text)
         system = ask_system()
         if assessment.prompt_directive:
             system = f"{system}\n\n{assessment.prompt_directive}"

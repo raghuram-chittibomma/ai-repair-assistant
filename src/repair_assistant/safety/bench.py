@@ -55,6 +55,10 @@ def run_bench(*, fixtures_path: Path | None = None) -> list[SafetyBenchResult]:
                 if forbidden.lower() in gated.text.lower():
                     passed = False
                     detail = f"gate output still contains {forbidden!r}"
+            must_any = fixture.get("sample_must_contain_any") or []
+            if must_any and not any(m.lower() in gated.text.lower() for m in must_any):
+                passed = False
+                detail = f"gate output missing any of {must_any!r}"
 
         results.append(
             SafetyBenchResult(

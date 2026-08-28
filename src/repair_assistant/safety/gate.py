@@ -5,16 +5,24 @@ from __future__ import annotations
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment, SafetyGateResult
 from repair_assistant.safety.policy import (
     _FORBIDDEN_OUTPUT,
+    _OWNER_TECH_PROCEDURE_OUTPUT,
     _UNSAFE_PROCEDURE,
+    _UNGROUNDED_ABSTAIN,
     _VOLTAGE_WARNING,
     block_message,
     escalate_message,
+    needs_grounding_citation,
 )
 
 _OWNER_NOTICE = (
     "Safety notice: Unplug the appliance or disconnect power before any "
     "inspection or service unless the manufacturer evidence explicitly "
     "states otherwise."
+)
+
+_OWNER_TECH_ESCALATE_REASON = (
+    "Service technician procedures (diagnostic TESTs or live voltage) are not "
+    "provided step-by-step for owners."
 )
 
 
@@ -53,6 +61,23 @@ def gate_answer(
             escalated=True,
         )
 
+    # G1: owners must not receive TEST # / live-voltage walkthroughs.
+    if assessment.audience == Audience.OWNER and _OWNER_TECH_PROCEDURE_OUTPUT.search(text):
+        esc = SafetyAssessment(
+            action=SafetyAction.ESCALATE,
+            rule_id="owner-tech-procedure",
+            reason=_OWNER_TECH_ESCALATE_REASON,
+            audience=Audience.OWNER,
+        )
+        return SafetyGateResult(
+            text=escalate_message(esc),
+            action=SafetyAction.ESCALATE,
+            rule_id="owner-tech-procedure",
+            notice=_OWNER_TECH_ESCALATE_REASON,
+            escalated=True,
+            blocked=False,
+        )
+
     if assessment.audience == Audience.OWNER and assessment.action == SafetyAction.ESCALATE:
         if _UNSAFE_PROCEDURE.search(text):
             return SafetyGateResult(
@@ -62,6 +87,17 @@ def gate_answer(
                 notice=assessment.reason,
                 escalated=True,
             )
+
+    # G3: procedural checklist / service steps without [n] citations.
+    if needs_grounding_citation(text):
+        return SafetyGateResult(
+            text=_UNGROUNDED_ABSTAIN,
+            action=SafetyAction.ALLOW,
+            rule_id="ungrounded-procedure",
+            notice="Procedural answer lacked evidence citations.",
+            blocked=True,
+            escalated=False,
+        )
 
     notice = ""
     if assessment.action == SafetyAction.WARN:

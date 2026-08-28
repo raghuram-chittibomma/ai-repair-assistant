@@ -108,5 +108,19 @@ def test_unlock_polarity_prefers_unlock_evidence_over_wont_lock() -> None:
         audience="owner",
     )
     assert ranked
+    # Owner audience keeps owner literature when available (drops service manual).
     assert ranked[0].chunk_id == "unlock"
-    assert ranked[0].final_score > ranked[1].final_score
+    assert all(h.doc_id == "use-and-care" for h in ranked)
+
+    tech_ranked = filter_and_rank(
+        hits,
+        manifest,
+        Appliance(model="WFW5620HW0"),
+        limit=2,
+        query="door got locked",
+        audience="technician",
+    )
+    assert len(tech_ranked) >= 2
+    unlock = next(h for h in tech_ranked if h.chunk_id == "unlock")
+    wont = next(h for h in tech_ranked if h.chunk_id == "wont-lock")
+    assert unlock.final_score > wont.final_score
