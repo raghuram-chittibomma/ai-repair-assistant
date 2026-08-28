@@ -7,7 +7,7 @@ import subprocess
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from repair_assistant.ingest.env import load_dotenv_files
@@ -20,7 +20,7 @@ _DEFAULT_TRACE_MAX = 12_000
 _tls = threading.local()
 _langfuse_client: Any | None = None
 _app_git_sha: str | None = None
-_app_started_at: str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+_app_started_at: str = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class _NoOpSpan:

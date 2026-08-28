@@ -20,9 +20,8 @@ def test_pool_acquire_times_out_when_exhausted() -> None:
     with patch.object(pool, "_create", return_value=fake):
         with pool.connection() as held:
             assert held is fake
-            with pytest.raises(PoolTimeoutError, match="exhausted"):
-                with pool.connection():
-                    pass
+            with pytest.raises(PoolTimeoutError, match="exhausted"), pool.connection():
+                pass
         # After release, acquire succeeds again
         with pool.connection() as again:
             assert again is fake

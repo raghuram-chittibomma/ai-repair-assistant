@@ -5,7 +5,7 @@ from __future__ import annotations
 import queue
 import threading
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 
 from repair_assistant.ingest.store import Database
 
@@ -65,10 +65,8 @@ class DatabasePool:
         try:
             db.commit()
         except Exception:
-            try:
+            with suppress(Exception):
                 db.close()
-            except Exception:
-                pass
             with self._lock:
                 self._created = max(0, self._created - 1)
             return
@@ -80,10 +78,8 @@ class DatabasePool:
         try:
             yield db
         except Exception:
-            try:
+            with suppress(Exception):
                 db.close()
-            except Exception:
-                pass
             with self._lock:
                 self._created = max(0, self._created - 1)
             raise

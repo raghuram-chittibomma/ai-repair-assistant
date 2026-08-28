@@ -27,9 +27,7 @@ def looks_like_matrix_page(text: str | None) -> bool:
         return False
     if _GUIDE_RE.search(text) and _MATRIX_COLS_RE.search(text):
         return True
-    if _GUIDE_RE.search(text) and re.search(r"\bPOSSIBLE\s+CAUSE\b", text, re.I):
-        return True
-    return False
+    return bool(_GUIDE_RE.search(text) and re.search(r"\bPOSSIBLE\s+CAUSE\b", text, re.I))
 
 
 def classify_page(

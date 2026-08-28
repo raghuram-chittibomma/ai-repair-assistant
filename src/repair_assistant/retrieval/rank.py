@@ -105,7 +105,7 @@ class RankAudit:
     """Optional collector for retrieval observability (Langfuse)."""
 
     rejected: list[dict[str, Any]] = field(default_factory=list)
-    ranked_sorted: list["RankedHit"] = field(default_factory=list)
+    ranked_sorted: list[RankedHit] = field(default_factory=list)
     diversity_dropped: list[dict[str, Any]] = field(default_factory=list)
 
 

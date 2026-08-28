@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import threading
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
 # Default: MIT-licensed, strong English retrieval, runs fully offline after download.
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 DEFAULT_EMBEDDING_DIMS = 768
 
 _shared_lock = threading.Lock()
-_shared_embedder: "Embedder | None" = None
+_shared_embedder: Embedder | None = None
 _shared_model: str | None = None
 
 

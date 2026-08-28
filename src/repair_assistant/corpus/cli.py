@@ -533,7 +533,6 @@ def parse_cmd(doc_id: str | None, parse_all: bool, extractor: str) -> None:
 def audit_chunks_cmd(doc_id: str | None, audit_all: bool, repair: bool) -> None:
     """Audit (and optionally repair once) existing corpus/parsed JSONL chunks."""
     import json
-    from pathlib import Path
 
     from repair_assistant.parsing.chunk_quality import audit_and_improve, audit_chunks
     from repair_assistant.parsing.models import Chunk
@@ -632,10 +631,7 @@ def ingest_cmd(doc_id: str | None, ingest_all: bool, force: bool, skip_embed: bo
         matches = [
             d for d in corpus.documents if d.doc_id == doc_id or d.publication_number == doc_id
         ]
-        if matches:
-            doc_ids = {d.doc_id for d in matches}
-        else:
-            doc_ids = {doc_id}
+        doc_ids = {d.doc_id for d in matches} if matches else {doc_id}
 
     sha_by_doc: dict[str, str] = {}
     for d in corpus.documents:
@@ -688,7 +684,7 @@ def bench_retrieve_cmd(write: bool, k: int | None) -> None:
         (out / "scorecard.md").write_text(card, encoding="utf-8", newline="\n")
         click.echo(f"Wrote {out / 'scorecard.md'}")
 
-    hard_fails = [r for r in results if r.hard and not r.passed]
+    [r for r in results if r.hard and not r.passed]
     # Interim baseline must clear hard fixtures; bake-off records who wins.
     boost = [r for r in results if r.strategy == "vector_apply_boost" and r.hard]
     if boost and not any(r.passed for r in boost):

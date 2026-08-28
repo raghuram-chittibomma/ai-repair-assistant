@@ -73,3 +73,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+    "B008",  # FastAPI Depends() in parameter defaults
+    "E501",  # pre-existing long lines; format incrementally
+    "SIM102",
+    "SIM117",
+]

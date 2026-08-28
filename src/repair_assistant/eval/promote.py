@@ -15,10 +15,7 @@ from repair_assistant.eval.candidates_bench import load_candidates
 
 def load_run_log(path: Path) -> dict[str, Any]:
     raw = path.read_text(encoding="utf-8")
-    if path.suffix.lower() == ".json":
-        data = json.loads(raw)
-    else:
-        data = yaml.safe_load(raw)
+    data = json.loads(raw) if path.suffix.lower() == ".json" else yaml.safe_load(raw)
     if not isinstance(data, dict) or "results" not in data:
         raise ValueError(f"not a bench run log: {path}")
     return data

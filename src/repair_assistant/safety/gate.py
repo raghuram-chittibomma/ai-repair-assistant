@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment, SafetyGateResult
+from repair_assistant.safety.models import (
+    Audience,
+    SafetyAction,
+    SafetyAssessment,
+    SafetyGateResult,
+)
 from repair_assistant.safety.policy import (
     _FORBIDDEN_OUTPUT,
     _OWNER_TECH_PROCEDURE_OUTPUT,
-    _UNSAFE_PROCEDURE,
     _UNGROUNDED_ABSTAIN,
+    _UNSAFE_PROCEDURE,
     _VOLTAGE_WARNING,
     block_message,
     escalate_message,

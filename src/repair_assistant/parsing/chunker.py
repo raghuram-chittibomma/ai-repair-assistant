@@ -91,7 +91,6 @@ def format_contextual_text(
     if table_group_note:
         prefix_parts.append(f"Group note: {table_group_note}")
 
-    keyed = False
     if kind == "table_row" and headers:
         cells = [c.strip() for c in body.split(" | ")] if " | " in body else [body]
         if _body_already_keyed(cells, headers):

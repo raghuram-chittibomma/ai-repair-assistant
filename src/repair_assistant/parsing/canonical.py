@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from .pua import map_pua
+
+if TYPE_CHECKING:
+    from repair_assistant.parsing.models import ExtractedDocument, Table, TableRow
+    from repair_assistant.parsing.parse_quality import PageAudit
 
 _HEADING_LINE = re.compile(
     r"^(FOR SERVICE TECHNICIAN|DIAGNOSTIC|TEST #\d|ERROR CODE|IMPORTANT|"

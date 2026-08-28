@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Iterator, Protocol
+from typing import Any, Protocol
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
@@ -35,7 +36,11 @@ from repair_assistant.qa.env import llm_model, llm_timeout_seconds, openai_api_k
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
-from repair_assistant.safety.policy import assess_request, block_message, apply_owner_evidence_policy
+from repair_assistant.safety.policy import (
+    apply_owner_evidence_policy,
+    assess_request,
+    block_message,
+)
 
 
 class LLMTimeoutError(TimeoutError):

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from repair_assistant.eval.judge_calibrate import load_calibration, run_calibration, scorecard_markdown
+from repair_assistant.eval.judge_calibrate import (
+    load_calibration,
+    run_calibration,
+    scorecard_markdown,
+)
 
 
 class _ScriptedJudge:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from repair_assistant.eval.grading import grade_answer
-from repair_assistant.eval.qa_bench import grade_scenario, QAScenarioResult
+from repair_assistant.eval.qa_bench import QAScenarioResult, grade_scenario
 
 
 def test_must_cite_all_required() -> None:

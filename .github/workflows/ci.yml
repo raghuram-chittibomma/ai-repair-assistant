@@ -63,10 +63,10 @@ jobs:
       - name: The corpus document directory must hold nothing but its README
         run: |
           set -euo pipefail
-          tracked=$(git ls-files corpus/documents | grep -v '^corpus/documents/README\.md$' | wc -l)
-          if [ "$tracked" -ne 0 ]; then
+          extra=$(git ls-files corpus/documents | grep -v '^corpus/documents/README\.md$' || true)
+          if [ -n "$extra" ]; then
             echo "::error::corpus/documents must contain no tracked files besides README.md."
-            git ls-files corpus/documents
+            echo "$extra"
             exit 1
           fi
           echo "corpus/documents holds only its README, as intended."

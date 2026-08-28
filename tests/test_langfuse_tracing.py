@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from unittest.mock import MagicMock, patch
 
 from repair_assistant.observability import langfuse_tracing as tracing
@@ -53,14 +54,12 @@ def test_observation_merges_eval_trace_context(monkeypatch) -> None:
     fake_client = MagicMock()
     fake_client.start_observation.return_value = fake_span
 
-    with patch.object(tracing, "_client", return_value=fake_client):
-        with eval_trace_context(
-            eval_bench="qa",
-            eval_run_id="20260101T000000Z",
-            scenario_id="acu-led-step-10",
-        ):
-            with tracing.observation("ask", metadata={"audience": "owner"}):
-                pass
+    with patch.object(tracing, "_client", return_value=fake_client), eval_trace_context(
+        eval_bench="qa",
+        eval_run_id="20260101T000000Z",
+        scenario_id="acu-led-step-10",
+    ), tracing.observation("ask", metadata={"audience": "owner"}):
+        pass
 
     meta = fake_client.start_observation.call_args.kwargs["metadata"]
     assert meta["audience"] == "owner"
@@ -79,13 +78,12 @@ def test_observation_sets_session_id_on_otel_span(monkeypatch) -> None:
     fake_client = MagicMock()
     fake_client.start_observation.return_value = fake_span
 
-    with patch.object(tracing, "_client", return_value=fake_client):
-        with tracing.observation(
-            "diagnose",
-            input={"message": "hi"},
-            session_id="sess-abc",
-        ) as span:
-            assert span is fake_span
+    with patch.object(tracing, "_client", return_value=fake_client), tracing.observation(
+        "diagnose",
+        input={"message": "hi"},
+        session_id="sess-abc",
+    ) as span:
+        assert span is fake_span
 
     fake_otel.set_attribute.assert_called_with("session.id", "sess-abc")
     meta = fake_client.start_observation.call_args.kwargs["metadata"]
@@ -170,10 +168,8 @@ def test_trace_context_survives_generator_yield(monkeypatch) -> None:
     gen = stream_like_ask()
     with patch.object(tracing, "_client", return_value=fake_client):
         next(gen)
-        try:
+        with contextlib.suppress(StopIteration):
             gen.send(None)
-        except StopIteration:
-            pass
 
     child_kwargs = fake_client.start_observation.call_args_list[1].kwargs
     assert child_kwargs["trace_context"] == {

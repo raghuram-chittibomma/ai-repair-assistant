@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from repair_assistant.eval.candidates_bench import iter_runnable, load_candidates, load_grading_overlay
+from repair_assistant.eval.candidates_bench import (
+    iter_runnable,
+    load_candidates,
+    load_grading_overlay,
+)
 
 
 def test_ready_candidates_with_questions() -> None:

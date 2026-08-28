@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
 from repair_assistant.ingest.embeddings import Embedder, LocalEmbedder, get_shared_embedder
 from repair_assistant.ingest.env import embedding_model
 from repair_assistant.ingest.store import Database
-from repair_assistant.parsing.error_codes import code_to_spaced_regex
-from repair_assistant.parsing.error_codes import extract_connector_ids
-from repair_assistant.parsing.error_codes import extract_error_codes
+from repair_assistant.parsing.error_codes import (
+    code_to_spaced_regex,
+    extract_connector_ids,
+    extract_error_codes,
+)
 from repair_assistant.retrieval.rank import (
     RankAudit,
     RankedHit,
@@ -22,6 +25,9 @@ from repair_assistant.retrieval.rank import (
     is_installation_query,
     requested_revision,
 )
+
+if TYPE_CHECKING:
+    from repair_assistant.retrieval.planner import RetrievalPlan
 
 
 @dataclass
@@ -336,7 +342,7 @@ def search(
     embedder: Embedder | None = None,
     include_synthetic: bool = False,
     audience: str | None = None,
-    plan: "RetrievalPlan | None" = None,
+    plan: RetrievalPlan | None = None,
 ) -> SearchResult:
     """Embed query, fetch neighbours, apply applicability + light precedence boosts.
 
@@ -348,9 +354,7 @@ def search(
     """
     from repair_assistant.retrieval.planner import RetrievalPlan, plan_for_query
 
-    if plan is None:
-        plan = plan_for_query(query, audience=audience)
-    elif not isinstance(plan, RetrievalPlan):
+    if plan is None or not isinstance(plan, RetrievalPlan):
         plan = plan_for_query(query, audience=audience)
 
     embedder = embedder or get_shared_embedder(model=embedding_model())

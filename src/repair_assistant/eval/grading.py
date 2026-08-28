@@ -116,9 +116,8 @@ def grade_answer(
     failures: list[str] = []
     answer_text = answer.lower()
 
-    if scenario.get("expect_abstain"):
-        if not abstained:
-            failures.append("expected abstention")
+    if scenario.get("expect_abstain") and not abstained:
+        failures.append("expected abstention")
 
     for needle in scenario.get("expect_contains") or []:
         if needle.lower() not in answer_text:

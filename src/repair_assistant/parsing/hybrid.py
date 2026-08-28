@@ -11,7 +11,6 @@ from .language import detect_language
 from .models import Block, ExtractedDocument, ExtractedPage, Table
 from .page_classify import classify_page
 from .parse_quality import PageAudit, audit_page, quality_override_for
-from .pua import map_pua
 
 
 def _extract_tables(page: object, page_no: int) -> list[Table]:
@@ -158,7 +157,7 @@ class Pymupdf4llmExtractor:
                 "pymupdf4llm is not installed; pip install -e '.[layout]'"
             ) from exc
 
-        text = pymupdf4llm.to_text(str(path)) or ""
+        pymupdf4llm.to_text(str(path)) or ""
         # Tables still from pdfplumber for binding fidelity.
         import pdfplumber
 

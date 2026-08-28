@@ -10,10 +10,11 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import yaml
 
@@ -97,7 +98,7 @@ def fingerprint(failure_code: str, question: str) -> str:
 
 def parse_since(spec: str, *, now: datetime | None = None) -> datetime:
     """Parse ``7d`` / ``24h`` / ``30m`` into a timezone-aware cutoff."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     raw = (spec or "7d").strip().lower()
     m = re.fullmatch(r"(\d+)\s*([dhm])", raw)
     if not m:
@@ -662,7 +663,7 @@ def run_mine(
         include_unstamped=include_unstamped,
     )
     outcomes: list[MineOutcome] = []
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     for rec in filtered:
         codes = classify_trace(rec)

@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class Audience(str, Enum):
+class Audience(StrEnum):
     OWNER = "owner"
     TECHNICIAN = "technician"
 
 
-class SafetyAction(str, Enum):
+class SafetyAction(StrEnum):
     ALLOW = "allow"
     WARN = "warn"
     ESCALATE = "escalate"

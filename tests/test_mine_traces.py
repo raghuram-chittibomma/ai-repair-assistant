@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC
 from pathlib import Path
 
 from repair_assistant.eval.mine_traces import (
@@ -19,9 +20,9 @@ from repair_assistant.qa.context import AnswerResult
 
 
 def test_parse_since_days() -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    now = datetime(2026, 8, 27, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 27, 12, 0, tzinfo=UTC)
     cut = parse_since("7d", now=now)
     assert (now - cut).days == 7
 

@@ -152,13 +152,13 @@ def test_query_literals_skips_pure_words_and_numbers() -> None:
 
 
 def test_synthetic_pack_loads_and_stays_namespaced() -> None:
+    from repair_assistant.corpus import manifest as manifest_mod
     from repair_assistant.retrieval.synthetic import (
         is_synthetic_doc_id,
         is_synthetic_hit,
         load_synthetic_documents,
         merge_manifest_with_synthetic,
     )
-    from repair_assistant.corpus import manifest as manifest_mod
 
     docs = load_synthetic_documents()
     assert docs

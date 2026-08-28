@@ -206,9 +206,7 @@ def is_group_symptom_header(cells: list[str], col: ColumnMap) -> bool:
         return True
     if _GROUP_NOTE_RE.search(cause or ""):
         return True
-    if not cause and not checks:
-        return True
-    return False
+    return bool(not cause and not checks)
 
 
 def is_header_repeat_row(cells: list[str], headers: list[str]) -> bool:
@@ -395,13 +393,7 @@ def is_troubleshooting_guide_prose(text: str) -> bool:
     if has_guide and has_hdr:
         return True
     # Guide present + content signals (anchors or group titles).
-    if has_guide and (
-        _GROUP_SYMPTOM_TITLE_RE.search(text)
-        or re.search(r"\bWON'?T\s+[A-Z]", text, re.I)
-        or re.search(r"\bPOOR\s+WASH\b", text, re.I)
-    ):
-        return True
-    return False
+    return bool(has_guide and (_GROUP_SYMPTOM_TITLE_RE.search(text) or re.search(r"\bWON'?T\s+[A-Z]", text, re.I) or re.search(r"\bPOOR\s+WASH\b", text, re.I)))
 
 
 def normalize_matrix_prose(text: str) -> str:
@@ -477,9 +469,7 @@ def detect_prose_matrix_kind(body: str) -> str:
             continue
         if _looks_like_group_title(s) or _GROUP_TITLE_TAIL_RE.match(s):
             group_hits += 1
-        if is_problem_anchor(s.split(".")[0] if "." in s[:40] else s):
-            spanned_hits += 1
-        elif _PROBLEM_ANCHOR_RE.match(s):
+        if is_problem_anchor(s.split(".")[0] if "." in s[:40] else s) or _PROBLEM_ANCHOR_RE.match(s):
             spanned_hits += 1
     if group_hits and spanned_hits == 0:
         return "group_symptom"

@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import time
 from collections.abc import AsyncIterator, Generator, Iterator
 from contextlib import asynccontextmanager, contextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
-import json
 
 from repair_assistant.api.db_pool import (
     DEFAULT_POOL_SIZE,

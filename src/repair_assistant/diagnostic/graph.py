@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
@@ -17,19 +18,28 @@ from repair_assistant.corpus.support import (
     unsupported_appliance_message,
 )
 from repair_assistant.diagnostic.prompts import build_diagnostic_user_prompt
-from repair_assistant.prompts import diagnose_system
 from repair_assistant.diagnostic.state import DiagnosticGraphState
 from repair_assistant.ingest.store import Database
+from repair_assistant.observability.langfuse_tracing import child_observation, update_span
 from repair_assistant.parsing.error_codes import extract_error_codes
+from repair_assistant.prompts import diagnose_system
 from repair_assistant.qa.acks import ORPHAN_ACK_IN_DIAGNOSE, is_ack_only_message
 from repair_assistant.qa.context import format_evidence, resolve_citations
-from repair_assistant.qa.generate import LLMClient, OpenAIClient, _trace_evidence_prompt, _trace_gate
-from repair_assistant.observability.langfuse_tracing import child_observation, update_span
 from repair_assistant.qa.env import llm_model, openai_api_key
+from repair_assistant.qa.generate import (
+    LLMClient,
+    OpenAIClient,
+    _trace_evidence_prompt,
+    _trace_gate,
+)
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
-from repair_assistant.safety.policy import assess_request, block_message, apply_owner_evidence_policy
+from repair_assistant.safety.policy import (
+    apply_owner_evidence_policy,
+    assess_request,
+    block_message,
+)
 
 
 def _latest_ai(messages: list) -> str:
