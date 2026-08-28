@@ -1,51 +1,94 @@
 # AI Repair Assistant
 
-Self-hostable **framework** for building a grounded appliance repair assistant:
-answers and multi-turn diagnosis over **your** manufacturer documentation, with
-citations, model/serial applicability, and safety checks.
+Appliance repair needs **authoritative manufacturer knowledge**, not generic LLM advice.
+This is a self-hostable framework for **grounded ask** and **multi-turn diagnose** over your
+own service manuals and tech sheets — with numbered citations, model/serial applicability
+filters, and deterministic safety gates before answers reach the user.
 
-This repository was proven with a **Whirlpool front-load washer** reference
-corpus (WFW5620H / WFW5620HW0). The app code is reusable; the PDFs and manifest
-are the brand-specific layer. To reproduce that reference build, see
-[Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) — not required reading
-to understand what the product does.
+It was proven end-to-end on a **Whirlpool front-load washer reference corpus**
+(WFW5620H / WFW5620HW0). The application code is reusable; PDFs stay out of git and
+you supply the brand-specific manifest and documents. See
+[Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) to reproduce that setup.
 
-> **Status: Phase 11 of 11.** App on your machine; Postgres on a LAN Docker
-> host. Web UI at `http://localhost:8080/ui`
-> ([Deployment](docs/DEPLOYMENT.md)). Manual evals ([Evaluation](docs/EVALS.md)).
-> Optional [Langfuse](docs/LANGFUSE.md) traces; `mine-traces` drafts evals from
-> live failures ([ADR-0023](docs/adr/0023-trace-driven-eval-mining.md)).
-> **LAN-only** (D8) — not internet-facing.
+> **Phase 11 complete.** LAN-only deployment ([charter](docs/CHARTER.md), constraint D8).
+> Web UI at `http://localhost:8080/ui` after [Deployment](docs/DEPLOYMENT.md).
+> Optional [Langfuse](docs/LANGFUSE.md) traces; `mine-traces` drafts evals from live failures
+> ([ADR-0023](docs/adr/0023-trace-driven-eval-mining.md)).
 
 ---
 
-## Capabilities
+## How we built it
 
-- **Grounded ask** — one-shot Q&A from retrieved manufacturer chunks, with
-  numbered citations; streaming answers in the UI/API
-- **Multi-turn diagnose** — session-based troubleshooting (LangGraph) with the
-  same citation and applicability rules
-- **Hybrid retrieval** — vector + identifier/code/connector paths, ranked with
-  authority and applicability filters (wrong model/serial docs stay out)
-- **Safety gate** — blocks or escalates unsafe guidance (e.g. live-voltage /
-  technician-only procedures) before or after generation
-- **Local embeddings** — open-source `BAAI/bge-base-en-v1.5`; OpenAI only for
-  LLM generation
-- **HTTP API + web UI** — LAN chat for ask and diagnose, search, export, cancel
-- **Observability** — optional self-hosted Langfuse traces (retrieval audit, LLM
-  I/O, safety spans)
-- **Eval harnesses** — parsing, retrieval, QA, safety, chain benches (manual runs)
+Each pipeline layer went through the same loop: **charter phase → measure → ADR → implement → bench** — not “ship prompts and hope.”
 
-Applicability and document precedence are first-class in the corpus manifest
-([ADR-0004](docs/adr/0004-applicability-and-precedence.md)), not left to
-similarity alone.
+| Experiment | Outcome |
+| --- | --- |
+| Parser bake-off | pdfplumber + structured table rows ([ADR-0007](docs/adr/0007-parser-and-chunker.md)); later hybrid layout routing ([ADR-0024](docs/adr/0024-hybrid-parse-architecture.md)) |
+| Retrieval arms | Hybrid re-test kept the product gate at 14/14 hard ([ADR-0010](docs/adr/0010-retrieval-applicability.md), [ADR-0020](docs/adr/0020-hybrid-retrieval-retest.md)) |
+| Safety | Deterministic allow / warn / escalate / block — not LLM-only ([ADR-0014](docs/adr/0014-safety-policy.md)) |
+| Traces → evals | Langfuse spans mined into human-reviewed draft scenarios ([ADR-0018](docs/adr/0018-langfuse-observability.md), [ADR-0023](docs/adr/0023-trace-driven-eval-mining.md)) |
+
+Full decision log: [Architecture decision records](docs/adr/README.md).
+Manual benches at every layer: [Evaluation](docs/EVALS.md).
 
 ---
 
-## Use it
+## Capabilities by pipeline layer
 
-Assumes Postgres is up, `.env.local` is configured, and a corpus is already
-ingested. Full install and DB layout: [Deployment](docs/DEPLOYMENT.md).
+```mermaid
+flowchart LR
+  docs[Manufacturer_PDFs] --> parse[Hybrid_parse]
+  parse --> chunk[Structured_chunking]
+  chunk --> ingest[Embed_and_store]
+  ingest --> retrieve[Hybrid_retrieval]
+  retrieve --> ground[Grounded_ask]
+  retrieve --> diagnose[Multi_turn_diagnose]
+  ground --> safety[Safety_gates]
+  diagnose --> safety
+  safety --> ui[LAN_UI_API]
+  ui --> traces[Langfuse_traces]
+  traces --> mine[mine_traces_improve]
+```
+
+- **Parsing** — hybrid page router, matrix vs multi-column, quality overrides ([ADR-0024](docs/adr/0024-hybrid-parse-architecture.md))
+- **Chunking** — table-row / matrix / contextual enrichment ([ADR-0007](docs/adr/0007-parser-and-chunker.md), [ADR-0022](docs/adr/0022-contextual-chunk-enrichment.md))
+- **Retrieval** — vector + codes/connectors, applicability, owner-preferring literature when feasible ([ADR-0010](docs/adr/0010-retrieval-applicability.md))
+- **Grounded Q&A / diagnose** — citations, abstain, checklist path discipline ([ADR-0012](docs/adr/0012-grounded-qa.md), [ADR-0013](docs/adr/0013-langgraph-diagnostic.md))
+- **Safety** — block / escalate / post-LLM gates; owner vs technician ([ADR-0014](docs/adr/0014-safety-policy.md))
+- **Improve from traces** — Langfuse → `mine-traces` reports → human promote ([ADR-0018](docs/adr/0018-langfuse-observability.md), [ADR-0023](docs/adr/0023-trace-driven-eval-mining.md))
+
+---
+
+## Product screenshots
+
+### Ask — cited answer
+
+Grounded one-shot Q&A with numbered citation chips tied to manifest documents.
+
+![Ask mode with citation chips](docs/images/ui-ask-cited.png)
+
+### Diagnose — checklist + session
+
+Multi-turn LangGraph diagnostic chat: turn counter, streaming checklist steps, same citation rules.
+
+![Diagnostic chat with checklist and citations](docs/images/ui-diagnose-checklist.png)
+
+### Safety — escalate before unsafe guidance
+
+Pre-LLM escalation banner and post-generation gate when owner audience requests live-voltage work.
+
+![Safety escalation banner for owner voltage question](docs/images/ui-safety-escalate.png)
+
+### Langfuse — trace detail
+
+*(Screenshot pending — start Langfuse per [LANGFUSE.md](docs/LANGFUSE.md), run an ask/diagnose, capture retrieve / evidence / llm / safety_gate spans, save as `docs/images/langfuse-trace.png`.)*
+
+---
+
+## Get started
+
+Assumes Postgres is up, `.env.local` is configured, and a corpus is ingested.
+Full install: [Deployment](docs/DEPLOYMENT.md).
 
 ```bash
 pip install -e ".[dev]"
@@ -63,33 +106,18 @@ python -m repair_assistant.corpus.cli ask "What does F5E2 mean?" --model WFW5620
 python -m repair_assistant.corpus.cli diagnose --model WFW5620HW0
 ```
 
-If `repair-corpus` is on your PATH, those commands work without `python -m …`.
+**No corpus yet?** [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) (acquire → parse → ingest), then return here.
 
-**No corpus yet?** Follow [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md)
-(acquire → parse → ingest), then return here.
-
----
-
-## As a framework
-
-1. Describe documents in `corpus/manifest/` (identity, applicability, precedence).
-2. Acquire manufacturer files yourself; store under `corpus/documents/` (gitignored).
-3. `parse` → `ingest` → use ask / diagnose / UI.
-4. Keep eval fixtures and ADRs as the quality bar when you change chunking or
-   retrieval.
-
-Vision and constraints: [Project charter](docs/CHARTER.md).
+**As a framework:** describe documents in `corpus/manifest/`, acquire PDFs under `corpus/documents/` (gitignored), `parse` → `ingest` → ask / diagnose / UI. Keep eval fixtures and ADRs as the quality bar when you change chunking or retrieval.
 
 ---
 
 ## Documents are not in this repository
 
-Manufacturer manuals and tech sheets are copyrighted and **never** committed
-here. The repo ships a **manifest** (what should exist, hashes, applicability)
-and tools to verify what you acquired — the same idea as Nixpkgs `requireFile`
-or MAME software lists. There is no `fetch` / `download` command.
-
-Details: [Corpus licensing](docs/CORPUS_LICENSING.md).
+Manufacturer manuals and tech sheets are copyrighted and **never** committed here.
+The repo ships a **manifest** (what should exist, hashes, applicability) and tools to
+verify what you acquired — the same idea as Nixpkgs `requireFile` or MAME software lists.
+There is no `fetch` / `download` command. Details: [Corpus licensing](docs/CORPUS_LICENSING.md).
 
 ---
 
@@ -99,7 +127,7 @@ Details: [Corpus licensing](docs/CORPUS_LICENSING.md).
 corpus/manifest/         document manifest (committed)
 corpus/documents/        acquired PDFs (gitignored, never committed)
 docs/adr/                architecture decision records
-docs/corpus/             acquisition guide and corpus study
+docs/images/             README screenshots
 evals/                   evaluation fixtures and scorecards
 src/repair_assistant/    application code
 tests/                   deterministic tests
@@ -112,20 +140,16 @@ tests/                   deterministic tests
 - [Project charter](docs/CHARTER.md) — vision, constraints, roadmap
 - [Langfuse](docs/LANGFUSE.md) — optional self-hosted tracing
 - [Architecture decision records](docs/adr/) — design decisions
-- [Infrastructure](docs/INFRASTRUCTURE.md) — LAN Docker / Compose
-- [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) — Whirlpool acquire → ingest CLI sequence
-- [Acquisition guide](docs/corpus/ACQUISITION.md) — per-document obtain notes
+- [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) — Whirlpool acquire → ingest
 - [Corpus licensing](docs/CORPUS_LICENSING.md) — copyright; no downloader
-- [Corpus study](docs/corpus/CORPUS_STUDY.md) — what is in the reference docs
 
 ## Stack
 
-Python, PostgreSQL, pgvector, Docker, OpenAI, and LangGraph are set in the
-[charter](docs/CHARTER.md). Typical layout: Postgres on a **LAN Docker host**;
-CLI, API, UI, and BGE embeddings on **your machine**. Embeddings are local
-open-source (ADR-0009); OpenAI is for LLM inference only.
+Python, PostgreSQL, pgvector, Docker, OpenAI, LangGraph ([charter](docs/CHARTER.md)).
+Postgres on a **LAN Docker host**; CLI, API, UI, and local BGE embeddings on **your machine**
+([ADR-0009](docs/adr/0009-local-open-embeddings.md)). OpenAI is for LLM inference only.
 
 ## Licence
 
-Application code and project metadata: Apache-2.0. Manufacturer documentation
-remains the copyright of its respective owners and is not distributed here.
+Application code and project metadata: Apache-2.0. Manufacturer documentation remains the
+copyright of its respective owners and is not distributed here.
