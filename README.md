@@ -57,6 +57,8 @@ flowchart LR
 - **Safety** — block / escalate / post-LLM gates; owner vs technician ([ADR-0014](docs/adr/0014-safety-policy.md))
 - **Improve from traces** — Langfuse → `mine-traces` reports → human promote ([ADR-0018](docs/adr/0018-langfuse-observability.md), [ADR-0023](docs/adr/0023-trace-driven-eval-mining.md))
 
+**Architecture (drill-down):** [System context](docs/architecture/01-system-context.md) · [Deployment](docs/architecture/02-deployment.md) · [Offline ingest](docs/architecture/03-offline-ingest.md) · [Retrieval](docs/architecture/04-retrieval.md) · [Ask vs diagnose](docs/architecture/05-runtime-ask-diagnose.md) · [Safety](docs/architecture/06-safety.md) · [Observability](docs/architecture/07-observability-improve.md) — index: [docs/architecture/](docs/architecture/)
+
 ---
 
 ## Product screenshots
@@ -135,6 +137,7 @@ There is no `fetch` / `download` command. Details: [Corpus licensing](docs/CORPU
 corpus/manifest/         document manifest (committed)
 corpus/documents/        acquired PDFs (gitignored, never committed)
 docs/adr/                architecture decision records
+docs/architecture/       multi-level Mermaid diagrams
 docs/images/             README screenshots
 evals/                   evaluation fixtures and scorecards
 src/repair_assistant/    application code
@@ -144,6 +147,7 @@ tests/                   deterministic tests
 ## Documentation
 
 - [Deployment](docs/DEPLOYMENT.md) — run API/UI/CLI against LAN Postgres
+- [Architecture diagrams](docs/architecture/) — system, deploy, ingest, retrieve, runtime, safety, traces
 - [Evaluation](docs/EVALS.md) — manual benches at every pipeline layer
 - [Project charter](docs/CHARTER.md) — vision, constraints, roadmap
 - [Langfuse](docs/LANGFUSE.md) — optional self-hosted tracing
