@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from typing import Any
 
 from repair_assistant.ingest.env import load_dotenv_files
@@ -17,6 +19,8 @@ _DEFAULT_TRACE_MAX = 12_000
 # generators yield/resume across asyncio context copies.
 _tls = threading.local()
 _langfuse_client: Any | None = None
+_app_git_sha: str | None = None
+_app_started_at: str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class _NoOpSpan:
@@ -31,6 +35,48 @@ def tracing_enabled() -> bool:
     public = os.environ.get("LANGFUSE_PUBLIC_KEY", "").strip()
     secret = os.environ.get("LANGFUSE_SECRET_KEY", "").strip()
     return bool(public and secret)
+
+
+def app_started_at() -> str:
+    """ISO timestamp when this process first loaded the tracing module."""
+    return _app_started_at
+
+
+def app_git_sha() -> str:
+    """Full git SHA for this checkout (cached). Empty when git is unavailable.
+
+    Uses the full object name (not ``--short``) so values like ``1472e98`` are
+    never mistaken for scientific notation in OTEL/JSON metadata pipelines.
+    """
+    global _app_git_sha
+    if _app_git_sha is not None:
+        return _app_git_sha
+    env_sha = os.environ.get("REPAIR_APP_GIT_SHA", "").strip()
+    if env_sha:
+        _app_git_sha = env_sha
+        return _app_git_sha
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        sha = (out.stdout or "").strip() if out.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        sha = ""
+    _app_git_sha = sha
+    return _app_git_sha
+
+
+def build_stamp_metadata() -> dict[str, str]:
+    """Metadata stamped on root observations (ADR-0023 stale-trace control)."""
+    meta: dict[str, str] = {"app_started_at": app_started_at()}
+    sha = app_git_sha()
+    if sha:
+        meta["app_git_sha"] = sha
+    return meta
 
 
 def trace_max_chars() -> int:
@@ -208,6 +254,7 @@ def observation(
         return
 
     merged_meta = merge_eval_metadata(metadata)
+    merged_meta = {**build_stamp_metadata(), **merged_meta}
     if session_id:
         merged_meta = {**merged_meta, "diagnose_session_id": session_id}
 
@@ -291,6 +338,9 @@ def update_span(span: Any, **kwargs: Any) -> None:
 
 
 __all__ = [
+    "app_git_sha",
+    "app_started_at",
+    "build_stamp_metadata",
     "child_observation",
     "generation",
     "observation",

@@ -21,7 +21,8 @@ from repair_assistant.prompts import diagnose_system
 from repair_assistant.diagnostic.state import DiagnosticGraphState
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import extract_error_codes
-from repair_assistant.qa.context import citations_from_answer, format_evidence
+from repair_assistant.qa.acks import ORPHAN_ACK_IN_DIAGNOSE, is_ack_only_message
+from repair_assistant.qa.context import format_evidence, resolve_citations
 from repair_assistant.qa.generate import LLMClient, OpenAIClient, _trace_evidence_prompt, _trace_gate
 from repair_assistant.observability.langfuse_tracing import child_observation, update_span
 from repair_assistant.qa.env import llm_model, openai_api_key
@@ -87,6 +88,10 @@ def _latest_human(messages: list) -> str:
     return ""
 
 
+def _has_prior_assistant(messages: list) -> bool:
+    return any(isinstance(msg, AIMessage) and msg.content for msg in messages)
+
+
 def _transcript(messages: list) -> str:
     lines: list[str] = []
     for msg in messages:
@@ -97,18 +102,49 @@ def _transcript(messages: list) -> str:
     return "\n".join(lines)
 
 
+# Follow-up acknowledgements are detected via repair_assistant.qa.acks.
+
+
+def _user_texts(messages: list) -> list[str]:
+    return [
+        str(msg.content)
+        for msg in messages
+        if isinstance(msg, HumanMessage) and msg.content
+    ]
+
+
+def _session_symptom_anchor(messages: list) -> str:
+    """First non-ack user message — the symptom the session is about."""
+    for text in _user_texts(messages):
+        if not is_ack_only_message(text):
+            return text.strip()
+    texts = _user_texts(messages)
+    return texts[0].strip() if texts else ""
+
+
 def _retrieval_query(messages: list) -> str:
-    """Build a retrieval query from recent user turns (symptom context carries forward)."""
-    parts: list[str] = []
+    """Build a retrieval query from recent user turns (symptom context carries forward).
+
+    Pure acknowledgements ("no issues", "that looks good") must not replace the
+    original symptom in the query — otherwise follow-up retrieval drifts and the
+    model hops to unrelated TEST # cross-references.
+    """
+    parts = _user_texts(messages)
     codes: list[str] = []
-    for msg in messages:
-        if isinstance(msg, HumanMessage) and msg.content:
-            text = str(msg.content)
-            parts.append(text)
-            codes.extend(extract_error_codes(text))
-    # Last turn alone drops earlier symptoms (e.g. "no error code" after mid-cycle stop).
-    recent = parts[-3:] if parts else []
-    query = " ".join(recent).strip()
+    for text in parts:
+        codes.extend(extract_error_codes(text))
+
+    anchor = _session_symptom_anchor(messages)
+    latest = parts[-1].strip() if parts else ""
+
+    if latest and is_ack_only_message(latest) and anchor:
+        query = anchor
+    else:
+        # Prefer non-ack turns so "no error code. machine shuts down" still joins.
+        substantive = [p for p in parts if not is_ack_only_message(p)]
+        recent = (substantive or parts)[-3:]
+        query = " ".join(recent).strip()
+
     if codes:
         unique = sorted(set(codes))
         query = f"{' '.join(unique)} {query}".strip()
@@ -158,6 +194,18 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
     def retrieve(state: DiagnosticGraphState) -> dict:
         from repair_assistant.retrieval.planner import plan_for_query
 
+        latest = _latest_human(state["messages"])
+        # Ack with no prior assistant reply → session lost / wrong mode; don't search.
+        if is_ack_only_message(latest) and not _has_prior_assistant(state["messages"]):
+            return {
+                "retrieval_query": latest,
+                "evidence_text": "",
+                "citations_available": [],
+                "retrieval_count": 0,
+                "abstained": False,
+                "abstain_reason": "orphan_ack",
+            }
+
         query = _retrieval_query(state["messages"])
         appliance = None
         if state.get("appliance_model"):
@@ -199,8 +247,22 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
     return retrieve
 
 
+def _maybe_orphan_ack_reply(state: DiagnosticGraphState) -> dict | None:
+    if state.get("abstain_reason") == "orphan_ack" and not state.get("evidence_text"):
+        return {
+            "messages": [AIMessage(content=ORPHAN_ACK_IN_DIAGNOSE)],
+            "abstained": False,
+            "abstain_reason": "",
+        }
+    return None
+
+
 def make_respond_node(llm: LLMClient):
     def respond(state: DiagnosticGraphState) -> dict:
+        orphan = _maybe_orphan_ack_reply(state)
+        if orphan is not None:
+            return orphan
+
         if state.get("abstained") and not state.get("evidence_text"):
             appliance = None
             if state.get("appliance_model"):
@@ -226,20 +288,36 @@ def make_respond_node(llm: LLMClient):
         if assessment.prompt_directive:
             system = f"{system}\n\n{assessment.prompt_directive}"
 
+        latest = _latest_human(state["messages"])
+        anchor = _session_symptom_anchor(state["messages"])
         user_prompt = build_diagnostic_user_prompt(
             appliance_model=state.get("appliance_model"),
             appliance_serial=state.get("appliance_serial"),
             evidence_text=state.get("evidence_text", ""),
             transcript=_transcript(state["messages"]),
+            symptom_anchor=anchor,
+            ack_followup=is_ack_only_message(latest) and bool(anchor),
         )
         raw = llm.complete(system, user_prompt)
         if raw.upper().startswith("ABSTAIN:"):
-            reason = raw.split(":", 1)[-1].strip()
-            return {
-                "messages": [AIMessage(content=raw)],
-                "abstained": True,
-                "abstain_reason": reason,
-            }
+            # Ack follow-ups with evidence must continue the path, not abstain.
+            if is_ack_only_message(latest) and state.get("evidence_text") and _has_prior_assistant(
+                state["messages"]
+            ):
+                raw = llm.complete(
+                    system
+                    + "\n\nCRITICAL: The user confirmed prior checks passed. "
+                    "Do NOT abstain. Acknowledge briefly and give the next "
+                    "checklist category with [n] citations.",
+                    user_prompt,
+                )
+            if raw.upper().startswith("ABSTAIN:"):
+                reason = raw.split(":", 1)[-1].strip()
+                return {
+                    "messages": [AIMessage(content=raw)],
+                    "abstained": True,
+                    "abstain_reason": reason,
+                }
 
         gated = gate_answer(
             assessment,
@@ -313,6 +391,14 @@ def diagnose_turn_stream(
         make_retrieve_node(db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch)(state),
     )
 
+    orphan = _maybe_orphan_ack_reply(state)
+    if orphan is not None:
+        state = _apply_delta(state, orphan)
+        msg = orphan["messages"][0].content
+        yield {"type": "token", "text": msg}
+        yield _done_payload(state, str(msg))
+        return
+
     if state.get("abstained") and not state.get("evidence_text"):
         appliance = None
         if state.get("appliance_model"):
@@ -352,19 +438,45 @@ def diagnose_turn_stream(
     system = diagnose_system()
     if assessment.prompt_directive:
         system = f"{system}\n\n{assessment.prompt_directive}"
+    latest = _latest_human(state["messages"])
+    anchor = _session_symptom_anchor(state["messages"])
+    ack_followup = is_ack_only_message(latest) and bool(anchor)
     user_prompt = build_diagnostic_user_prompt(
         appliance_model=state.get("appliance_model"),
         appliance_serial=state.get("appliance_serial"),
         evidence_text=state.get("evidence_text", ""),
         transcript=_transcript(state["messages"]),
+        symptom_anchor=anchor,
+        ack_followup=ack_followup,
     )
 
-    parts: list[str] = []
-    for delta in client.stream(system, user_prompt):
-        parts.append(delta)
-        yield {"type": "token", "text": delta}
+    # Buffer ack follow-ups so a mistaken ABSTAIN is not flashed to the UI.
+    parts_buf: list[str] = []
+    if ack_followup:
+        for delta in client.stream(system, user_prompt):
+            parts_buf.append(delta)
+        raw = "".join(parts_buf).strip()
+    else:
+        for delta in client.stream(system, user_prompt):
+            parts_buf.append(delta)
+            yield {"type": "token", "text": delta}
+        raw = "".join(parts_buf).strip()
 
-    raw = "".join(parts).strip()
+    if raw.upper().startswith("ABSTAIN:") and ack_followup and state.get("evidence_text"):
+        retry_system = (
+            system
+            + "\n\nCRITICAL: The user confirmed prior checks passed. "
+            "Do NOT abstain. Acknowledge briefly and give the next "
+            "checklist category with [n] citations."
+        )
+        parts_buf = []
+        for delta in client.stream(retry_system, user_prompt):
+            parts_buf.append(delta)
+        raw = "".join(parts_buf).strip()
+
+    if ack_followup and raw and not raw.upper().startswith("ABSTAIN:"):
+        yield {"type": "token", "text": raw}
+
     if raw.upper().startswith("ABSTAIN:"):
         reason = raw.split(":", 1)[-1].strip()
         state = _apply_delta(
@@ -375,6 +487,8 @@ def diagnose_turn_stream(
                 "abstain_reason": reason,
             },
         )
+        if ack_followup:
+            yield {"type": "token", "text": raw}
         yield _done_payload(state, raw)
         return
 
@@ -422,4 +536,4 @@ def build_diagnostic_graph(
 
 
 def citations_for_turn(state: DiagnosticGraphState, answer: str) -> list:
-    return citations_from_answer(answer, state.get("citations_available") or [])
+    return resolve_citations(answer, state.get("citations_available") or [])

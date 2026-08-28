@@ -61,6 +61,7 @@ class ExtractedDocument:
     extractor: str
     pages: list[ExtractedPage]
     producer: str | None = None
+    parse_audit: dict | None = None
 
     @property
     def full_text(self) -> str:

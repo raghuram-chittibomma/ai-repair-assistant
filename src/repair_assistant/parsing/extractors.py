@@ -7,6 +7,8 @@ from typing import Protocol
 
 from pypdf import PdfReader
 
+from .extract_common import convert_table as _convert_table_shared
+from .extract_common import pdf_producer
 from .language import detect_language
 from .models import BBox, Block, ExtractedDocument, ExtractedPage, Table, TableRow
 from .pua import map_pua
@@ -19,13 +21,7 @@ class Extractor(Protocol):
 
 
 def _producer(path: Path) -> str | None:
-    try:
-        reader = PdfReader(str(path))
-        if reader.metadata and reader.metadata.producer:
-            return str(reader.metadata.producer).strip() or None
-    except Exception:
-        return None
-    return None
+    return pdf_producer(path)
 
 
 class PypdfExtractor:
@@ -256,17 +252,7 @@ def _table_from_docling_item(item: object, doc: object, page: int) -> Table | No
 
 
 def _convert_table(raw: list[list[str | None]], page: int) -> Table | None:
-    if not raw or len(raw) < 2:
-        return None
-    headers = [map_pua((c or "").strip()) for c in raw[0]]
-    rows: list[TableRow] = []
-    for row in raw[1:]:
-        cells = [map_pua((c or "").strip()) for c in row]
-        if any(cells):
-            rows.append(TableRow(cells=cells, page=page))
-    if not rows:
-        return None
-    return Table(headers=headers, rows=rows, page=page)
+    return _convert_table_shared(raw, page)
 
 
 def _convert_matrix(raw: list[list[str | None]] | None, page: int) -> Table | None:
@@ -277,17 +263,29 @@ def _convert_matrix(raw: list[list[str | None]] | None, page: int) -> Table | No
 
 def available_extractors() -> list[Extractor]:
     """Return extractors whose dependencies import cleanly."""
-    extractors: list[Extractor] = [PypdfExtractor()]
+    extractors: list[Extractor] = []
     try:
         import pdfplumber  # noqa: F401
 
+        from .hybrid import HybridExtractor
+
+        extractors.append(HybridExtractor())
         extractors.append(PdfplumberExtractor())
     except ImportError:
         pass
+    extractors.append(PypdfExtractor())
     try:
         import pymupdf  # noqa: F401
 
         extractors.append(PymupdfExtractor())
+    except ImportError:
+        pass
+    try:
+        import pymupdf4llm  # noqa: F401
+
+        from .hybrid import Pymupdf4llmExtractor
+
+        extractors.append(Pymupdf4llmExtractor())
     except ImportError:
         pass
     try:

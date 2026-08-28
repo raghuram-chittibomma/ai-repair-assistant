@@ -57,6 +57,8 @@ _OWNER_DOC_TYPES = frozenset(
         "knowledge_article",
         "warranty",
         "cycle_guide",
+        "installation_instructions",
+        "dimension_guide",
     }
 )
 
@@ -355,7 +357,31 @@ def filter_and_rank(
     ranked.sort(key=lambda h: h.final_score, reverse=True)
     if audit is not None:
         audit.ranked_sorted = list(ranked)
-    return _diverse_top(ranked, limit, audit=audit)
+    diverse = _diverse_top(ranked, limit, audit=audit)
+    return prefer_owner_literature(diverse, manifest, audience=audience)
+
+
+def prefer_owner_literature(
+    ranked: list[RankedHit],
+    manifest: Manifest,
+    *,
+    audience: str | None,
+) -> list[RankedHit]:
+    """For owner audience, restrict to owner-facing docs when any are available.
+
+    Technician (and unset) audiences keep the full ranked list — no hard filter.
+    If no applicable owner-facing hit exists, leave service literature in place
+    ("where feasible").
+    """
+    if (audience or "").lower() != "owner" or not ranked:
+        return ranked
+    by_id = _doc_by_id(manifest)
+    owner_hits = [
+        hit
+        for hit in ranked
+        if (doc := by_id.get(hit.doc_id)) is not None and doc.doc_type in _OWNER_DOC_TYPES
+    ]
+    return owner_hits if owner_hits else ranked
 
 
 def _diverse_top(

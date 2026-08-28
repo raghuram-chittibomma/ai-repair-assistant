@@ -14,6 +14,10 @@ from repair_assistant.parsing.chunker import chunk_document
 from repair_assistant.parsing.extractors import Extractor, get_extractor
 from repair_assistant.parsing.mhtml import html_to_visible_text, load_mhtml
 from repair_assistant.parsing.models import Chunk, ExtractedDocument
+from repair_assistant.parsing.parse_quality import (
+    numbered_steps_present,
+    phrase_order_monotonic,
+)
 from repair_assistant.parsing.pua import count_pua_markers, map_pua
 
 _PUA_RE = re.compile("[\ue000-\uf8ff]")
@@ -53,7 +57,7 @@ def run_bakeoff(
     data = load_fixtures(fixtures_path)
     corpus = manifest_mod.load()
     docs_dir = corpus.root / "corpus" / "documents"
-    names = extractors or ["pypdf", "pdfplumber", "pymupdf"]
+    names = extractors or ["hybrid", "pypdf", "pdfplumber", "pymupdf"]
     # Docling is opt-in (heavy models); include only when requested explicitly.
     results: list[FixtureResult] = []
 
@@ -260,6 +264,18 @@ def _eval_assert(
     if kind == "phrase_present":
         ok = spec["phrase"].lower() in extracted.full_text.lower()
         return AssertResult(name=kind, passed=ok, detail=spec["phrase"])
+    if kind == "phrase_order_monotonic":
+        page = int(spec["page"])
+        markers = spec.get("markers") or data.get(spec.get("markers_from", ""), [])
+        text = extracted.pages[page - 1].text if page <= len(extracted.pages) else ""
+        ok = phrase_order_monotonic(text, markers)
+        return AssertResult(name=kind, passed=ok, detail=f"page={page} markers={len(markers)}")
+    if kind == "numbered_steps_present":
+        page = int(spec["page"])
+        steps = [int(s) for s in spec["steps"]]
+        text = extracted.pages[page - 1].text if page <= len(extracted.pages) else ""
+        missing = numbered_steps_present(text, steps)
+        return AssertResult(name=kind, passed=not missing, detail=f"missing={missing}")
     return AssertResult(name=kind, passed=False, detail="unknown assert")
 
 

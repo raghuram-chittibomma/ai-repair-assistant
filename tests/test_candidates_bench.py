@@ -16,9 +16,12 @@ def test_ready_candidates_with_questions() -> None:
     assert "f5e2-narrow-then-exclude-24in" in ids
     assert "control-lock-before-board" in ids
     assert "f7e1-bolts-then-persist" in ids
+    assert "mid-cycle-stop-diag-entry" in ids
+    assert "door-got-locked-unlock" in ids
+    assert "door-lock-underspecified-clarify" in ids
     assert "serial-inside-range" not in ids  # E4: deferred
     diagnose = [s for s in runnable if s.get("command") == "diagnose"]
-    assert len(diagnose) >= 3
+    assert len(diagnose) >= 4
     assert all(s.get("turns") and s.get("turn_grades") for s in diagnose)
     assert len(runnable) >= 20
 

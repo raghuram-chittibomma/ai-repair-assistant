@@ -13,6 +13,17 @@ import re
 from .error_codes import extract_error_codes
 from .models import Chunk, ExtractedDocument, Table
 from .pua import map_pua, split_list_items
+from .table_context import (
+    ColumnMap,
+    ContextualTableRow,
+    detect_column_map,
+    extract_guide_title,
+    format_matrix_row_body,
+    is_troubleshooting_guide_prose,
+    is_troubleshooting_matrix,
+    iter_contextual_rows,
+    parse_troubleshooting_prose,
+)
 
 _HEADING_RE = re.compile(
     r"^(FOR SERVICE TECHNICIAN|DIAGNOSTIC|TEST #\d|ERROR CODE|IMPORTANT|"
@@ -61,6 +72,9 @@ def format_contextual_text(
     section: str | None = None,
     headers: list[str] | None = None,
     kind: str = "prose",
+    table_group: str | None = None,
+    table_group_note: str | None = None,
+    guide_title: str | None = None,
 ) -> str:
     """Build embed/LLM text: ancestry prefix + body (ADR-0022)."""
     body = (body or "").strip()
@@ -70,6 +84,12 @@ def format_contextual_text(
         prefix_parts.append(f"[{label}]")
     if section:
         prefix_parts.append(f"Section: {section}")
+    if guide_title:
+        prefix_parts.append(f"Guide: {guide_title}")
+    if table_group:
+        prefix_parts.append(f"Table group: {table_group}")
+    if table_group_note:
+        prefix_parts.append(f"Group note: {table_group_note}")
 
     keyed = False
     if kind == "table_row" and headers:
@@ -140,7 +160,9 @@ def _structured_chunks(
         if page.tables:
             prose_text = _strip_table_cells_from_prose(prose_text, page.tables)
 
+        matrix_table_chunks = 0
         for table in page.tables:
+            before = len(chunks)
             chunks.extend(
                 _chunks_from_table(
                     table,
@@ -151,10 +173,60 @@ def _structured_chunks(
                     doc_title=doc_title,
                     doc_type=doc_type,
                     section=current_section,
+                    guide_title=extract_guide_title(page.text),
                 )
             )
+            matrix_table_chunks += sum(
+                1
+                for c in chunks[before:]
+                if c.metadata.get("matrix_type") == "troubleshooting"
+            )
+
+        # Page-level matrix prose fallback when extractors miss table grids.
+        # Run on full page text (not _split_prose fragments) so guide/header
+        # signals stay together. Same ContextualTableRow path as tables.
+        page_matrix_rows = 0
+        if matrix_table_chunks == 0 and is_troubleshooting_guide_prose(prose_text):
+            before = len(chunks)
+            chunks.extend(
+                _chunks_from_troubleshooting_prose(
+                    prose_text,
+                    doc_id=doc_id,
+                    publication_number=publication_number,
+                    revision=revision,
+                    language=page.language,
+                    doc_title=doc_title,
+                    doc_type=doc_type,
+                    section=current_section,
+                    page=page.number,
+                    extractor=document.extractor,
+                    guide_title=extract_guide_title(prose_text),
+                )
+            )
+            page_matrix_rows = len(chunks) - before
+            if page_matrix_rows:
+                # Avoid also emitting the same page as a mega-prose chunk.
+                continue
 
         for piece in _split_prose(prose_text):
+            if is_troubleshooting_guide_prose(piece):
+                chunks.extend(
+                    _chunks_from_troubleshooting_prose(
+                        piece,
+                        doc_id=doc_id,
+                        publication_number=publication_number,
+                        revision=revision,
+                        language=page.language,
+                        doc_title=doc_title,
+                        doc_type=doc_type,
+                        section=current_section,
+                        page=page.number,
+                        extractor=document.extractor,
+                        guide_title=extract_guide_title(piece),
+                    )
+                )
+                continue
+
             codes = extract_error_codes(piece)
             kind = "heading" if _HEADING_RE.match(piece.strip().splitlines()[0]) else "prose"
             if "•" in piece and len(split_list_items(piece)) > 1:
@@ -211,7 +283,21 @@ def _chunks_from_table(
     doc_title: str | None,
     doc_type: str | None,
     section: str | None,
+    guide_title: str = "",
 ) -> list[Chunk]:
+    if is_troubleshooting_matrix(table.headers):
+        return _chunks_from_troubleshooting_table(
+            table,
+            doc_id=doc_id,
+            publication_number=publication_number,
+            revision=revision,
+            language=language,
+            doc_title=doc_title,
+            doc_type=doc_type,
+            section=section,
+            guide_title=guide_title,
+        )
+
     headers_lower = [h.lower() for h in table.headers]
     error_col = next(
         (i for i, h in enumerate(headers_lower) if "error" in h or "code" in h), 0
@@ -262,6 +348,144 @@ def _chunks_from_table(
             )
         )
     return chunks
+
+
+def _chunks_from_troubleshooting_table(
+    table: Table,
+    *,
+    doc_id: str | None,
+    publication_number: str | None,
+    revision: str | None,
+    language: str | None,
+    doc_title: str | None,
+    doc_type: str | None,
+    section: str | None,
+    guide_title: str = "",
+) -> list[Chunk]:
+    """One chunk per cause/check row with inherited problem or group context."""
+    col = detect_column_map(table.headers)
+    chunks: list[Chunk] = []
+    for ctx in iter_contextual_rows(table, guide_title=guide_title):
+        if ctx.role != "data":
+            continue
+        chunks.append(
+            _chunk_from_matrix_row(
+                ctx,
+                col=col,
+                page=table.page,
+                doc_id=doc_id,
+                publication_number=publication_number,
+                revision=revision,
+                language=language,
+                doc_title=doc_title,
+                doc_type=doc_type,
+                section=section,
+                extractor=None,
+            )
+        )
+    return chunks
+
+
+def _chunks_from_troubleshooting_prose(
+    text: str,
+    *,
+    doc_id: str | None,
+    publication_number: str | None,
+    revision: str | None,
+    language: str | None,
+    doc_title: str | None,
+    doc_type: str | None,
+    section: str | None,
+    page: int,
+    extractor: str | None,
+    guide_title: str = "",
+) -> list[Chunk]:
+    """Fallback when extractors miss table boundaries on troubleshooting pages."""
+    headers = ["Problem", "Possible cause", "Checks & tests"]
+    col = detect_column_map(headers)
+    chunks: list[Chunk] = []
+    for ctx in parse_troubleshooting_prose(text):
+        if ctx.role != "data":
+            continue
+        if guide_title and not ctx.guide_title:
+            ctx.guide_title = guide_title
+        chunks.append(
+            _chunk_from_matrix_row(
+                ctx,
+                col=col,
+                page=page,
+                doc_id=doc_id,
+                publication_number=publication_number,
+                revision=revision,
+                language=language,
+                doc_title=doc_title,
+                doc_type=doc_type,
+                section=section,
+                extractor=extractor,
+            )
+        )
+    return chunks
+
+
+def _chunk_from_matrix_row(
+    ctx: ContextualTableRow,
+    *,
+    col: ColumnMap,
+    page: int,
+    doc_id: str | None,
+    publication_number: str | None,
+    revision: str | None,
+    language: str | None,
+    doc_title: str | None,
+    doc_type: str | None,
+    section: str | None,
+    extractor: str | None,
+) -> Chunk:
+    body = format_matrix_row_body(ctx, col)
+    body = map_pua(body)
+    codes = extract_error_codes(body)
+    text = format_contextual_text(
+        body=body,
+        doc_title=doc_title,
+        publication_number=publication_number,
+        revision=revision,
+        section=section,
+        headers=list(ctx.headers),
+        kind="table_row",
+        table_group=ctx.group_title or None,
+        table_group_note=ctx.group_note or None,
+        guide_title=ctx.guide_title or None,
+    )
+    section_path = [p for p in (section, ctx.guide_title, ctx.group_title) if p]
+    meta: dict = {
+        "headers": list(ctx.headers),
+        "body_text": body,
+        "section_path": section_path,
+        "table_group": ctx.group_title,
+        "table_group_note": ctx.group_note,
+        "problem_title": ctx.problem_title,
+        "problem_detail": ctx.problem_detail,
+        "guide_title": ctx.guide_title,
+        "matrix_kind": ctx.matrix_kind,
+        "row_role": ctx.role,
+        "matrix_type": "troubleshooting",
+    }
+    if doc_title:
+        meta["doc_title"] = doc_title
+    if doc_type:
+        meta["doc_type"] = doc_type
+    return _make_chunk(
+        text=text,
+        page=page,
+        kind="table_row",
+        error_codes=list(dict.fromkeys(codes)),
+        language=language,
+        doc_id=doc_id,
+        publication_number=publication_number,
+        revision=revision,
+        extractor=extractor,
+        metadata=meta,
+    )
 
 
 def _strip_table_cells_from_prose(prose: str, tables: list[Table]) -> str:

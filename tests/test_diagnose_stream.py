@@ -124,3 +124,47 @@ def test_retrieval_query_keeps_prior_user_turns() -> None:
     assert "stops after 10 minutes" in q
     assert "no error code" in q
     assert "shuts down" in q
+
+
+def test_retrieval_query_ack_keeps_symptom_anchor() -> None:
+    from repair_assistant.qa.acks import is_ack_only_message
+
+    assert is_ack_only_message("no issues from these checks")
+    assert is_ack_only_message("no issues there")
+    assert is_ack_only_message("this also looks good")
+    assert not is_ack_only_message("no error code. whole machine shuts down.")
+
+    messages = [
+        HumanMessage(content="doesn't wash properly"),
+        HumanMessage(content="no issues from these checks"),
+        HumanMessage(content="this also looks good"),
+    ]
+    q = _retrieval_query(messages)
+    assert "doesn't wash properly" in q
+    assert "no issues" not in q
+    assert "looks good" not in q
+
+
+def test_session_symptom_anchor_skips_acks() -> None:
+    from repair_assistant.diagnostic.graph import _session_symptom_anchor
+
+    messages = [
+        HumanMessage(content="doesn't wash properly"),
+        HumanMessage(content="no problem here"),
+    ]
+    assert _session_symptom_anchor(messages) == "doesn't wash properly"
+
+
+def test_orphan_ack_reply_not_abstain() -> None:
+    from repair_assistant.diagnostic.graph import _maybe_orphan_ack_reply
+    from repair_assistant.qa.acks import ORPHAN_ACK_IN_DIAGNOSE
+
+    state = {
+        "messages": [HumanMessage(content="no issues there")],
+        "abstain_reason": "orphan_ack",
+        "evidence_text": "",
+    }
+    reply = _maybe_orphan_ack_reply(state)  # type: ignore[arg-type]
+    assert reply is not None
+    assert reply["abstained"] is False
+    assert ORPHAN_ACK_IN_DIAGNOSE in str(reply["messages"][0].content)

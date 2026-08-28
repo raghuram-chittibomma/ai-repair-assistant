@@ -607,3 +607,155 @@ def test_part_number_query_is_not_treated_as_named_publication() -> None:
     }
 
 
+def test_owner_audience_prefers_owner_docs_when_available() -> None:
+    use_care = _doc(
+        "use-and-care-w11156985",
+        {
+            "doc_id": "use-and-care-w11156985",
+            "title": "Use & Care",
+            "doc_type": "owners_manual",
+            "publication_number": "W11156985",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "owner_literature"},
+            "applicability": {
+                "models": ["WFW5620HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+        },
+    )
+    tech = _doc(
+        "tech-sheet-w11320651",
+        {
+            "doc_id": "tech-sheet-w11320651",
+            "title": "Tech Sheet",
+            "doc_type": "tech_sheet",
+            "publication_number": "W11320651",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "service_literature"},
+            "applicability": {
+                "models": ["WFW5620HW*", "CFW4084HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+        },
+    )
+    manifest = Manifest(documents=[use_care, tech])
+    hits = [
+        {
+            "doc_id": "tech-sheet-w11320651",
+            "chunk_id": "t1",
+            "text": "Not cleaning clothes. Verify load is not bunched.",
+            "page": 11,
+            "kind": "table_row",
+            "error_codes": [],
+            "publication_number": "W11320651",
+            "revision": "B",
+            "score": 0.95,
+        },
+        {
+            "doc_id": "use-and-care-w11156985",
+            "chunk_id": "u1",
+            "text": "Clothes are not clean. Use HE detergent.",
+            "page": 12,
+            "kind": "prose",
+            "error_codes": [],
+            "publication_number": "W11156985",
+            "revision": "A",
+            "score": 0.80,
+        },
+    ]
+    owner_ranked = filter_and_rank(
+        hits,
+        manifest,
+        Appliance(model="WFW5620HW0"),
+        limit=5,
+        query="not washing properly",
+        audience="owner",
+    )
+    assert owner_ranked
+    assert all(h.doc_id == "use-and-care-w11156985" for h in owner_ranked)
+
+    tech_ranked = filter_and_rank(
+        hits,
+        manifest,
+        Appliance(model="WFW5620HW0"),
+        limit=5,
+        query="not washing properly",
+        audience="technician",
+    )
+    assert {h.doc_id for h in tech_ranked} >= {
+        "use-and-care-w11156985",
+        "tech-sheet-w11320651",
+    }
+
+
+def test_owner_audience_falls_back_when_no_owner_docs() -> None:
+    tech = _doc(
+        "tech-sheet-w11320651",
+        {
+            "doc_id": "tech-sheet-w11320651",
+            "title": "Tech Sheet",
+            "doc_type": "tech_sheet",
+            "publication_number": "W11320651",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "service_literature"},
+            "applicability": {
+                "models": ["CFW4084HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+        },
+    )
+    # Owner manual exists but does not apply to CFW4084HW.
+    use_care = _doc(
+        "use-and-care-w11156985",
+        {
+            "doc_id": "use-and-care-w11156985",
+            "title": "Use & Care",
+            "doc_type": "owners_manual",
+            "publication_number": "W11156985",
+            "corpus": {"role": "primary"},
+            "authority": {"tier": "owner_literature"},
+            "applicability": {
+                "models": ["WFW5620HW*"],
+                "serial_ranges": [{"scope": "all"}],
+            },
+        },
+    )
+    manifest = Manifest(documents=[use_care, tech])
+    hits = [
+        {
+            "doc_id": "tech-sheet-w11320651",
+            "chunk_id": "t1",
+            "text": "Not cleaning clothes.",
+            "page": 11,
+            "kind": "table_row",
+            "error_codes": [],
+            "publication_number": "W11320651",
+            "revision": "B",
+            "score": 0.9,
+        },
+        {
+            "doc_id": "use-and-care-w11156985",
+            "chunk_id": "u1",
+            "text": "Clothes are not clean.",
+            "page": 12,
+            "kind": "prose",
+            "error_codes": [],
+            "publication_number": "W11156985",
+            "revision": "A",
+            "score": 0.85,
+        },
+    ]
+    ranked = filter_and_rank(
+        hits,
+        manifest,
+        Appliance(model="CFW4084HW"),
+        limit=5,
+        query="not washing properly",
+        audience="owner",
+    )
+    assert ranked
+    assert ranked[0].doc_id == "tech-sheet-w11320651"
+    assert all(h.doc_id != "use-and-care-w11156985" for h in ranked)
+
+
+

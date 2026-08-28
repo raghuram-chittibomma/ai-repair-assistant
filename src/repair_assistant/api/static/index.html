@@ -159,6 +159,23 @@
     .composer textarea { min-height: 3.2rem; resize: vertical; flex: 1; }
     .composer .btns { display: flex; flex-direction: column; gap: 0.4rem; }
     .status { font-size: 0.8rem; color: var(--muted); }
+    .safety-banner {
+      display: none;
+      margin: 0 0 0.65rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--warn);
+      background: #2a2418;
+      color: #f0d9a8;
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+    .safety-banner.visible { display: block; }
+    .safety-banner.block {
+      border-color: var(--danger);
+      background: #2a1818;
+      color: #f0b0b0;
+    }
     .status.ok { color: var(--ok); }
     .status.err { color: var(--danger); }
     .status.busy { color: var(--warn); }
@@ -201,8 +218,8 @@
       <div>
         <label for="mode">Mode</label>
         <select id="mode">
+          <option value="diagnose" selected>Diagnostic chat (streaming)</option>
           <option value="ask">Ask (streaming)</option>
-          <option value="diagnose">Diagnostic chat (streaming)</option>
           <option value="search">Search only</option>
         </select>
       </div>
@@ -221,18 +238,20 @@
       <div id="sessionBar" aria-live="polite"></div>
     </div>
     <div id="status" class="status">Checking API…</div>
+    <div id="safetyBanner" class="safety-banner" role="status" aria-live="polite"></div>
     <div id="log" aria-live="polite"></div>
     <form class="composer" id="form">
       <textarea id="input" rows="2" placeholder="Ask a repair question…" required></textarea>
       <div class="btns">
         <button type="submit" id="send">Send</button>
-        <button type="button" id="cancel" class="danger" disabled title="Cancel in-flight request">Cancel</button>
+        <button type="button" id="cancel" class="danger" disabled title="Cancel in-flight request (stops streaming on the server too)">Cancel</button>
       </div>
     </form>
   </main>
   <script>
     const log = document.getElementById("log");
     const statusEl = document.getElementById("status");
+    const safetyBanner = document.getElementById("safetyBanner");
     const form = document.getElementById("form");
     const input = document.getElementById("input");
     const modelEl = document.getElementById("model");
@@ -259,6 +278,37 @@
 
     function authHeaders(extra = {}) {
       return { ...extra };
+    }
+
+    function clearSafetyBanner() {
+      safetyBanner.textContent = "";
+      safetyBanner.className = "safety-banner";
+    }
+
+    function updateSafetyBanner(ev) {
+      const action = (ev && ev.safety_action) || "allow";
+      const escalated = !!(ev && ev.escalated);
+      if (action !== "block" && action !== "escalate" && !escalated) {
+        return;
+      }
+      const notice = (ev && ev.safety_notice) || "";
+      if (action === "block") {
+        safetyBanner.className = "safety-banner visible block";
+        safetyBanner.textContent =
+          "Blocked for safety. " +
+          (notice || "This request is not answered for the selected audience.") +
+          (audienceEl.value === "owner"
+            ? " If you are a trained technician, switch Audience to Technician and rephrase carefully — bypass instructions are still never provided."
+            : "");
+        return;
+      }
+      safetyBanner.className = "safety-banner visible";
+      safetyBanner.textContent =
+        "Escalation advised — live voltage, panel, or board work belongs with a qualified technician. " +
+        (notice ? notice + " " : "") +
+        (audienceEl.value === "owner"
+          ? "Stay on Owner for safe next checks, or switch to Technician only if you are service-trained."
+          : "Technician mode still preserves live-voltage warnings from the literature.");
     }
 
     function errorDetail(data, fallback) {
@@ -477,6 +527,7 @@
       turn = 0;
       history = [];
       log.innerHTML = "";
+      clearSafetyBanner();
       updateSessionBar();
       if (announce) {
         const mode = modeEl.value;
@@ -566,6 +617,7 @@
         safetyNotice: ev.safety_notice || "",
         escalated: !!ev.escalated,
       });
+      updateSafetyBanner(ev);
       record("assistant", answer, {
         citations: ev.citations || [],
         meta: {

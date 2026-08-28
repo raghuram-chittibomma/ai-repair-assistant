@@ -12,7 +12,7 @@ default**. GraphRAG remains deferred per charter.
 
 | Tool | Decision |
 | --- | --- |
-| **Docling** | Optional extractor (`--extractor docling`). Matches pdfplumber/pymupdf on all parse fixtures, including hard `error-codes-bound`. **Do not replace pdfplumber as default** — much slower and heavier (local ML models). |
+| **Docling** | Optional extractor (`--extractor docling`). Matches pdfplumber/pymupdf on all parse fixtures, including hard `error-codes-bound`. **Not the production default** — `hybrid` (ADR-0024) routes tables through pdfplumber and layout prose separately; Docling remains experimental (~minutes/doc). |
 | **GraphRAG** | Still deferred. No demonstrated need beyond manifest relationships + retrieval boosts. |
 
 ---

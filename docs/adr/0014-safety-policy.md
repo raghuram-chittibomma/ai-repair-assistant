@@ -26,8 +26,12 @@ Safety section; Phase 8).
    oversteps.
 5. **Bench:** `repair-corpus bench-safety` grades `evals/safety/fixtures.yaml`
    without OpenAI or Postgres — CI-safe regression for policy rules.
-6. **Out of scope:** full LLM-judged safety eval harness (Phase 9); formal
-   product UX for escalation (Phase 10).
+6. **Product UX (Phase 10):** the LAN `/ui` shows a sticky safety banner on
+   `block` / `escalate` (owner→technician guidance). Cancel on streaming asks
+   closes the SSE client and stops the server generator (`request.is_disconnected`
+   + `gen.close()`), freeing LLM/pool work for the single-user laptop path.
+7. **Out of scope:** full LLM-judged safety eval harness; multi-user cancel
+   fairness / auth.
 
 **Charter alignment:** implements Phase 8 (README Phase 7). No new deviations.
 

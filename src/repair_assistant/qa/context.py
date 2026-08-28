@@ -40,7 +40,35 @@ def format_label(hit: Hit) -> str:
         cite = f"{cite} Rev {hit.revision}"
     if hit.page:
         cite = f"{cite} p.{hit.page}"
+    detail = _label_detail(hit.text or "")
+    if detail:
+        cite = f"{cite} — {detail}"
     return cite
+
+
+def _label_detail(text: str) -> str:
+    """Disambiguate same-page matrix / error-code rows in citation labels."""
+    group = re.search(r"Table group:\s*([^\n|]+)", text, re.I)
+    problem = re.search(r"(?:^|\n|\|)\s*Problem:\s*([^\n|]+)", text, re.I)
+    parts: list[str] = []
+    if group:
+        parts.append(group.group(1).strip()[:48])
+    if problem:
+        p = re.sub(r"\s*\(.*$", "", problem.group(1).strip())[:48]
+        if p and all(p.upper() not in existing.upper() for existing in parts):
+            parts.append(p)
+    if parts:
+        return " / ".join(parts)
+    # Error-code table rows: "Error Code: F0E2"
+    code_m = re.search(r"Error Code:\s*([A-Z0-9]+)", text, re.I)
+    if code_m:
+        return code_m.group(1).upper()
+    from repair_assistant.parsing.error_codes import extract_error_codes
+
+    codes = extract_error_codes(text)
+    if len(codes) == 1:
+        return codes[0]
+    return ""
 
 
 def _excerpt(text: str, *, max_len: int = 2000, query: str = "") -> str:
@@ -121,3 +149,53 @@ def citations_from_answer(answer: str, available: list[Citation]) -> list[Citati
             seen.add(idx)
             out.append(by_index[idx])
     return out
+
+
+def _label_theme(label: str) -> str:
+    """Theme fragment after an em dash, e.g. 'Not cleaning clothes'."""
+    if "—" in label:
+        return label.split("—", 1)[1].strip().rstrip(".")
+    if " - " in label:
+        return label.split(" - ", 1)[1].strip().rstrip(".")
+    return ""
+
+
+def _label_themes(label: str) -> list[str]:
+    """Matchable fragments from a citation label (group, problem, full theme)."""
+    theme = _label_theme(label)
+    if not theme:
+        return []
+    parts = [p.strip() for p in theme.split("/") if p.strip()]
+    out: list[str] = []
+    for part in parts:
+        if len(part) >= 6:
+            out.append(part)
+    if len(theme) >= 6 and theme not in out:
+        out.append(theme)
+    return out
+
+
+def citations_by_label_mention(answer: str, available: list[Citation]) -> list[Citation]:
+    """When the model names a category but omits [n], match citation label themes."""
+    text = (answer or "").lower()
+    if not text.strip() or text.lstrip().upper().startswith("ABSTAIN:"):
+        return []
+    out: list[Citation] = []
+    seen: set[int] = set()
+    for cite in available:
+        themes = _label_themes(cite.label)
+        # Prefer the most specific (usually problem) segment: last path part.
+        for theme in reversed(themes):
+            if theme.lower() in text and cite.index not in seen:
+                seen.add(cite.index)
+                out.append(cite)
+                break
+    return out
+
+
+def resolve_citations(answer: str, available: list[Citation]) -> list[Citation]:
+    """Prefer explicit [n] markers; fall back to label themes named in the answer."""
+    cited = citations_from_answer(answer, available)
+    if cited:
+        return cited
+    return citations_by_label_mention(answer, available)

@@ -1,4 +1,4 @@
-﻿# AI Repair Assistant — Project Charter
+# AI Repair Assistant — Project Charter
 
 > **Role of this document.** This is the project's north star: vision, constraints,
 > principles, and the intended roadmap. Day-to-day architecture choices are recorded
@@ -600,8 +600,9 @@ Useful observability may include:
 **Selected (Phase 9):** self-hosted [Langfuse](https://langfuse.com) (MIT core) —
 see [ADR-0018](adr/0018-langfuse-observability.md) and [LANGFUSE.md](LANGFUSE.md).
 Manual eval benches remain separate ([EVALS.md](EVALS.md)).
-Phase 9 **records** interactions; Phase 11 (deferred) **mines** traces into
-draft eval fixtures and improvement notes.
+Phase 9 **records** interactions; Phase 11 **mines** traces into a reviewable
+analysis report ([ADR-0023](adr/0023-trace-driven-eval-mining.md); human promote
+only) with replay so fixed failures from old traces do not re-open.
 
 ---
 
@@ -706,7 +707,7 @@ the original labels.
 | Phase 3 | Phase 3 — Incremental Ingestion | Embeddings local (D1); depth partial (D5) |
 | Phase 4 | Phase 5 — Retrieval Experiments | Bake-off recorded ([ADR-0011](adr/0011-retrieval-bakeoff.md)); ADR-0010 stays default |
 | Phase 5+ | Charter Phases 6–10 | Q&A, LangGraph, safety, evals, hardening |
-| Phase 11 | Phase 11 — Trace-driven evaluation and improvement | Deferred; Langfuse → draft evals / draft fixes |
+| Phase 11 | Phase 11 — Trace-driven evaluation and improvement | ADR-0023; Langfuse → replay → analysis report |
 
 ## Phase 1 — Real Manufacturer Corpus
 
@@ -885,30 +886,21 @@ Do not predetermine detailed solutions before requirements become concrete.
 
 ## Phase 11 — Trace-driven evaluation and improvement
 
-**Deferred.** Completes the Phase 9 intent to connect live failures back into
-the evaluation dataset, without auto-merging gates.
+Implemented by [ADR-0023](adr/0023-trace-driven-eval-mining.md). Offline
+`mine-traces` classifies Langfuse ask/diagnose traces, **replays** on current
+code (so fixed bugs from old traces become `resolved_stale`), and with
+`--write` emits a **markdown analysis report** under `evals/qa/drafts/` —
+suggested fixture YAML may appear inside the report for copy-paste. Same
+human-in-the-loop discipline as [ADR-0019](adr/0019-llm-judge-promote.md).
 
-**Objective:** Offline batch mine of Langfuse `ask` / `diagnose` traces;
-classify failure modes; emit **draft** eval fixtures and **draft** improvement
-notes for human review.
+**Inputs:** Structured span fields (question, intent/plan, retrieval, answer,
+citations, safety) plus `app_git_sha` stamps.
 
-**Inputs:** Structured span fields already emitted in traces (question,
-intent/plan, retrieval audit, answer, citations, safety, clarify)—not free-form
-UI scraping alone.
-
-**Outputs:** Draft YAML under `evals/` (smoke / candidates / grading-overlay
-style) plus grouped improvement notes. Never auto-merge into live eval gates.
-
-**Close the loop:** Human promote → `bench-qa` / `bench-candidates` → then code
-changes (intent / planner / rank), same discipline as
-[ADR-0019](adr/0019-llm-judge-promote.md) `promote-eval` (bench-run JSON today;
-Langfuse traces in this phase).
+**Outputs:** Analysis report only (`mine-report-*.md`). Never auto-merge into
+live eval gates; never write draft fixture files or mine-state.
 
 **Non-goals:** Auto-edit prompts from traces; online self-rewrite on the ask
 path; CI-required Langfuse; GraphRAG as a dependency of this phase.
-
-Do not implement this phase until Phase 10 hardening priorities are settled and
-an ADR records the mine → draft CLI shape.
 
 ---
 

@@ -12,8 +12,8 @@ from repair_assistant.parsing.extractors import get_extractor
 from repair_assistant.parsing.mhtml import html_to_visible_text, load_mhtml
 from repair_assistant.parsing.models import Chunk
 
-# Default winner from the Phase 2 bake-off (see ADR-0007). Overridable via CLI.
-DEFAULT_EXTRACTOR = "pdfplumber"
+# Default production path (ADR-0024 hybrid router). Overridable via CLI.
+DEFAULT_EXTRACTOR = "hybrid"
 
 
 def parsed_dir(root: Path | None = None) -> Path:
@@ -40,9 +40,10 @@ def parse_document(
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / "chunks.jsonl"
 
+    extracted = None
+    quality = None
     if source.suffix.lower() in {".mhtml", ".mht", ".html", ".htm"}:
         chunks = _chunks_from_mhtml(source, document)
-        quality = None
     else:
         extractor = get_extractor(extractor_name)
         extracted = extractor.extract(source)
@@ -76,6 +77,12 @@ def parse_document(
             json.dumps({"doc_id": document.doc_id, **quality.to_json()}, indent=2) + "\n",
             encoding="utf-8",
         )
+    if source.suffix.lower() == ".pdf" and extracted and extracted.parse_audit:
+        (dest_dir / "parse_audit.json").write_text(
+            json.dumps(extracted.parse_audit, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        meta["parse_audit_pages"] = len(extracted.parse_audit.get("page_audits", []))
     (dest_dir / "meta.json").write_text(
         json.dumps(meta, indent=2) + "\n", encoding="utf-8"
     )

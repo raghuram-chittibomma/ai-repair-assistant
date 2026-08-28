@@ -399,6 +399,79 @@ families:
         fails_if: >-
           Turn 1 jumps to motor replacement; turn 2 ignores prior bolt removal.
 
+      - id: mid-cycle-stop-diag-entry
+        status: ready
+        command: diagnose
+        appliance: {model: WFW5620HW0}
+        turns:
+          - >-
+            stops after 10 minutes of running without finishing the wash.
+            no error code on the display.
+        turn_grades:
+          1:
+            expect_cites_any: [W11169652]
+            expect_contains_any:
+              - Service Diagnostic
+              - "diagnostic mode"
+              - "888"
+              - "three (3) buttons"
+              - "three buttons"
+            fails_if_contains:
+              - cycle selector
+              - 'Off" position'
+              - 'to "Normal"'
+        expect: >-
+          Quote Activating Service Diagnostic Mode from W11169652 (standby,
+          wait, three-button sequence, 888), with matching citation.
+        fails_if: >-
+          Invents a cycle-selector / Start-Pause entry sequence, or cites only
+          tech-sheet pause-test rows without the service-manual entry steps.
+
+  # -------------------------------------------------------------------------
+  - id: intent-clarify-provenance
+    title: Ask-path intent clarify and unlock polarity
+    why: >-
+      Live failures showed underspecified door symptoms and wrong lock polarity.
+      Ask should clarify or unlock-ground before asserting F5E2 as confirmed.
+    scenarios:
+      - id: door-got-locked-unlock
+        status: ready
+        question: door got locked
+        appliance: {model: WFW5620HW0}
+        expect_contains_any: [unlock, open, "Add Garment", "start/pause", pause]
+        fails_if_contains:
+          - "won't lock"
+          - "will not lock"
+          - "Ensure that door is completely closed"
+        expect_cites_any: [W11156985, W11169652, W11320651, W11156989]
+        expect: >-
+          Treat as door stuck closed / unlock polarity; cite owner or service
+          unlock guidance.
+        fails_if: >-
+          Blends "door won't lock" start remedies or asserts the user already
+          has F5E2 without hedging.
+
+      - id: door-lock-underspecified-clarify
+        status: ready
+        question: door lock problem
+        appliance: {model: WFW5620HW0}
+        expect_contains_any:
+          - stuck
+          - unlock
+          - lock
+          - F5E2
+          - open
+          - closed
+        fails_if_contains:
+          - "replace the door lock"
+          - "test #4"
+          - "TEST #4"
+        expect: >-
+          Ask one clarifying question about stuck-closed vs will-not-lock (and
+          optionally any error code) instead of a repair procedure.
+        fails_if: >-
+          Jumps straight to TEST #4 or part replacement without clarifying.
+
   # -------------------------------------------------------------------------
   - id: applicability-engineering-digit
     title: Engineering-digit ambiguity

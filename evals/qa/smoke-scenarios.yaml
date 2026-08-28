@@ -77,3 +77,59 @@ scenarios:
     appliance: {model: WFW5620HW0}
     expect_abstain: true
     notes: Fabricated code — should abstain or say evidence lacks ZZ99.
+
+  - id: mid-cycle-stop-diag-entry
+    command: diagnose
+    turns:
+      - >-
+        stops after 10 minutes of running without finishing the wash.
+        no error code on the display.
+    appliance: {model: WFW5620HW0}
+    turn_grades:
+      1:
+        expect_cites_any: [W11169652]
+        expect_contains_any:
+          - Service Diagnostic
+          - "diagnostic mode"
+          - "888"
+          - "three (3) buttons"
+          - "three buttons"
+        fails_if_contains:
+          - cycle selector
+          - 'Off" position'
+          - 'to "Normal"'
+    notes: >-
+      Mid-cycle / no-code stop should quote Activating Service Diagnostic Mode
+      from the service manual (W11169652), not invent a knob sequence.
+
+  - id: door-got-locked-unlock
+    command: ask
+    question: door got locked
+    appliance: {model: WFW5620HW0}
+    expect_contains_any: [unlock, open, "Add Garment", "start/pause", pause]
+    fails_if_contains:
+      - "won't lock"
+      - "will not lock"
+      - "Ensure that door is completely closed"
+    expect_cites_any: [W11156985, W11169652, W11320651, W11156989]
+    notes: >-
+      Unlock polarity — stuck-closed guidance, not "door won't lock" start checks.
+
+  - id: door-lock-underspecified-clarify
+    command: ask
+    question: door lock problem
+    appliance: {model: WFW5620HW0}
+    expect_contains_any:
+      - stuck
+      - unlock
+      - lock
+      - F5E2
+      - open
+      - closed
+    fails_if_contains:
+      - "replace the door lock"
+      - "test #4"
+      - "TEST #4"
+    notes: >-
+      Underspecified door/lock — ask path should clarify polarity, not jump to
+      a repair procedure.

@@ -23,6 +23,7 @@ from repair_assistant.observability.langfuse_tracing import (
     update_span,
 )
 from repair_assistant.prompts import ask_system
+from repair_assistant.qa.acks import ACK_IN_ASK_MODE, is_ack_only_message
 from repair_assistant.qa.context import (
     AnswerResult,
     Citation,
@@ -394,6 +395,9 @@ def _ask_impl(
     if appliance is not None and not corpus_supports_appliance(manifest, appliance).supported:
         return _unsupported_appliance_answer(question, appliance, assessment=assessment)
 
+    if is_ack_only_message(question):
+        return _clarification_result(question, ACK_IN_ASK_MODE, assessment=assessment)
+
     intent = extract_intent(question, audience=audience.value)
     if intent.needs_clarification and intent.clarify_question:
         with child_observation(
@@ -519,6 +523,22 @@ def ask_stream(
 
         if appliance is not None and not corpus_supports_appliance(manifest, appliance).supported:
             yield _stream_done_unsupported(question, appliance, assessment=assessment)
+            return
+
+        if is_ack_only_message(question):
+            yield {
+                "type": "done",
+                "question": question,
+                "answer": ACK_IN_ASK_MODE,
+                "abstained": False,
+                "abstain_reason": "",
+                "abstain_code": "clarify",
+                "citations": [],
+                "retrieval_count": 0,
+                "safety_action": assessment.action.value,
+                "safety_notice": assessment.reason,
+                "escalated": False,
+            }
             return
 
         from repair_assistant.retrieval.intent import extract_intent, intent_to_dict

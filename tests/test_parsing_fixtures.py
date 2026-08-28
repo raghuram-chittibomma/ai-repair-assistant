@@ -16,6 +16,7 @@ def test_fixtures_file_is_well_formed():
         "reflow-not-delta",
         "tsp-trilingual",
         "mhtml-decode",
+        "procedure-reading-order",
     ]
     assert "F6E1" in data["error_codes_w11320651b"]
     assert "F6E1" in data["must_bind"]

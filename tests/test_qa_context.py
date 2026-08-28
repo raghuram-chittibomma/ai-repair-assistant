@@ -6,6 +6,7 @@ from repair_assistant.qa.context import (
     citations_from_answer,
     format_evidence,
     format_label,
+    resolve_citations,
 )
 from repair_assistant.retrieval.search import Hit
 
@@ -28,7 +29,23 @@ def _hit(**kwargs) -> Hit:
 
 def test_format_label_includes_revision_and_page() -> None:
     hit = _hit()
-    assert format_label(hit) == "W11320651 Rev A p.3"
+    assert format_label(hit) == "W11320651 Rev A p.3 — F5E2"
+
+
+def test_format_label_includes_matrix_group_and_problem() -> None:
+    hit = _hit(
+        text=(
+            "[W11320651 Rev B] Table group: POOR WASH PERFORMANCE\n"
+            "Problem: Oversuds. | Checks & tests: 1. Verify HE detergent."
+        ),
+        error_codes=[],
+        page=11,
+        revision="B",
+    )
+    label = format_label(hit)
+    assert "p.11" in label
+    assert "POOR WASH PERFORMANCE" in label
+    assert "Oversuds" in label
 
 
 def test_format_evidence_numbers_blocks_and_truncates() -> None:
@@ -41,6 +58,7 @@ def test_format_evidence_numbers_blocks_and_truncates() -> None:
             revision=None,
             page=None,
             text="Second chunk about F5 E2 lid switch.",
+            error_codes=["F5E2"],
         ),
     ]
     text, citations = format_evidence(hits)
@@ -57,3 +75,27 @@ def test_citations_from_answer_deduplicates_and_preserves_order() -> None:
     cited = citations_from_answer(answer, available)
     assert [c.index for c in cited] == [2, 1]
     assert cited[0].chunk_id == "b"
+
+
+def test_resolve_citations_falls_back_to_label_theme() -> None:
+    hit = _hit(
+        text=(
+            "[W11320651 Rev B] Table group: POOR WASH PERFORMANCE\n"
+            "Problem: Not cleaning clothes. | Checks & tests: 1. Verify load."
+        ),
+        error_codes=[],
+        page=11,
+        revision="B",
+    )
+    _, available = format_evidence([hit])
+    answer = (
+        'Checks from the "Not cleaning clothes" category:\n'
+        "1. Verify that the load is not bunched.\n"
+        "2. Ensure HE detergent."
+    )
+    cited = resolve_citations(answer, available)
+    assert len(cited) == 1
+    assert "Not cleaning clothes" in cited[0].label
+    # Explicit [n] still wins over theme matching
+    with_marker = resolve_citations(f"{answer} [1]", available)
+    assert [c.index for c in with_marker] == [1]

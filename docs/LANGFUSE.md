@@ -50,7 +50,8 @@ python -m repair_assistant.corpus.cli ask "What does F5E2 mean?" --model WFW5620
 ```
 
 Open the Langfuse UI → Traces. You should see an `ask` (and later `diagnose`)
-span with question, retrieval count, citations, and safety metadata.
+span with question, retrieval count, citations, safety metadata, and
+`app_git_sha` / `app_started_at` stamps (ADR-0023).
 
 ## Optional: LAN Docker host
 

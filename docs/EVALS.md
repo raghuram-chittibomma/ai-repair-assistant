@@ -24,6 +24,7 @@ not on PATH.
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
 | Promote failure | `promote-eval --run … --scenario ID` | prior run JSON | — | YAML draft (optional `--write` into grading overlay) |
+| Mine Langfuse traces | `mine-traces --since 7d [--write]` | Langfuse + DB + OpenAI (replay) | live traces | `evals/qa/drafts/mine-report-*.md` analysis only (ADR-0023) |
 | Judge calibrate | `bench-judge-calibrate --write` | `OPENAI_API_KEY` (no DB) | `evals/qa/judge-calibration.yaml` | `evals/qa/results/judge-calibration-scorecard.md` |
 | Prune run logs | `prune-eval-runs --keep N` | none | `evals/qa/results/runs/` | dry-run list (use `--execute` to delete) |
 
@@ -178,9 +179,17 @@ Do not treat synthetic pubs as real literature in docs or demos.
 
 Self-hosted Langfuse can record `ask` / `diagnose` runs for inspection
 ([LANGFUSE.md](LANGFUSE.md), ADR-0018). Benches do **not** require Langfuse;
-leave `LANGFUSE_*` keys empty to disable tracing. Full offline mine of traces
-into draft eval fixtures / improvement notes is **Phase 11** (E13)—not in
-scope yet.
+leave `LANGFUSE_*` keys empty to disable tracing. Offline mine of traces into
+a **reviewable analysis report** (with replay so fixed bugs stay closed) is
+`mine-traces` ([ADR-0023](adr/0023-trace-driven-eval-mining.md)):
+
+```powershell
+python -m repair_assistant.corpus.cli mine-traces --since 7d --write
+```
+
+`--write` only creates `evals/qa/drafts/mine-report-*.md`. It does not edit
+live fixtures or write draft YAML / mine-state. Copy suggested stubs from the
+report by hand if you want new smoke/candidates.
 
 ### Recent baselines (hand-run)
 
@@ -192,6 +201,15 @@ scope yet.
 | Q&A smoke | 5/5 | Live |
 | Candidates | ready gate (post-E4) | `f5e2-three-way` cite relaxed; `serial-inside-range` deferred |
 
+Added (2026-08-27, not yet hand-baselined): smoke + candidates
+`mid-cycle-stop-diag-entry`, `door-got-locked-unlock`,
+`door-lock-underspecified-clarify`. Run:
+
+```powershell
+python -m repair_assistant.corpus.cli bench-qa --write --scenario mid-cycle-stop-diag-entry
+python -m repair_assistant.corpus.cli bench-candidates --write --scenario mid-cycle-stop-diag-entry
+```
+
 Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
 ---
@@ -201,6 +219,6 @@ Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 - CI / scheduled eval benches of any kind (including offline `bench-safety`) —
   operators run the EVALS.md sequence by hand
 - Auto-merging promoted drafts into live overlay keys (always human review)
-- Langfuse trace → draft fixture / improvement mining (**Phase 11** / E13)
+- Auto-merging `mine-traces` report suggestions into `status: ready` (ADR-0023)
 
 See ADR-0015, ADR-0017, and ADR-0019 for Q&A benches, candidates, and judge/promote.

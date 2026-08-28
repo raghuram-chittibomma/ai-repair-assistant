@@ -25,7 +25,10 @@ MHTML decode). Scorecard: `evals/parsing/results/scorecard.md`.
 
 ## Decision
 
-1. **Default PDF extractor: `pdfplumber`.** Table extraction is the primary
+1. **Default PDF extractor: `hybrid` (ADR-0024).** Page-scoped router: pdfplumber
+   for tables, layout-aware prose for multi-column pages. Direct `pdfplumber`
+   remains available for bake-offs (`--extractor pdfplumber`).
+2. **Table engine inside hybrid: `pdfplumber`.** Table extraction is the primary
    reason tech sheets become usable; pdfplumber’s table API is the simpler
    dependency surface for that job. PyMuPDF remains an available alternate
    (`repair-corpus parse --extractor pymupdf`) when layout blocks matter more

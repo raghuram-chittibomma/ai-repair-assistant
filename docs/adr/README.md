@@ -28,7 +28,8 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 
 | ADR | Decision | Driver |
 | --- | --- | --- |
-| [0007](0007-parser-and-chunker.md) | pdfplumber + structured table-row chunking; pypdf fixed-size is the failing control | Tech-sheet error table and F6E1 binding measured in bake-off |
+| [0007](0007-parser-and-chunker.md) | pdfplumber table engine + structured table-row chunking; pypdf fixed-size is the failing control | Tech-sheet error table and F6E1 binding measured in bake-off |
+| [0024](0024-hybrid-parse-architecture.md) | Hybrid page router (pdfplumber tables + layout prose); canonical tree; parse quality audit | Multi-column procedures; parser ≠ chunker |
 | [0022](0022-contextual-chunk-enrichment.md) | Contextual text enrichment + bounded chunk quality self-check | Opaque numeric rows; headers were metadata-only |
 
 ## Phase 3 — Ingestion
@@ -85,11 +86,11 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0021](0021-api-hardening-embedder-sessions.md) | Shared embedder + warmup; in-memory session TTL/max; DB pool; LLM/pool timeouts | Day-to-day LAN reliability |
 
-## Phase 11 — Trace-driven evaluation (future)
+## Phase 11 — Trace-driven evaluation
 
-Deferred per [CHARTER.md](../CHARTER.md) Phase 11 / E13. No ADR until
-implementation: offline Langfuse mine → draft eval fixtures and improvement
-notes; human promote only (same discipline as ADR-0019).
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0023](0023-trace-driven-eval-mining.md) | `mine-traces`: stamp + window + replay → analysis report; human promote only | Charter Phase 11 / E13 |
 
 ## Infrastructure
 

@@ -200,6 +200,20 @@ def test_ask_stream_route_sse(mock_stream: MagicMock, client: TestClient) -> Non
     assert "text/event-stream" in response.headers["content-type"]
     assert "data: " in response.text
     assert '"type": "token"' in response.text or '"type":"token"' in response.text
+    assert '"type": "error"' not in response.text
+    assert "StopIteration" not in response.text
+
+
+@patch("repair_assistant.api.app.ask_stream")
+def test_ask_stream_route_exhaustion_no_stopiteration_error(
+    mock_stream: MagicMock, client: TestClient
+) -> None:
+    """After the done event, generator exhaustion must not surface as SSE error."""
+    mock_stream.return_value = iter([{"type": "done", "answer": "ok", "abstained": False}])
+    response = client.post("/v1/ask/stream", json={"question": "test"})
+    assert response.status_code == 200
+    assert '"type": "error"' not in response.text
+    assert "StopIteration" not in response.text
 
 
 @patch("repair_assistant.api.sessions.DiagnosticSession")
@@ -233,6 +247,26 @@ def test_diagnose_stream_route_sse(mock_session_cls: MagicMock, client: TestClie
     assert "text/event-stream" in response.headers["content-type"]
     assert "session_id" in response.text
     assert '"type": "token"' in response.text or '"type":"token"' in response.text
+    assert '"type": "error"' not in response.text
+    assert "StopIteration" not in response.text
+
+
+@patch("repair_assistant.api.sessions.DiagnosticSession")
+def test_diagnose_stream_route_exhaustion_no_stopiteration_error(
+    mock_session_cls: MagicMock, client: TestClient
+) -> None:
+    instance = MagicMock()
+    instance.send_stream.return_value = iter(
+        [{"type": "done", "assistant_message": "Done.", "abstained": False, "turn": 1}]
+    )
+    mock_session_cls.return_value = instance
+    response = client.post(
+        "/v1/diagnose/stream",
+        json={"message": "noise", "model": "WFW5620HW0"},
+    )
+    assert response.status_code == 200
+    assert '"type": "error"' not in response.text
+    assert "StopIteration" not in response.text
 
 
 @patch("repair_assistant.api.sessions.DiagnosticSession")

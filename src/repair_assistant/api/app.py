@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
-from collections.abc import AsyncIterator, Generator
+from collections.abc import AsyncIterator, Generator, Iterator
 from contextlib import asynccontextmanager, contextmanager
+from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
@@ -92,6 +94,18 @@ def _env_float(name: str, default: float) -> float:
     except ValueError:
         return default
     return value if value > 0 else default
+
+
+def _pull_stream_event(gen: Iterator[Any]) -> Any | None:
+    """Return the next sync-generator event, or None when exhausted.
+
+    Do not pass ``next`` directly to ``asyncio.to_thread``: StopIteration in the
+    worker thread becomes RuntimeError when the Future completes.
+    """
+    try:
+        return next(gen)
+    except StopIteration:
+        return None
 
 
 def create_app(
@@ -269,31 +283,49 @@ def create_app(
         )
 
     @app.post("/v1/ask/stream", dependencies=[Depends(require_api_key)])
-    def ask_stream_route(body: AskRequest, db: Database = Depends(get_db)) -> StreamingResponse:
+    async def ask_stream_route(
+        request: Request,
+        body: AskRequest,
+        db: Database = Depends(get_db),
+    ) -> StreamingResponse:
         """SSE stream: status / token / done events for grounded ask()."""
         appliance = Appliance(model=body.model, serial=body.serial) if body.model else None
 
-        def event_iter():
+        async def event_iter():
+            gen = ask_stream(
+                db,
+                _manifest(),
+                body.question,
+                appliance=appliance,
+                audience=Audience(body.audience),
+                retrieval_limit=body.limit,
+                overfetch=body.overfetch,
+            )
             try:
-                for event in ask_stream(
-                    db,
-                    _manifest(),
-                    body.question,
-                    appliance=appliance,
-                    audience=Audience(body.audience),
-                    retrieval_limit=body.limit,
-                    overfetch=body.overfetch,
-                ):
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    try:
+                        event = await asyncio.to_thread(_pull_stream_event, gen)
+                    except LLMTimeoutError as exc:
+                        err = {"type": "error", "detail": str(exc)}
+                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+                        break
+                    except RuntimeError as exc:
+                        err = {"type": "error", "detail": str(exc)}
+                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+                        break
+                    except Exception as exc:  # noqa: BLE001 — surface to client
+                        err = {"type": "error", "detail": str(exc)}
+                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+                        break
+                    if event is None:
+                        break
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-            except LLMTimeoutError as exc:
-                err = {"type": "error", "detail": str(exc)}
-                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-            except RuntimeError as exc:
-                err = {"type": "error", "detail": str(exc)}
-                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-            except Exception as exc:  # noqa: BLE001 — surface to client
-                err = {"type": "error", "detail": str(exc)}
-                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+            finally:
+                close = getattr(gen, "close", None)
+                if callable(close):
+                    close()
 
         return StreamingResponse(
             event_iter(),
@@ -345,7 +377,11 @@ def create_app(
         )
 
     @app.post("/v1/diagnose/stream", dependencies=[Depends(require_api_key)])
-    def diagnose_stream_route(body: DiagnoseRequest, db: Database = Depends(get_db)) -> StreamingResponse:
+    async def diagnose_stream_route(
+        request: Request,
+        body: DiagnoseRequest,
+        db: Database = Depends(get_db),
+    ) -> StreamingResponse:
         """SSE stream: status / token / done events for multi-turn diagnose()."""
         appliance = Appliance(model=body.model, serial=body.serial)
         try:
@@ -366,21 +402,35 @@ def create_app(
                 ),
             ) from None
 
-        def event_iter():
+        async def event_iter():
+            gen = session.send_stream(db, body.message)
             try:
-                for event in session.send_stream(db, body.message):
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    try:
+                        event = await asyncio.to_thread(_pull_stream_event, gen)
+                    except LLMTimeoutError as exc:
+                        err = {"type": "error", "detail": str(exc)}
+                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+                        break
+                    except RuntimeError as exc:
+                        err = {"type": "error", "detail": str(exc)}
+                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+                        break
+                    except Exception as exc:  # noqa: BLE001 — surface to client
+                        err = {"type": "error", "detail": str(exc)}
+                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+                        break
+                    if event is None:
+                        break
                     if event.get("type") == "done":
                         event["session_id"] = sid
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-            except LLMTimeoutError as exc:
-                err = {"type": "error", "detail": str(exc)}
-                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-            except RuntimeError as exc:
-                err = {"type": "error", "detail": str(exc)}
-                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-            except Exception as exc:  # noqa: BLE001 — surface to client
-                err = {"type": "error", "detail": str(exc)}
-                yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
+            finally:
+                close = getattr(gen, "close", None)
+                if callable(close):
+                    close()
 
         return StreamingResponse(
             event_iter(),

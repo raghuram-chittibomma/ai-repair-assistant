@@ -486,9 +486,9 @@ def bench_parse(extractors: tuple[str, ...], write: bool) -> None:
 @click.option("--all", "parse_all", is_flag=True, help="Parse every held document.")
 @click.option(
     "--extractor",
-    default="pdfplumber",
+    default="hybrid",
     show_default=True,
-    help="Extractor for PDFs (see ADR-0007).",
+    help="Extractor for PDFs (see ADR-0024; hybrid is production default).",
 )
 def parse_cmd(doc_id: str | None, parse_all: bool, extractor: str) -> None:
     """Extract and chunk documents into corpus/parsed/<doc_id>/chunks.jsonl."""
@@ -1209,6 +1209,110 @@ def promote_eval_cmd(run_path: Path, scenario_id: str, write: bool, force: bool)
     if written is not None:
         click.echo(f"Wrote draft under {written} → scenarios.{scenario_id}.draft")
         click.echo("Review the draft, promote useful keys to the live overlay, then delete .draft.")
+
+
+@main.command("mine-traces")
+@click.option(
+    "--since",
+    default="7d",
+    show_default=True,
+    help="Look back window (e.g. 7d, 24h, 30m).",
+)
+@click.option("--limit", default=50, show_default=True, help="Max Langfuse traces to fetch.")
+@click.option(
+    "--write/--no-write",
+    default=False,
+    help="Write analysis report under evals/qa/drafts/ (no fixture/state changes).",
+)
+@click.option(
+    "--include-unstamped",
+    is_flag=True,
+    help="Include traces missing app_git_sha (still subject to replay).",
+)
+@click.option(
+    "--since-sha",
+    default=None,
+    help="Only keep traces stamped with this short git SHA.",
+)
+@click.option(
+    "--no-replay",
+    is_flag=True,
+    help="Skip replay gate (not recommended; drafts may reopen fixed bugs).",
+)
+def mine_traces_cmd(
+    since: str,
+    limit: int,
+    write: bool,
+    include_unstamped: bool,
+    since_sha: str | None,
+    no_replay: bool,
+) -> None:
+    """Mine Langfuse ask/diagnose traces into a reviewable analysis report (ADR-0023).
+
+    Replays candidates on current code so pre-fix traces become resolved_stale.
+    ``--write`` only writes a markdown report; it never edits live fixtures.
+    """
+    from repair_assistant.eval.mine_traces import (
+        fetch_langfuse_traces,
+        parse_since,
+        run_mine,
+    )
+    from repair_assistant.ingest.env import database_url
+    from repair_assistant.ingest.store import Database
+    from repair_assistant.observability.langfuse_tracing import tracing_enabled
+
+    if not tracing_enabled():
+        raise click.ClickException(
+            "LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY are required for mine-traces."
+        )
+    try:
+        cutoff = parse_since(since)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(f"Fetching Langfuse traces since {cutoff.isoformat()} (limit={limit})…")
+    try:
+        records = fetch_langfuse_traces(since=cutoff, limit=limit)
+    except Exception as exc:  # noqa: BLE001
+        raise click.ClickException(f"Langfuse fetch failed: {exc}") from exc
+    click.echo(f"Fetched {len(records)} trace record(s).")
+
+    db = None
+    if not no_replay:
+        try:
+            db = Database(database_url())
+        except Exception as exc:  # noqa: BLE001
+            raise click.ClickException(
+                f"Replay needs DATABASE_URL / Postgres: {exc}"
+            ) from exc
+
+    try:
+        result = run_mine(
+            records,
+            write=write,
+            require_git_sha=not include_unstamped,
+            include_unstamped=include_unstamped,
+            since_sha=since_sha,
+            replay=not no_replay,
+            db=db,
+        )
+    finally:
+        if db is not None:
+            db.close()
+
+    counts: dict[str, int] = {}
+    for o in result.outcomes:
+        counts[o.status] = counts.get(o.status, 0) + 1
+        click.echo(
+            f"  {o.status:16} trace={o.trace_id[:12]}… "
+            f"codes={o.failure_codes or '-'} {o.detail}"
+        )
+    click.echo("Summary: " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+    if write and result.report_path:
+        click.echo(f"Wrote analysis report: {result.report_path}")
+        click.echo("No live fixtures or mine-state were modified.")
+    else:
+        click.echo("Dry run — pass --write to save the analysis report.")
 
 
 @main.command("bench-safety")

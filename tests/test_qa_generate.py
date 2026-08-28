@@ -93,6 +93,22 @@ def test_ask_rejects_unknown_model_before_search(mock_search: MagicMock) -> None
 
 
 @patch("repair_assistant.qa.generate.search")
+def test_ask_ack_only_redirects_to_diagnose(mock_search: MagicMock) -> None:
+    db = MagicMock()
+    result = ask(
+        db,
+        _manifest(),
+        "no issues there",
+        appliance=Appliance(model="WFW5620HW0"),
+        llm=FakeLLM("unused"),
+    )
+    assert not result.abstained
+    assert result.abstain_code == "clarify"
+    assert "Diagnostic chat" in result.answer
+    mock_search.assert_not_called()
+
+
+@patch("repair_assistant.qa.generate.search")
 def test_ask_returns_cited_answer(mock_search: MagicMock) -> None:
     mock_search.return_value = SearchResult(query="q", hits=[_hit()])
     db = MagicMock()

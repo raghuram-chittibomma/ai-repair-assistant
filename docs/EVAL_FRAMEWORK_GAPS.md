@@ -22,7 +22,7 @@ can slip between layers.
 | Q&A smoke (`bench-qa`, ADR-0015) | adequate | Manual | Diagnose uses `turn_grades` (E7); still one smoke diagnose case | P2 |
 | Candidates (`bench-candidates`, ADR-0017) | adequate | Soft | Every ready has ≥1 det rule (E2); prose-critical still need `--judge` (`requires_judge`) | P1 |
 | LLM judge + promote (ADR-0019) | adequate | Opt-in | Calibration pack exists (E10); promote drafts still unused as discipline | P2 |
-| Observability (Langfuse ADR-0018) | adequate | Manual | Bench spans carry `eval_bench` / `eval_run_id` / `scenario_id` (E11); failure→dataset loop is **E13 / Phase 11** | P2 |
+| Observability (Langfuse ADR-0018) | adequate | Manual | Bench spans carry `eval_bench` / `eval_run_id` / `scenario_id` (E11); failure→dataset loop is **E13 / ADR-0023** (`mine-traces`) | P2 |
 | CI / release | thin | Unit + copyright only | ADR-0015 overclaimed live CI benches; EVALS.md can lag scorecard counts | P0 |
 | Cross-layer consistency | adequate | n/a | Crosswalk + E4 hardness aligned; residual ID naming differences remain | P2 |
 
@@ -44,7 +44,7 @@ can slip between layers.
 8. **CI vs docs drift** — Live benches manual; some ADRs/runbooks overclaim or lag.
 9. **Run-log hygiene** — Mitigated by E9 (`prune-eval-runs` + runs README); still manual.
 10. **Observability unlinked to eval** — Mitigated by E11 metadata on bench spans;
-    full Langfuse → draft-fixture dataset loop is **E13 / Phase 11** (deferred).
+    Langfuse → draft-fixture loop is **E13 / ADR-0023** (`mine-traces` + replay).
 11. **Ready-but-failing candidates** — Cleared in E4 (F5E2 cite relaxed;
     serial-inside deferred).
 12. **Generation negative controls uneven** — Fewer “wrong-but-fluent” fails than IR/safety.
@@ -67,7 +67,7 @@ can slip between layers.
 | **E10** | ~~Judge calibration pack~~ **Done** — 10 frozen cases + `bench-judge-calibrate` | — | Judge |
 | **E11** | ~~Langfuse bench metadata~~ **Done** — `eval_bench` / `eval_run_id` / `scenario_id` | — | Observability |
 | **E12** | **Thin reopen (ADR-0022)** — contextual enrichment + bounded audit/repair; not a full D4 chunker bake | 2026-08-27 | Parsing |
-| **E13** | **Deferred (Phase 11)** — Langfuse mine → draft eval fixtures + draft improvement notes; human promote only | future | Observability / Eval |
+| **E13** | ~~Langfuse mine → draft evals~~ **Done** — ADR-0023 `mine-traces` (stamp + window + replay; analysis report; human promote) | — | Observability / Eval |
 
 **Suggested first slice:** E8 → E5 → E4 → E1 (E3 skipped — no scheduled/CI evals).
 
@@ -83,10 +83,10 @@ ADR-0007 split boundaries; enriches embed/LLM text with doc/section/headers;
 `audit_and_improve` allows at most one repair pass (no while-loop). Binding
 fixtures must stay PASS.
 
-**E13 (Phase 11):** Offline batch classify Langfuse `ask` / `diagnose` traces;
-emit draft YAML under `evals/` and grouped improvement notes. Same
-draft-only / human-promote discipline as ADR-0019 `promote-eval`. Do not
-implement until Phase 11 starts (see [CHARTER.md](CHARTER.md) Phase 11).
+**E13 (Phase 11):** Implemented — `mine-traces` classifies Langfuse traces,
+replays on current code (`resolved_stale` when fixed), and writes a reviewable
+analysis report under `evals/qa/drafts/` (`mine-report-*.md`). See
+[ADR-0023](adr/0023-trace-driven-eval-mining.md).
 
 ### E12 reopen triggers (then thin micro-bake, not a full D4 redo)
 
@@ -110,7 +110,7 @@ do not invent a full splitter bake without the triggers above.
 - Deterministic grader first; judge opt-in (ADR-0019)
 - `promote-eval` draft-only (no auto-merge)
 - Safety fixture quality; ranking unit tests
-- Docling non-default; hybrid-as-default decision (ADR-0020)
+- Docling non-default; hybrid default for parse (ADR-0024); retrieval hybrid-as-default (ADR-0020)
 - Chunking micro-bake without a boundary/chain failure (full D4 still deferred; ADR-0022 is the thin path)
 
 ---

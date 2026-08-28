@@ -1,0 +1,27 @@
+# Optional document/page-specific parse-quality expectations for hybrid audit
+# (ADR-0024). Generic Whirlpool-style signals live in code; put *exceptions*
+# here when a particular sheet needs stronger reading-order checks.
+#
+# Matching: every field under `match` must succeed.
+#   filename              – case-insensitive substring of the PDF basename
+#   publication_number    – substring of basename (e.g. W11320651)
+#   doc_id                – exact corpus document id (optional)
+#   revision              – letter found after publication in basename (optional)
+#   page                  – 1-based page number
+#
+# Add new overrides as new difficult pages are discovered — do not hardcode
+# page numbers or publication ids in Python.
+
+overrides:
+  - id: tech-sheet-w11320651-test-1
+    match:
+      publication_number: W11320651
+      page: 12
+    phrase_markers:
+      - "TEST PROCEDURES"
+      - "TEST #1: ACU Power Check"
+      - "interference filter"
+      - "connector J2 AC In"
+      - "Service LED/DC Supply"
+      - "Quick Diagnostic Test"
+    expect_steps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
