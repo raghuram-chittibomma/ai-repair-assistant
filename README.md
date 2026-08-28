@@ -67,11 +67,17 @@ Grounded one-shot Q&A with numbered citation chips tied to manifest documents.
 
 ![Ask mode with citation chips](docs/images/ui-ask-cited.png)
 
-### Diagnose — checklist + session
+### Diagnose — owner checklist (turn 1)
 
-Multi-turn LangGraph diagnostic chat: turn counter, streaming checklist steps, same citation rules.
+Multi-turn LangGraph diagnostic chat: session badge, streaming checklist steps, owner-safe citations.
 
-![Diagnostic chat with checklist and citations](docs/images/ui-diagnose-checklist.png)
+![Owner diagnostic chat with checklist and citations](docs/images/ui-diagnose-checklist.png)
+
+### Diagnose — technician multi-turn (turn 2)
+
+Same session, **Technician** audience: follow-up narrows to service-manual steps (continuity, wiring) with tech-sheet citations.
+
+![Technician multi-turn diagnostic chat at turn 2](docs/images/ui-diagnose-tech-multiturn.png)
 
 ### Safety — escalate before unsafe guidance
 
@@ -81,7 +87,9 @@ Pre-LLM escalation banner and post-generation gate when owner audience requests 
 
 ### Langfuse — trace detail
 
-*(Screenshot pending — start Langfuse per [LANGFUSE.md](docs/LANGFUSE.md), run an ask/diagnose, capture retrieve / evidence / llm / safety_gate spans, save as `docs/images/langfuse-trace.png`.)*
+Retrieve, evidence, LLM, and safety_gate spans for the same ask/diagnose runs ([LANGFUSE.md](docs/LANGFUSE.md)).
+
+![Langfuse trace with retrieve, evidence, llm, and safety_gate spans](docs/images/langfuse-trace.png)
 
 ---
 
