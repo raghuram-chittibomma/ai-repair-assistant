@@ -603,7 +603,15 @@ def db_migrate_cmd() -> None:
 @main.command("ingest")
 @click.argument("doc_id", required=False)
 @click.option("--all", "ingest_all", is_flag=True, help="Ingest every corpus/parsed document.")
-@click.option("--force", is_flag=True, help="Re-upsert even when content fingerprint matches.")
+@click.option(
+    "--force",
+    is_flag=True,
+    help=(
+        "Re-upsert even when the content fingerprint matches. Also the "
+        "embedding-model migration: clears vectors written by a different "
+        "EMBEDDING_MODEL and re-embeds (review R16)."
+    ),
+)
 @click.option(
     "--skip-embed",
     is_flag=True,

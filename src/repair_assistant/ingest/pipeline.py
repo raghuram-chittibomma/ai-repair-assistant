@@ -5,7 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from repair_assistant.ingest.embeddings import Embedder
+from repair_assistant.ingest.embeddings import (
+    Embedder,
+    assert_embedding_model,
+    clear_embeddings_for_other_models,
+)
 from repair_assistant.ingest.parsed import (
     ParsedDocument,
     iter_parsed_dirs,
@@ -52,6 +56,11 @@ def ingest_parsed(
     """Load corpus/parsed into the database, skipping unchanged fingerprints."""
     result = IngestResult()
     corpus_sha_by_doc = corpus_sha_by_doc or {}
+    if embedder.model != "none":
+        if force:
+            clear_embeddings_for_other_models(db, embedder.model)
+        else:
+            assert_embedding_model(db, embedder.model)
 
     targets: list[Path] = []
     for path in iter_parsed_dirs(corpus_root):

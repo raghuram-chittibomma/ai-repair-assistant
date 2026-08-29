@@ -10,6 +10,11 @@ from pathlib import Path
 
 import pytest
 
+from repair_assistant.ingest.embeddings import (
+    EmbeddingModelMismatch,
+    assert_embedding_model,
+    clear_embeddings_for_other_models,
+)
 from repair_assistant.ingest.parsed import ParsedDocument
 from repair_assistant.retrieval.search import code_fetch, connector_fetch, vector_fetch
 from repair_assistant.retrieval.synthetic import ensure_synthetic_ingested
@@ -119,3 +124,16 @@ def test_connector_fetch_neighbour_join(pg_db) -> None:
     ids = {h["chunk_id"] for h in hits}
     assert "cell" in ids
     assert "context" in ids
+
+
+def test_embedding_model_guard_and_force_clear(pg_db) -> None:
+    embedder = FixedEmbedder()
+    chunk = make_chunk(doc_id="ci-embed", chunk_id="e1", text="Door lock connector.")
+    _upsert(pg_db, "ci-embed", [chunk], embedder=embedder)
+    assert_embedding_model(pg_db, embedder.model)
+    with pytest.raises(EmbeddingModelMismatch):
+        assert_embedding_model(pg_db, "BAAI/bge-base-en-v1.5")
+    cleared = clear_embeddings_for_other_models(pg_db, "BAAI/bge-base-en-v1.5")
+    pg_db.commit()
+    assert cleared == 1
+    assert_embedding_model(pg_db, "BAAI/bge-base-en-v1.5")

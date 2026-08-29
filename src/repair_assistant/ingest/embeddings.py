@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Sequence
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from repair_assistant.ingest.store import Database
 
 # Default: MIT-licensed, strong English retrieval, runs fully offline after download.
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
@@ -83,3 +86,60 @@ def reset_shared_embedder() -> None:
     with _shared_lock:
         _shared_embedder = None
         _shared_model = None
+
+
+class EmbeddingModelMismatch(RuntimeError):
+    """Stored vectors were written by a different EMBEDDING_MODEL (review R16)."""
+
+
+def stored_embedding_models(db: Database) -> list[str]:
+    rows = db.fetchall(
+        """
+        SELECT DISTINCT embedding_model
+        FROM chunks
+        WHERE embedding IS NOT NULL AND embedding_model IS NOT NULL
+        """
+    )
+    return sorted({str(r[0]) for r in rows if r[0]})
+
+
+def assert_embedding_model(db: Database, configured: str | None = None) -> None:
+    """Fail if the index mixes models or disagrees with EMBEDDING_MODEL."""
+    from repair_assistant.ingest.env import embedding_model
+
+    configured = (configured or embedding_model()).strip()
+    if not configured or configured == "none":
+        return
+    stored = stored_embedding_models(db)
+    if not stored:
+        return
+    if stored == [configured]:
+        return
+    raise EmbeddingModelMismatch(
+        f"chunks were embedded with {stored}, but EMBEDDING_MODEL={configured!r}. "
+        "Re-ingest with: python -m repair_assistant.corpus.cli ingest --all --force"
+    )
+
+
+def clear_embeddings_for_other_models(db: Database, configured: str) -> int:
+    """NULL out vectors written by a different model. Used by ingest --force."""
+    row = db.fetchone(
+        """
+        SELECT count(*) FROM chunks
+        WHERE embedding IS NOT NULL
+          AND embedding_model IS DISTINCT FROM %s
+        """,
+        (configured,),
+    )
+    n = int(row[0]) if row else 0
+    if n:
+        db.execute(
+            """
+            UPDATE chunks
+            SET embedding = NULL, embedding_model = NULL
+            WHERE embedding IS NOT NULL
+              AND embedding_model IS DISTINCT FROM %s
+            """,
+            (configured,),
+        )
+    return n

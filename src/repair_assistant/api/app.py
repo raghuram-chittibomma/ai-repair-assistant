@@ -38,10 +38,6 @@ from repair_assistant.api.sessions import (
     DEFAULT_SESSION_TTL_SECONDS,
     SessionStore,
 )
-from repair_assistant.diagnostic.session import (
-    DEFAULT_SESSION_MAX_TURNS,
-    SessionTurnLimitError,
-)
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.support import (
@@ -49,7 +45,16 @@ from repair_assistant.corpus.support import (
     corpus_supports_appliance,
     unsupported_appliance_message,
 )
-from repair_assistant.ingest.embeddings import get_shared_embedder, shared_embedder_loaded
+from repair_assistant.diagnostic.session import (
+    DEFAULT_SESSION_MAX_TURNS,
+    SessionTurnLimitError,
+)
+from repair_assistant.ingest.embeddings import (
+    EmbeddingModelMismatch,
+    assert_embedding_model,
+    get_shared_embedder,
+    shared_embedder_loaded,
+)
 from repair_assistant.ingest.env import database_url, load_dotenv_files
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.generate import LLMError, LLMTimeoutError, ask, ask_stream
@@ -181,6 +186,14 @@ def create_app(
                 "set REPAIR_API_KEY or bind 127.0.0.1 (review R5 / ADR-0025)",
                 host,
             )
+        if pool is not None:
+            try:
+                with pool.connection() as db:
+                    assert_embedding_model(db)
+            except EmbeddingModelMismatch:
+                raise
+            except Exception as exc:  # noqa: BLE001 — no DB yet is not a model bug
+                _log.warning("embedding_model_guard skipped detail=%s", exc)
         if do_warmup:
             try:
                 get_shared_embedder()

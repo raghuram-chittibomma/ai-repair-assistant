@@ -95,6 +95,7 @@ Optional live traces (not required for benches): [LANGFUSE.md](LANGFUSE.md).
 
 | Symptom | Fix |
 | --- | --- |
+| `chunks were embedded with …` | `EMBEDDING_MODEL` does not match stored vectors. Re-ingest with `repair-corpus ingest --all --force` (review R16) |
 | `DATABASE_URL` / connection errors | Check `.env.local`; confirm port 5436 open on LAN host |
 | API `503` on `/ready` | Postgres not running on the LAN host |
 | First ask/search after process start slow | BGE cold load (~30–60s once per process; later asks reuse the singleton) |
