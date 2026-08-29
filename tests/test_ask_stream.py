@@ -66,7 +66,12 @@ def test_ask_stream_emits_status_tokens_done():
     types = [e["type"] for e in events]
     assert types[0] == "status"
     assert events[0]["phase"] == "retrieving"
-    assert types.count("token") == 3
+    # Deltas are released through the safety stream gate (R1), so token events no
+    # longer map one-to-one onto model deltas. What must hold is that the text
+    # delivered is exactly the text generated.
+    assert types.count("token") >= 1
+    streamed = "".join(e["text"] for e in events if e["type"] == "token")
+    assert streamed == "Door lock failure [1]."
     assert types[-1] == "done"
     assert events[-1]["answer"] == "Door lock failure [1]."
     assert events[-1]["abstained"] is False

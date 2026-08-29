@@ -40,6 +40,7 @@ from repair_assistant.safety.policy import (
     assess_request,
     block_message,
 )
+from repair_assistant.safety.stream_gate import StreamGate, may_stream
 
 
 def _latest_ai(messages: list) -> str:
@@ -468,16 +469,18 @@ def diagnose_turn_stream(
     )
 
     # Buffer ack follow-ups so a mistaken ABSTAIN is not flashed to the UI.
-    parts_buf: list[str] = []
-    if ack_followup:
-        for delta in client.stream(system, user_prompt):
-            parts_buf.append(delta)
-        raw = "".join(parts_buf).strip()
-    else:
-        for delta in client.stream(system, user_prompt):
-            parts_buf.append(delta)
-            yield {"type": "token", "text": delta}
-        raw = "".join(parts_buf).strip()
+    # R1: otherwise stream through the incremental gate, so no token reaches the
+    # client that the post-LLM gate has not already cleared.
+    stream_tokens = not ack_followup and may_stream(assessment)
+    stream_gate = StreamGate(assessment)
+    for delta in client.stream(system, user_prompt):
+        safe = stream_gate.push(delta)
+        if safe and stream_tokens:
+            yield {"type": "token", "text": safe}
+    tail = stream_gate.finish()
+    if tail and stream_tokens:
+        yield {"type": "token", "text": tail}
+    raw = stream_gate.accumulated.strip()
 
     if raw.upper().startswith("ABSTAIN:") and ack_followup and state.get("evidence_text"):
         retry_system = (
@@ -486,14 +489,13 @@ def diagnose_turn_stream(
             "Do NOT abstain. Acknowledge briefly and give the next "
             "checklist category with [n] citations."
         )
-        parts_buf = []
+        parts_buf: list[str] = []
         for delta in client.stream(retry_system, user_prompt):
             parts_buf.append(delta)
         raw = "".join(parts_buf).strip()
 
-    if ack_followup and raw and not raw.upper().startswith("ABSTAIN:"):
-        yield {"type": "token", "text": raw}
-
+    # Buffered turns emit no token events: the draft is ungated, and the terminal
+    # payload below carries the gated text the client actually renders.
     if raw.upper().startswith("ABSTAIN:"):
         reason = raw.split(":", 1)[-1].strip()
         state = _apply_delta(
@@ -504,8 +506,6 @@ def diagnose_turn_stream(
                 "abstain_reason": reason,
             },
         )
-        if ack_followup:
-            yield {"type": "token", "text": raw}
         yield _done_payload(state, raw)
         return
 

@@ -64,6 +64,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | ADR | Decision | Driver |
 | --- | --- | --- |
 | [0014](0014-safety-policy.md) | Deterministic allow/warn/escalate/block; `--audience`; bench-safety fixtures | Charter Phase 8 |
+| [0026](0026-streaming-safety-gate.md) | Incremental gate on the streaming path; refuse to stream when the outcome is decided; one shared hazard detector | Review R1 — streamed tokens bypassed the post-LLM gate |
 
 ## Phase 8 — Evaluation and observability
 

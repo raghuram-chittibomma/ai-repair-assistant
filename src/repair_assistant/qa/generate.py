@@ -41,6 +41,7 @@ from repair_assistant.safety.policy import (
     assess_request,
     block_message,
 )
+from repair_assistant.safety.stream_gate import StreamGate, may_stream
 
 
 class LLMTimeoutError(TimeoutError):
@@ -636,12 +637,19 @@ def ask_stream(
             "retrieval_count": len(result.hits),
         }
 
-        parts: list[str] = []
+        # R1: never emit a token the post-LLM gate has not cleared. When the
+        # assessment already decides the outcome, withhold tokens entirely.
+        stream_tokens = may_stream(assessment)
+        stream_gate = StreamGate(assessment)
         for delta in client.stream(system, user_prompt):
-            parts.append(delta)
-            yield {"type": "token", "text": delta}
+            safe = stream_gate.push(delta)
+            if safe and stream_tokens:
+                yield {"type": "token", "text": safe}
+        tail = stream_gate.finish()
+        if tail and stream_tokens:
+            yield {"type": "token", "text": tail}
 
-        raw = "".join(parts).strip()
+        raw = stream_gate.accumulated.strip()
         if raw.upper().startswith("ABSTAIN:"):
             yield {
                 "type": "done",

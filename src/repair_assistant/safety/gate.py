@@ -9,14 +9,12 @@ from repair_assistant.safety.models import (
     SafetyGateResult,
 )
 from repair_assistant.safety.policy import (
-    _FORBIDDEN_OUTPUT,
-    _OWNER_TECH_PROCEDURE_OUTPUT,
     _UNGROUNDED_ABSTAIN,
-    _UNSAFE_PROCEDURE,
     _VOLTAGE_WARNING,
     block_message,
     escalate_message,
     needs_grounding_citation,
+    output_hazard,
 )
 
 _OWNER_NOTICE = (
@@ -49,7 +47,8 @@ def gate_answer(
         )
 
     text = answer.strip()
-    if _FORBIDDEN_OUTPUT.search(text):
+    hazard = output_hazard(assessment, text)
+    if hazard == "output-bypass":
         return SafetyGateResult(
             text=block_message(
                 SafetyAssessment(
@@ -67,7 +66,7 @@ def gate_answer(
         )
 
     # G1: owners must not receive TEST # / live-voltage walkthroughs.
-    if assessment.audience == Audience.OWNER and _OWNER_TECH_PROCEDURE_OUTPUT.search(text):
+    if hazard == "owner-tech-procedure":
         esc = SafetyAssessment(
             action=SafetyAction.ESCALATE,
             rule_id="owner-tech-procedure",
@@ -83,15 +82,15 @@ def gate_answer(
             blocked=False,
         )
 
-    if assessment.audience == Audience.OWNER and assessment.action == SafetyAction.ESCALATE:
-        if _UNSAFE_PROCEDURE.search(text):
-            return SafetyGateResult(
-                text=escalate_message(assessment),
-                action=SafetyAction.ESCALATE,
-                rule_id=assessment.rule_id,
-                notice=assessment.reason,
-                escalated=True,
-            )
+    if hazard is not None:
+        # Owner + escalate + unsafe procedure; `hazard` is the assessment rule id.
+        return SafetyGateResult(
+            text=escalate_message(assessment),
+            action=SafetyAction.ESCALATE,
+            rule_id=assessment.rule_id,
+            notice=assessment.reason,
+            escalated=True,
+        )
 
     # G3: procedural checklist / service steps without [n] citations.
     if needs_grounding_citation(text):

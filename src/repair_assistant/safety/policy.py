@@ -321,6 +321,37 @@ def escalate_message(assessment: SafetyAssessment) -> str:
     return _ESCALATION_TEMPLATE.format(reason=assessment.reason)
 
 
+#: Longest span any hazard pattern below can match, from its bounded `.{0,N}`
+#: gaps plus the surrounding literals. The streaming gate uses this to size its
+#: hold-back window (see `safety/stream_gate.py`).
+MAX_HAZARD_MATCH_CHARS = 320
+
+
+def output_hazard(assessment: SafetyAssessment, answer: str) -> str | None:
+    """Rule id of the first output hazard in `answer`, or None.
+
+    The single definition of "this generated text is hazardous", shared by the
+    post-LLM gate (`safety.gate.gate_answer`) and the incremental streaming gate.
+    Keeping one copy is deliberate: two of these would drift, and the drift would
+    be silent in exactly the direction that matters.
+
+    Only output-dependent *hazard* branches belong here. The grounding check (G3)
+    is deliberately excluded — it is not monotone in the answer text, because a
+    procedure that lacks a citation now may gain one before the answer ends.
+    """
+    text = (answer or "").strip()
+    if not text:
+        return None
+    if _FORBIDDEN_OUTPUT.search(text):
+        return "output-bypass"
+    if assessment.audience == Audience.OWNER:
+        if _OWNER_TECH_PROCEDURE_OUTPUT.search(text):
+            return "owner-tech-procedure"
+        if assessment.action == SafetyAction.ESCALATE and _UNSAFE_PROCEDURE.search(text):
+            return assessment.rule_id
+    return None
+
+
 def needs_grounding_citation(answer: str) -> bool:
     """True when the answer looks procedural but has no [n] citation (G3)."""
     text = (answer or "").strip()
