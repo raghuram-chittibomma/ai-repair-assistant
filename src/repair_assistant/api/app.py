@@ -112,8 +112,39 @@ def _citation_out(cite) -> CitationOut:
     )
 
 
+_manifest_cache = None
+_manifest_stamp: tuple | None = None
+
+
+def _manifest_dir() -> Path:
+    return manifest_mod.repo_root() / "corpus" / "manifest"
+
+
+def _read_manifest_stamp() -> tuple:
+    """Fingerprint of every YAML file so edits invalidate the cache (review R40)."""
+    root = _manifest_dir()
+    if not root.is_dir():
+        return ()
+    return tuple(
+        (path.name, path.stat().st_mtime_ns, path.stat().st_size)
+        for path in sorted(root.glob("*.yaml"))
+    )
+
+
+def invalidate_manifest_cache() -> None:
+    global _manifest_cache, _manifest_stamp
+    _manifest_cache = None
+    _manifest_stamp = None
+
+
 def _manifest():
-    return manifest_mod.load()
+    """Load the corpus manifest, re-reading when files change or after reload."""
+    global _manifest_cache, _manifest_stamp
+    stamp = _read_manifest_stamp()
+    if _manifest_cache is None or stamp != _manifest_stamp:
+        _manifest_cache = manifest_mod.load()
+        _manifest_stamp = stamp
+    return _manifest_cache
 
 
 def _env_int(name: str, default: int) -> int:
@@ -535,6 +566,13 @@ def create_app(
                 "X-Accel-Buffering": "no",
             },
         )
+
+    @app.post("/v1/reload-manifest", dependencies=[Depends(require_api_key)])
+    def reload_manifest() -> dict[str, Any]:
+        """Drop the in-process manifest cache and reload from disk (review R40)."""
+        invalidate_manifest_cache()
+        loaded = _manifest()
+        return {"reloaded": True, "documents": len(loaded.documents)}
 
     @app.delete("/v1/diagnose/{session_id}", dependencies=[Depends(require_api_key)])
     def diagnose_delete(session_id: str) -> dict[str, bool]:

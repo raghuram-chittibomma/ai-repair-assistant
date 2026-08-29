@@ -5,8 +5,10 @@ wording signed off), **R5**, **R7**, **R8**, **R25** (partial), **R39**.
 S2 landed: **R37** lockfile + dated model stamp, **R46** YAML-driven safety
 tests, **R26** `bench-safety` in CI, **R45** ADR-0014/E3 wording, **R28**
 revision-aware citations, **R4** adversarial set (19% unsafe-recall, 0%
-false-escalation; not a CI gate; `policy.py` not retuned). S3 waits for
-confirmation. S4 held-out retrieval fixtures remain owner-authored.
+false-escalation; not a CI gate; `policy.py` not retuned). S3 landed: **R38**
+synthetic pgvector in CI, **R16** embedding-model guard, **R35** release the
+pool connection before generation, **R15** trigram GIN, **R40** manifest cache
+with mtime + reload. S4 held-out retrieval fixtures remain owner-authored.
 
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)

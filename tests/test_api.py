@@ -374,6 +374,43 @@ def test_diagnose_stream_unknown_session_returns_410(
     mock_session_cls.assert_not_called()
 
 
+def test_manifest_cache_reuses_until_invalidated() -> None:
+    import importlib
+
+    app_mod = importlib.import_module("repair_assistant.api.app")
+    app_mod.invalidate_manifest_cache()
+    with patch.object(app_mod.manifest_mod, "load", wraps=app_mod.manifest_mod.load) as load:
+        first = app_mod._manifest()
+        second = app_mod._manifest()
+        assert first is second
+        assert load.call_count == 1
+        app_mod.invalidate_manifest_cache()
+        third = app_mod._manifest()
+        assert load.call_count == 2
+        assert third is not first
+
+
+def test_manifest_cache_reloads_when_stamp_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib
+
+    app_mod = importlib.import_module("repair_assistant.api.app")
+    stamps = iter([(("a",),), (("b",),)])
+    monkeypatch.setattr(app_mod, "_read_manifest_stamp", lambda: next(stamps))
+    app_mod.invalidate_manifest_cache()
+    with patch.object(app_mod.manifest_mod, "load", wraps=app_mod.manifest_mod.load) as load:
+        app_mod._manifest()
+        app_mod._manifest()
+        assert load.call_count == 2
+
+
+def test_reload_manifest_endpoint(client: TestClient) -> None:
+    response = client.post("/v1/reload-manifest")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reloaded"] is True
+    assert body["documents"] >= 1
+
+
 def test_ui_page(client: TestClient) -> None:
     response = client.get("/ui", follow_redirects=False)
     assert response.status_code == 200
