@@ -55,6 +55,35 @@ def test_ir_recall_precision_hit_at_k() -> None:
     assert miss.precision_at_k == 0.0
 
 
+def test_grade_must_cite_is_revision_aware() -> None:
+    fixture = {"must_cite": ["W11169652 Rev B"]}
+    ok, _, cited = grade_hits(
+        fixture,
+        [
+            {
+                "doc_id": "service-manual-w11169652-revb",
+                "publication_number": "W11169652",
+                "revision": "B",
+            }
+        ],
+    )
+    assert ok
+    assert "W11169652 Rev B" in cited
+
+    other, detail, _ = grade_hits(
+        fixture,
+        [
+            {
+                "doc_id": "service-manual-w11169652",
+                "publication_number": "W11169652",
+                "revision": "A",
+            }
+        ],
+    )
+    assert not other
+    assert "must_cite" in detail
+
+
 def test_ir_must_cite_any_counts_as_one_target() -> None:
     fixture = {"must_cite_any": ["W11320651", "W11156989"]}
     hits = [

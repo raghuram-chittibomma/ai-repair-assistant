@@ -93,16 +93,62 @@ _SUPERSESSION_ACK = re.compile(
     re.I,
 )
 
+_PUB_NUM = re.compile(r"\b(W\d{8}|SYNTH-[A-Z0-9-]+)\b", re.I)
+_PUB_GLUED_REV = re.compile(r"\b(W\d{8})([A-Z])\b")
+_REV_LETTER = re.compile(r"\bRev\.?\s*([A-Z])\b", re.I)
+_DOC_REV = re.compile(r"-rev([a-z])\b", re.I)
+
+
+def parse_citation_ref(text: str) -> tuple[str | None, str | None]:
+    """Return (publication_number, revision_letter) from a citation key or needle."""
+    raw = (text or "").strip()
+    if not raw:
+        return None, None
+    rev: str | None = None
+    rev_m = _REV_LETTER.search(raw)
+    if rev_m:
+        rev = rev_m.group(1).upper()
+    else:
+        doc_rev = _DOC_REV.search(raw)
+        if doc_rev:
+            rev = doc_rev.group(1).upper()
+        else:
+            glued = _PUB_GLUED_REV.search(raw)
+            if glued:
+                return glued.group(1).upper(), glued.group(2).upper()
+    pub_m = _PUB_NUM.search(raw)
+    pub = pub_m.group(1).upper() if pub_m else None
+    return pub, rev
+
 
 def matches_citation(keys: list[str], needle: str) -> bool:
+    """Match a required citation without treating every revision as interchangeable.
+
+    A needle that names a revision (`W11169652 Rev B`, `W11169652B`,
+    `service-manual-w11169652-revb`) matches only that revision. A bare
+    publication number still matches any revision of that publication.
+    """
+    want_pub, want_rev = parse_citation_ref(needle)
     needle_l = needle.lower()
-    return any(
-        needle == k
-        or k.startswith(needle)
-        or needle in k
-        or needle_l in k.lower()
-        for k in keys
-    )
+    for key in keys:
+        have_pub, have_rev = parse_citation_ref(key)
+        if want_pub and have_pub:
+            if want_pub != have_pub:
+                continue
+            if want_rev is None or have_rev == want_rev:
+                return True
+            continue
+        if want_pub and want_pub.lower() in key.lower():
+            if want_rev is None:
+                return True
+            if have_rev == want_rev:
+                return True
+            continue
+        if not want_pub:
+            key_l = key.lower()
+            if needle == key or key_l.startswith(needle_l) or needle_l == key_l:
+                return True
+    return False
 
 
 def grade_answer(

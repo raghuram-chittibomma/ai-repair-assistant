@@ -30,7 +30,7 @@ scenarios:
     fails_if_contains: [drain filter]
 
   known-gap-revised-manual:
-    must_cite: [W11169652]
+    must_cite: ["W11169652 Rev B"]
 
   out-of-corpus-model:
     expect_contains_any:

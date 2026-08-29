@@ -57,6 +57,7 @@ def _cite_keys(citations: list[Citation]) -> list[str]:
     for cite in citations:
         keys.append(cite.doc_id)
         if cite.label:
+            keys.append(cite.label)
             pub = cite.label.split()[0]
             if pub:
                 keys.append(pub)

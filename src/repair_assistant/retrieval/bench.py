@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from repair_assistant.corpus import manifest as manifest_mod
+from repair_assistant.eval.grading import matches_citation
 from repair_assistant.eval.repro import scorecard_repro_lines
 from repair_assistant.ingest.env import database_url
 from repair_assistant.ingest.store import Database
@@ -61,11 +62,14 @@ def _cite_keys(hit: dict) -> set[str]:
     pub = hit.get("publication_number")
     if pub:
         keys.add(str(pub))
+    rev = hit.get("revision")
+    if pub and rev:
+        keys.add(f"{pub} Rev {str(rev).strip().upper()}")
     return keys
 
 
 def _matches_label(cited: list[str] | set[str], label: str) -> bool:
-    return any(label == c or c.startswith(label) or label in c for c in cited)
+    return matches_citation(list(cited), label)
 
 
 def relevant_labels(fixture: dict) -> set[str]:
@@ -162,17 +166,15 @@ def grade_hits(fixture: dict, hits: list[dict]) -> tuple[bool, str, list[str]]:
                 cited.append(key)
 
     for forbidden in fixture.get("must_not_cite") or []:
-        if any(forbidden == c or c.startswith(forbidden) for c in cited):
+        if matches_citation(cited, str(forbidden)):
             return False, f"must_not_cite hit {forbidden!r} in {cited}", cited
 
     for required in fixture.get("must_cite") or []:
-        if not any(required == c or c.startswith(required) or required in c for c in cited):
+        if not matches_citation(cited, str(required)):
             return False, f"must_cite missing {required!r}; got {cited}", cited
 
     any_of = fixture.get("must_cite_any") or []
-    if any_of and not any(
-        any(req == c or c.startswith(req) or req in c for c in cited) for req in any_of
-    ):
+    if any_of and not any(matches_citation(cited, str(req)) for req in any_of):
         return False, f"must_cite_any missing one of {any_of}; got {cited}", cited
 
     return True, "ok", cited
