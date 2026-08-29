@@ -30,46 +30,46 @@ def load_fixtures(path: Path | None = None) -> dict[str, Any]:
         return yaml.safe_load(handle)
 
 
+def evaluate_fixture(fixture: dict[str, Any]) -> SafetyBenchResult:
+    """Grade one YAML fixture — shared by the bench and the unit suite (R46)."""
+    audience = Audience(fixture.get("audience") or "owner")
+    assessment = assess_request(fixture["question"], audience=audience)
+    expected = SafetyAction(fixture["expect_action"])
+    passed = assessment.action == expected
+    detail = f"got {assessment.action.value} ({assessment.rule_id})"
+    if not passed:
+        detail = f"expected {expected.value}; {detail}"
+
+    if passed and fixture.get("sample_answer"):
+        gated = gate_answer(
+            assessment,
+            fixture["sample_answer"],
+            evidence_text=fixture.get("sample_evidence") or "",
+        )
+        gate_expected = SafetyAction(fixture["sample_gate_action"])
+        if gated.action != gate_expected:
+            passed = False
+            detail = f"gate expected {gate_expected.value}, got {gated.action.value}"
+        for forbidden in fixture.get("sample_must_not_contain") or []:
+            if forbidden.lower() in gated.text.lower():
+                passed = False
+                detail = f"gate output still contains {forbidden!r}"
+        must_any = fixture.get("sample_must_contain_any") or []
+        if must_any and not any(m.lower() in gated.text.lower() for m in must_any):
+            passed = False
+            detail = f"gate output missing any of {must_any!r}"
+
+    return SafetyBenchResult(
+        fixture_id=str(fixture["id"]),
+        passed=passed,
+        hard=bool(fixture.get("hard")),
+        detail=detail,
+    )
+
+
 def run_bench(*, fixtures_path: Path | None = None) -> list[SafetyBenchResult]:
     data = load_fixtures(fixtures_path)
-    results: list[SafetyBenchResult] = []
-    for fixture in data["fixtures"]:
-        audience = Audience(fixture.get("audience") or "owner")
-        assessment = assess_request(fixture["question"], audience=audience)
-        expected = SafetyAction(fixture["expect_action"])
-        passed = assessment.action == expected
-        detail = f"got {assessment.action.value} ({assessment.rule_id})"
-        if not passed:
-            detail = f"expected {expected.value}; {detail}"
-
-        if passed and fixture.get("sample_answer"):
-            gated = gate_answer(
-                assessment,
-                fixture["sample_answer"],
-                evidence_text=fixture.get("sample_evidence") or "",
-            )
-            gate_expected = SafetyAction(fixture["sample_gate_action"])
-            if gated.action != gate_expected:
-                passed = False
-                detail = f"gate expected {gate_expected.value}, got {gated.action.value}"
-            for forbidden in fixture.get("sample_must_not_contain") or []:
-                if forbidden.lower() in gated.text.lower():
-                    passed = False
-                    detail = f"gate output still contains {forbidden!r}"
-            must_any = fixture.get("sample_must_contain_any") or []
-            if must_any and not any(m.lower() in gated.text.lower() for m in must_any):
-                passed = False
-                detail = f"gate output missing any of {must_any!r}"
-
-        results.append(
-            SafetyBenchResult(
-                fixture_id=fixture["id"],
-                passed=passed,
-                hard=bool(fixture.get("hard")),
-                detail=detail,
-            )
-        )
-    return results
+    return [evaluate_fixture(fixture) for fixture in data["fixtures"]]
 
 
 def scorecard_markdown(results: list[SafetyBenchResult]) -> str:
