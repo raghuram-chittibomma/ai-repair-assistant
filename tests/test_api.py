@@ -116,6 +116,34 @@ def test_ask_route(mock_prep: MagicMock, mock_complete: MagicMock, client: TestC
     assert body["citations"][0]["doc_id"] == "tech-sheet-w11320651"
 
 
+@patch("repair_assistant.api.app.complete_ask")
+@patch("repair_assistant.api.app.prepare_ask")
+def test_ask_logs_unverified_technician_claim(
+    mock_prep: MagicMock, mock_complete: MagicMock, client: TestClient, caplog
+) -> None:
+    import logging
+
+    mock_complete.return_value = AnswerResult(
+        question="TEST #1",
+        answer="See the tech sheet [1].",
+        abstained=False,
+        retrieval_count=1,
+    )
+    caplog.set_level(logging.INFO, logger="repair_assistant.safety")
+    response = client.post(
+        "/v1/ask",
+        json={
+            "question": "TEST #1",
+            "audience": "technician",
+            "technician_attested": True,
+        },
+    )
+    assert response.status_code == 200
+    assert "audience_claim" in caplog.text
+    assert "verified=false" in caplog.text
+    assert "attested=True" in caplog.text
+
+
 def test_ask_releases_db_before_generation(mock_db: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
     """Review R35: the pool connection must not be held across complete_ask."""
     held = {"n": 0}

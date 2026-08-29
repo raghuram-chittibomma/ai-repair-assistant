@@ -816,12 +816,16 @@ def ask_cmd(
     from repair_assistant.ingest.env import database_url
     from repair_assistant.ingest.store import Database
     from repair_assistant.qa.generate import ask
+    from repair_assistant.safety.audience_claim import TECHNICIAN_ATTESTATION_NOTICE
     from repair_assistant.safety.models import Audience
 
     try:
         url = database_url()
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
+
+    if audience == "technician":
+        click.secho(TECHNICIAN_ATTESTATION_NOTICE, fg="yellow")
 
     appliance = Appliance(model=model, serial=serial) if model else None
     corpus = _load()
@@ -907,12 +911,16 @@ def diagnose_cmd(
     from repair_assistant.diagnostic.session import DiagnosticSession
     from repair_assistant.ingest.env import database_url
     from repair_assistant.ingest.store import Database
+    from repair_assistant.safety.audience_claim import TECHNICIAN_ATTESTATION_NOTICE
     from repair_assistant.safety.models import Audience
 
     try:
         url = database_url()
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
+
+    if audience == "technician":
+        click.secho(TECHNICIAN_ATTESTATION_NOTICE, fg="yellow")
 
     appliance = Appliance(model=model, serial=serial)
     corpus = _load()

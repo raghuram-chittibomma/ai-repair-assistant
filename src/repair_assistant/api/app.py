@@ -66,6 +66,7 @@ from repair_assistant.qa.generate import (
     prepare_ask,
 )
 from repair_assistant.retrieval.search import search
+from repair_assistant.safety.audience_claim import record_audience_claim
 from repair_assistant.safety.models import Audience
 
 _log = logging.getLogger("repair_assistant.api")
@@ -419,6 +420,11 @@ def create_app(
     @app.post("/v1/ask", response_model=AskResponse, dependencies=[Depends(require_api_key)])
     def ask_route(body: AskRequest) -> AskResponse:
         appliance = Appliance(model=body.model, serial=body.serial) if body.model else None
+        record_audience_claim(
+            body.audience,
+            attested=body.technician_attested,
+            source="api_ask",
+        )
         try:
             with _db_factory()() as db:
                 prep = prepare_ask(
@@ -467,6 +473,7 @@ def create_app(
                 audience=Audience(body.audience),
                 retrieval_limit=body.limit,
                 overfetch=body.overfetch,
+                technician_attested=body.technician_attested,
             )
 
         return StreamingResponse(
@@ -489,6 +496,7 @@ def create_app(
                 audience=Audience(body.audience),
                 retrieval_limit=body.limit,
                 overfetch=body.overfetch,
+                technician_attested=body.technician_attested,
             )
         except KeyError:
             raise HTTPException(
@@ -540,6 +548,7 @@ def create_app(
                 audience=Audience(body.audience),
                 retrieval_limit=body.limit,
                 overfetch=body.overfetch,
+                technician_attested=body.technician_attested,
             )
         except KeyError:
             raise HTTPException(

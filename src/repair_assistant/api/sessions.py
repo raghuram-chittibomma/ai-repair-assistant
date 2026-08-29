@@ -50,6 +50,7 @@ class SessionStore:
         audience: Audience,
         retrieval_limit: int,
         overfetch: int,
+        technician_attested: bool = False,
     ) -> tuple[str, DiagnosticSession]:
         now = time.monotonic()
         with self._lock:
@@ -72,6 +73,7 @@ class SessionStore:
                 overfetch=overfetch,
                 session_id=sid,
                 max_turns=self._max_turns,
+                technician_attested=technician_attested,
             )
             self._sessions[sid] = _Entry(session=session, last_access=now)
             return sid, session

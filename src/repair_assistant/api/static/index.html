@@ -203,6 +203,8 @@
     .ack-card input[type="checkbox"] { width: auto; margin-top: 0.2rem; }
     .ack-card button { margin-top: 0.9rem; }
     .ack-card button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .ack-card .ack-actions { display: flex; gap: 0.5rem; margin-top: 0.9rem; }
+    .ack-card .ack-actions button { margin-top: 0; }
     .safety-banner.visible { display: block; }
     .safety-banner.block {
       border-color: var(--danger);
@@ -259,6 +261,24 @@
         <span>I understand this is not professional service advice and I will consult the cited manuals.</span>
       </label>
       <button type="button" id="ackBtn" disabled>Continue</button>
+    </div>
+  </div>
+  <div id="techOverlay" class="ack-overlay" role="dialog" aria-modal="true" aria-labelledby="techTitle">
+    <div class="ack-card">
+      <h2 id="techTitle">Technician audience is self-asserted</h2>
+      <p>
+        This product cannot verify that you are a qualified service technician.
+        Technician mode may show live-voltage TEST procedures from the service
+        literature. The claim is logged and is never treated as verified.
+      </p>
+      <label>
+        <input type="checkbox" id="techCheck" />
+        <span>I attest that I am a trained service technician and accept the risk of using technician-depth procedures.</span>
+      </label>
+      <div class="ack-actions">
+        <button type="button" id="techCancel" class="secondary">Cancel</button>
+        <button type="button" id="techBtn" disabled>Continue as technician</button>
+      </div>
     </div>
   </div>
   <main>
@@ -347,6 +367,47 @@
       });
     }
     maybeShowDisclaimerAck();
+
+    const techOverlay = document.getElementById("techOverlay");
+    const techCheck = document.getElementById("techCheck");
+    const techBtn = document.getElementById("techBtn");
+    const techCancel = document.getElementById("techCancel");
+    let technicianAttested = false;
+
+    function hideTechOverlay() {
+      techOverlay.classList.remove("visible");
+      techCheck.checked = false;
+      techBtn.disabled = true;
+    }
+
+    function showTechOverlay() {
+      techCheck.checked = false;
+      techBtn.disabled = true;
+      techOverlay.classList.add("visible");
+    }
+
+    audienceEl.addEventListener("change", () => {
+      if (audienceEl.value !== "technician") {
+        technicianAttested = false;
+        hideTechOverlay();
+        return;
+      }
+      technicianAttested = false;
+      showTechOverlay();
+    });
+    techCheck.addEventListener("change", () => {
+      techBtn.disabled = !techCheck.checked;
+    });
+    techBtn.addEventListener("click", () => {
+      if (!techCheck.checked) return;
+      technicianAttested = true;
+      hideTechOverlay();
+    });
+    techCancel.addEventListener("click", () => {
+      audienceEl.value = "owner";
+      technicianAttested = false;
+      hideTechOverlay();
+    });
 
     let sessionId = null;
     let turn = 0;
@@ -721,7 +782,12 @@
     }
 
     async function runAskStream(text, model, serial, audience) {
-      const body = { question: text, model, audience };
+      const body = {
+        question: text,
+        model,
+        audience,
+        technician_attested: audience === "technician" && technicianAttested,
+      };
       if (serial) body.serial = serial;
       showPending(embedderWarm ? "Retrieving…" : "Retrieving (embeddings may still be warming)…");
       let streamEl = null;
@@ -745,7 +811,12 @@
     }
 
     async function runDiagnoseStream(text, model, serial, audience) {
-      const body = { message: text, model, audience };
+      const body = {
+        message: text,
+        model,
+        audience,
+        technician_attested: audience === "technician" && technicianAttested,
+      };
       if (serial) body.serial = serial;
       if (sessionId) body.session_id = sessionId;
       showPending(embedderWarm ? "Retrieving…" : "Retrieving (embeddings may still be warming)…");

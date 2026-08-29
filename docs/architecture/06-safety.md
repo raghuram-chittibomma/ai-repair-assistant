@@ -60,6 +60,8 @@ flowchart LR
 | Owner | Escalate live voltage / panel / board work; block bypass / defeat-safety; prefer owner literature when present |
 | Technician | Warn on live procedures; still **block** interlock bypass; broader TEST # access |
 
+Audience is **self-asserted**. Choosing Technician logs the claim (`audience_verified=false`) and the UI shows an attestation interstitial. Credentials are never checked — verification is a permanent non-goal ([ADR-0025](../adr/0025-deferred-scope-multi-user-outcome-curation.md), review R2).
+
 Rules are regex lists in `safety/policy.py` — maintainable fixtures, not an LLM judge. Graded by `repair-corpus bench-safety` without OpenAI or Postgres.
 
 ## Post-LLM gate (owner hard stops)

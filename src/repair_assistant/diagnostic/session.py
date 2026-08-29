@@ -27,6 +27,7 @@ from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import observation, update_span
 from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.qa.generate import LLMClient, OpenAIClient
+from repair_assistant.safety.audience_claim import record_audience_claim
 from repair_assistant.safety.models import Audience, SafetyAction
 
 DEFAULT_SESSION_MAX_TURNS = 24
@@ -53,6 +54,7 @@ class DiagnosticSession:
         overfetch: int = 40,
         session_id: str | None = None,
         max_turns: int = DEFAULT_SESSION_MAX_TURNS,
+        technician_attested: bool = False,
     ) -> None:
         self._manifest = manifest
         self._session_id = session_id
@@ -60,6 +62,7 @@ class DiagnosticSession:
         self._retrieval_limit = retrieval_limit
         self._overfetch = overfetch
         self._max_turns = max(1, int(max_turns))
+        self._technician_attested = technician_attested
         self._state: DiagnosticGraphState = {
             "messages": [],
             "appliance_model": appliance.model if appliance else None,
@@ -119,7 +122,11 @@ class DiagnosticSession:
         meta = {
             "turn": self._turn,
             "appliance_model": self._state.get("appliance_model"),
-            "audience": self._state.get("audience"),
+            **record_audience_claim(
+                str(self._state.get("audience") or Audience.OWNER.value),
+                attested=self._technician_attested,
+                source="diagnose",
+            ),
         }
         started = time.perf_counter()
         with observation(
@@ -223,7 +230,11 @@ class DiagnosticSession:
         meta = {
             "turn": self._turn,
             "appliance_model": self._state.get("appliance_model"),
-            "audience": self._state.get("audience"),
+            **record_audience_claim(
+                str(self._state.get("audience") or Audience.OWNER.value),
+                attested=self._technician_attested,
+                source="diagnose_stream",
+            ),
         }
         started = time.perf_counter()
         with observation(

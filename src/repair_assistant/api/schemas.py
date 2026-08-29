@@ -52,6 +52,7 @@ class AskRequest(BaseModel):
     model: str | None = Field(default=None, max_length=MAX_MODEL_CHARS)
     serial: str | None = Field(default=None, max_length=MAX_SERIAL_CHARS)
     audience: Literal["owner", "technician"] = "owner"
+    technician_attested: bool = False
     limit: int = Field(default=8, ge=1, le=20)
     overfetch: int = Field(default=40, ge=1, le=200)
 
@@ -74,6 +75,7 @@ class DiagnoseRequest(BaseModel):
     model: str = Field(max_length=MAX_MODEL_CHARS)
     serial: str | None = Field(default=None, max_length=MAX_SERIAL_CHARS)
     audience: Literal["owner", "technician"] = "owner"
+    technician_attested: bool = False
     session_id: str | None = None
     limit: int = Field(default=8, ge=1, le=20)
     overfetch: int = Field(default=40, ge=1, le=200)

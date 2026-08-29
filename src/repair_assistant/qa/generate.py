@@ -46,6 +46,7 @@ from repair_assistant.qa.env import (
 )
 from repair_assistant.qa.parts import related_parts_note
 from repair_assistant.retrieval.search import search
+from repair_assistant.safety.audience_claim import record_audience_claim
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
 from repair_assistant.safety.policy import (
@@ -449,6 +450,7 @@ def ask(
     retrieval_limit: int = 8,
     overfetch: int = 40,
     llm: LLMClient | None = None,
+    technician_attested: bool = False,
 ) -> AnswerResult:
     """Retrieve applicable chunks, then generate a cited answer or abstain."""
     model_name = getattr(llm, "model", None) if llm is not None else None
@@ -458,10 +460,12 @@ def ask(
         except Exception:
             model_name = None
     meta = {
-        "audience": audience.value,
         "appliance_model": appliance.model if appliance else None,
         "appliance_serial": appliance.serial if appliance else None,
         "llm_model": model_name,
+        **record_audience_claim(
+            audience, attested=technician_attested, source="ask"
+        ),
     }
     started = time.perf_counter()
     with observation("ask", input={"question": question}, metadata=meta) as span:
@@ -830,6 +834,7 @@ def ask_stream(
     retrieval_limit: int = 8,
     overfetch: int = 40,
     llm: OpenAIClient | None = None,
+    technician_attested: bool = False,
 ) -> Iterator[dict[str, Any]]:
     """Yield SSE-friendly events: status, token deltas, then done."""
     model_name = getattr(llm, "model", None) if llm is not None else None
@@ -839,11 +844,13 @@ def ask_stream(
         except Exception:
             model_name = None
     meta = {
-        "audience": audience.value,
         "appliance_model": appliance.model if appliance else None,
         "appliance_serial": appliance.serial if appliance else None,
         "llm_model": model_name,
         "stream": True,
+        **record_audience_claim(
+            audience, attested=technician_attested, source="ask_stream"
+        ),
     }
     started = time.perf_counter()
 
