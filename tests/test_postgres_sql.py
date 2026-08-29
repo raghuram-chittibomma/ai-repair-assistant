@@ -51,6 +51,19 @@ def test_migrations_create_pgvector_chunks(pg_db) -> None:
     assert count == (0,)
 
 
+def test_migrations_create_trigram_gin(pg_db) -> None:
+    """Review R15: pg_trgm + GIN so side-door `text ~*` is not a seq scan."""
+    ext = pg_db.fetchone("SELECT extname FROM pg_extension WHERE extname = 'pg_trgm'")
+    assert ext is not None
+    idx = pg_db.fetchone(
+        """
+        SELECT indexname FROM pg_indexes
+        WHERE tablename = 'chunks' AND indexname = 'chunks_text_trgm_gin'
+        """
+    )
+    assert idx is not None
+
+
 def test_synthetic_ingest_and_vector_fetch_excludes_synth_by_default(pg_db) -> None:
     embedder = FixedEmbedder()
     touched = ensure_synthetic_ingested(pg_db, embedder)
