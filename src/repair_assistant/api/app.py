@@ -57,6 +57,7 @@ from repair_assistant.ingest.embeddings import (
 )
 from repair_assistant.ingest.env import database_url, load_dotenv_files
 from repair_assistant.ingest.store import Database
+from repair_assistant.observability.scope_detectors import worker_count_warning
 from repair_assistant.qa.generate import (
     LLMError,
     LLMTimeoutError,
@@ -230,6 +231,9 @@ def create_app(
                 "set REPAIR_API_KEY or bind 127.0.0.1 (review R5 / ADR-0025)",
                 host,
             )
+        workers_warning = worker_count_warning()
+        if workers_warning:
+            _log.warning("%s", workers_warning)
         if pool is not None:
             try:
                 with pool.connection() as db:

@@ -17,6 +17,8 @@ from pathlib import Path
 
 import click
 
+from repair_assistant.observability.scope_detectors import curation_scale_notice
+
 from . import identity, pinning
 from . import manifest as manifest_mod
 from .applicability import Appliance, document_applies
@@ -95,6 +97,11 @@ def status() -> None:
         f"{counts['drift']} drifted, {counts['mismatch']} mismatched, "
         f"{counts['missing']} missing of {len(corpus.documents)} documents."
     )
+
+    scale = curation_scale_notice(len(corpus.documents))
+    if scale:
+        click.echo()
+        click.secho(scale, fg="yellow")
 
     if missing:
         click.echo()
