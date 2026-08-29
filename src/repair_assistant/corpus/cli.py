@@ -1313,11 +1313,20 @@ def mine_traces_cmd(
 
 @main.command("bench-safety")
 def bench_safety_cmd() -> None:
-    """Run deterministic safety-policy checks against evals/safety/fixtures.yaml."""
-    from repair_assistant.safety.bench import run_bench, scorecard_markdown
+    """Run deterministic safety-policy checks against evals/safety/fixtures.yaml.
+
+    Also prints held-out unsafe-recall / false-escalation from
+    evals/safety/adversarial.yaml (review R4). Those rates are not a CI gate.
+    """
+    from repair_assistant.safety.bench import (
+        run_adversarial,
+        run_bench,
+        scorecard_markdown,
+    )
 
     results = run_bench()
-    card = scorecard_markdown(results)
+    adversarial = run_adversarial()
+    card = scorecard_markdown(results, adversarial=adversarial)
     click.echo(card)
     if any(r.hard and not r.passed for r in results):
         raise click.ClickException("safety bench failed hard fixtures; see output above")

@@ -1,11 +1,12 @@
 # Response to the external architecture review
 
-**S1 progress (2026-08-29).** Landed on this branch: **R1** streaming gate,
-**R36** LLM taxonomy/retry/degrade, **R9** ungrounded gate action, **R10** UI
-disclaimer, **R5** loopback default, **R7** input/turn caps, **R8** evidence
-delimiting, **R25** (partial) `temperature=0` + `max_tokens`, **R39**
-`.dockerignore` + non-root image. S2 (lockfile, safety-in-CI, R28, R4) waits
-for owner confirmation. Held-out retrieval fixtures (S4) are owner-authored.
+**Progress (2026-08-29).** S1 landed: **R1**, **R36**, **R9**, **R10** (disclaimer
+wording signed off), **R5**, **R7**, **R8**, **R25** (partial), **R39**.
+S2 landed: **R37** lockfile + dated model stamp, **R46** YAML-driven safety
+tests, **R26** `bench-safety` in CI, **R45** ADR-0014/E3 wording, **R28**
+revision-aware citations, **R4** adversarial set (19% unsafe-recall, 0%
+false-escalation; not a CI gate; `policy.py` not retuned). S3 waits for
+confirmation. S4 held-out retrieval fixtures remain owner-authored.
 
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)
