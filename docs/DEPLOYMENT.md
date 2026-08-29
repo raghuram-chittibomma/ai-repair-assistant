@@ -25,9 +25,11 @@ LLM_MODEL=gpt-4o-mini
 REPAIR_API_KEY=
 ```
 
-Leave `REPAIR_API_KEY` empty for the default LAN-only setup (no API auth).
-The web UI does not expose this; set it only if you need to lock `/v1/*` routes
-and call the API with an `X-API-Key` header from scripts or other clients.
+The API binds **127.0.0.1** by default (`REPAIR_API_HOST`). Leave `REPAIR_API_KEY`
+empty on that loopback path. To listen on the LAN, set `REPAIR_API_HOST=0.0.0.0`
+deliberately (Compose `api` already does this) and prefer setting `REPAIR_API_KEY`.
+The web UI does not send an API key; use `X-API-Key` only from scripts or other
+clients.
 
 ### 2. Confirm the database is reachable
 

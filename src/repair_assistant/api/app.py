@@ -168,6 +168,14 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        host = os.environ.get("REPAIR_API_HOST", "127.0.0.1")
+        key = os.environ.get("REPAIR_API_KEY", "").strip()
+        if not key and host not in {"127.0.0.1", "localhost", "::1"}:
+            _log.warning(
+                "api_bind host=%s auth=unset — LAN exposure is opt-in; "
+                "set REPAIR_API_KEY or bind 127.0.0.1 (review R5 / ADR-0025)",
+                host,
+            )
         if do_warmup:
             try:
                 get_shared_embedder()
