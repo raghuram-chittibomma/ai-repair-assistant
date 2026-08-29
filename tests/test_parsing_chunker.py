@@ -159,6 +159,34 @@ def test_section_inherited_on_prose_under_heading():
     assert any(c.metadata.get("section_path") for c in prose)
 
 
+def test_structured_chunker_skips_figure_prose_keeps_tables() -> None:
+    document = ExtractedDocument(
+        path="synthetic",
+        extractor="test",
+        pages=[
+            ExtractedPage(
+                number=26,
+                text="WIRING DIAGRAM\nh o ld  C y c le  S t a r t\nJ 1  BK  W",
+                tables=[
+                    Table(
+                        headers=["Pin", "Wire"],
+                        rows=[TableRow(cells=["J36", "motor stator"], page=26)],
+                        page=26,
+                    )
+                ],
+            ),
+            ExtractedPage(
+                number=27,
+                text="WIRING DIAGRAM\nh o l d   C y c l e   S t a r t   P a u s e",
+            ),
+        ],
+    )
+    chunks = chunk_document(document)
+    assert all(c.page != 27 for c in chunks)
+    assert any(c.kind == "table_row" and "J36" in c.text for c in chunks)
+    assert not any("h o ld" in (c.text or "") or "h o l d" in (c.text or "") for c in chunks)
+
+
 def test_naive_fixed_chunker_can_split_code_from_remedy():
     """Control: a 40-char window severs F6E1 from its remedy on purpose."""
     long = (

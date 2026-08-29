@@ -5,7 +5,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from repair_assistant.parsing.page_classify import evidence_cites_unread_figure
 from repair_assistant.retrieval.search import Hit
+
+FIGURE_UNREADABLE_NOTE = (
+    "Note: this assistant cannot read figures or wiring diagrams. "
+    "If a cited procedure refers to a figure, consult that graphic in the source document."
+)
 
 _CITE_REF = re.compile(r"\[(\d+)\]")
 
@@ -155,7 +161,11 @@ def format_evidence(
         )
     if not blocks:
         return "", citations
-    return wrap_evidence("\n\n".join(blocks)), citations
+    body = wrap_evidence("\n\n".join(blocks))
+    cited_hits = hits[: len(citations)]
+    if any(evidence_cites_unread_figure(h.text) for h in cited_hits):
+        return f"{body}\n\n{FIGURE_UNREADABLE_NOTE}", citations
+    return body, citations
 
 
 def citations_from_answer(answer: str, available: list[Citation]) -> list[Citation]:

@@ -12,6 +12,7 @@ import re
 
 from .error_codes import extract_error_codes
 from .models import Chunk, ExtractedDocument, Table
+from .page_classify import looks_like_figure_page
 from .pua import map_pua, split_list_items
 from .table_context import (
     ColumnMap,
@@ -149,6 +150,12 @@ def _structured_chunks(
     current_section: str | None = None
 
     for page in document.pages:
+        figure_page = looks_like_figure_page(page.text)
+        if figure_page and not page.tables:
+            # Review R33: do not index diagram OCR. Tables on the same sheet
+            # (strip-circuit pin rows) still go in.
+            continue
+
         # Update section from page text before emitting chunks for this page.
         for line in (page.text or "").splitlines():
             stripped = line.strip()
@@ -206,6 +213,9 @@ def _structured_chunks(
             if page_matrix_rows:
                 # Avoid also emitting the same page as a mega-prose chunk.
                 continue
+
+        if figure_page:
+            continue
 
         for piece in _split_prose(prose_text):
             if is_troubleshooting_guide_prose(piece):
@@ -524,6 +534,8 @@ def _naive_fixed_chunks(
     """Control chunker: fixed windows that routinely split codes from remedies."""
     chunks: list[Chunk] = []
     for page in document.pages:
+        if looks_like_figure_page(page.text) and not page.tables:
+            continue
         text = page.text or ""
         for start in range(0, max(len(text), 1), size):
             window = text[start : start + size]

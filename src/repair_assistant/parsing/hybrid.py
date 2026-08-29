@@ -46,6 +46,9 @@ def _prose_for_page(
     if layout_kind == "matrix":
         return page.extract_text() or "", "pdfplumber"
 
+    if layout_kind == "figure":
+        return page.extract_text() or "", "pdfplumber"
+
     if force_layout:
         layout_text = _layout_prose_text(path, page_no - 1)
         if layout_text and layout_text.strip():

@@ -5,6 +5,7 @@ from __future__ import annotations
 from repair_assistant.qa.context import (
     EVIDENCE_BEGIN,
     EVIDENCE_END,
+    FIGURE_UNREADABLE_NOTE,
     citations_from_answer,
     format_evidence,
     format_label,
@@ -71,6 +72,16 @@ def test_format_evidence_numbers_blocks_and_truncates() -> None:
     assert len(citations) == 2
     assert citations[0].index == 1
     assert citations[1].doc_id == "kb-f5e2-front-load"
+
+
+def test_format_evidence_notes_unread_figures() -> None:
+    text, _ = format_evidence(
+        [_hit(text="Check continuity at J36. See Figure 2 on the wiring diagram.")]
+    )
+    assert text.endswith(FIGURE_UNREADABLE_NOTE)
+    assert EVIDENCE_END in text
+    plain, _ = format_evidence([_hit()])
+    assert FIGURE_UNREADABLE_NOTE not in plain
 
 
 def test_citations_from_answer_deduplicates_and_preserves_order() -> None:
