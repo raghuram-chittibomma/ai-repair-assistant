@@ -75,7 +75,11 @@ class Database:
     def chunks_missing_embeddings(self, doc_id: str) -> list[tuple[str, str]]:
         """Return (chunk_id, text) for rows with NULL embedding."""
         rows = self.fetchall(
-            "SELECT chunk_id, text FROM chunks WHERE doc_id = %s AND embedding IS NULL",
+            """
+            SELECT chunk_id, text FROM chunks
+            WHERE doc_id = %s AND embedding IS NULL
+              AND (language IS NULL OR language ILIKE 'en%')
+            """,
             (doc_id,),
         )
         return [(r[0], r[1]) for r in rows]

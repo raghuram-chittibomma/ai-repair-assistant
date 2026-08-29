@@ -38,3 +38,10 @@ def detect_language(text: str) -> str | None:
     if fr == 0 and es == 0:
         return None
     return "en" if fr == es else ("fr" if fr > es else "es")
+
+
+def is_index_language(language: str | None) -> bool:
+    """English-only index (review R34 / ADR-0025). Undecided pages stay in."""
+    if not language:
+        return True
+    return language.lower().replace("_", "-").startswith("en")

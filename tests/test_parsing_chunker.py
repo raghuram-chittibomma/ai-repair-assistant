@@ -159,6 +159,28 @@ def test_section_inherited_on_prose_under_heading():
     assert any(c.metadata.get("section_path") for c in prose)
 
 
+def test_structured_chunker_skips_non_english_pages() -> None:
+    document = ExtractedDocument(
+        path="synthetic",
+        extractor="test",
+        pages=[
+            ExtractedPage(
+                number=1,
+                text="Desenchufe la lavadora. Advertencia: boletín técnico para la atención.",
+                language="es",
+            ),
+            ExtractedPage(
+                number=2,
+                text="Unplug the washer and inspect the door lock switch assembly.",
+                language="en",
+            ),
+        ],
+    )
+    chunks = chunk_document(document)
+    assert all(c.page == 2 for c in chunks)
+    assert any("door lock" in c.text.lower() for c in chunks)
+
+
 def test_structured_chunker_skips_figure_prose_keeps_tables() -> None:
     document = ExtractedDocument(
         path="synthetic",

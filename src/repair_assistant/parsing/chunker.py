@@ -11,6 +11,7 @@ import hashlib
 import re
 
 from .error_codes import extract_error_codes
+from .language import is_index_language
 from .models import Chunk, ExtractedDocument, Table
 from .page_classify import looks_like_figure_page
 from .pua import map_pua, split_list_items
@@ -150,6 +151,9 @@ def _structured_chunks(
     current_section: str | None = None
 
     for page in document.pages:
+        if not is_index_language(page.language):
+            continue
+
         figure_page = looks_like_figure_page(page.text)
         if figure_page and not page.tables:
             # Review R33: do not index diagram OCR. Tables on the same sheet

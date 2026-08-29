@@ -16,6 +16,7 @@ from repair_assistant.ingest.parsed import (
     load_parsed_document,
 )
 from repair_assistant.ingest.store import Database
+from repair_assistant.parsing.language import is_index_language
 from repair_assistant.parsing.page_classify import should_index_chunk
 
 
@@ -126,7 +127,11 @@ def _ingest_one(
             detail="content fingerprint unchanged",
         )
 
-    indexable = [c for c in parsed.chunks if should_index_chunk(c.text, c.kind)]
+    indexable = [
+        c
+        for c in parsed.chunks
+        if should_index_chunk(c.text, c.kind) and is_index_language(c.language)
+    ]
     prior_hashes = db.existing_chunk_hashes(parsed.doc_id)
     keep = {
         c.chunk_id
