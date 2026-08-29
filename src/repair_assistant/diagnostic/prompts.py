@@ -7,6 +7,32 @@ from __future__ import annotations
 
 from repair_assistant.qa.context import fence_evidence
 
+# Review R25: full transcript re-sent every turn. Keep the first user line
+# (the symptom) plus a bounded recent window.
+_TRANSCRIPT_MAX_LINES = 12
+_TRANSCRIPT_MAX_CHARS = 8_000
+
+
+def window_transcript(
+    lines: list[str],
+    *,
+    max_lines: int = _TRANSCRIPT_MAX_LINES,
+    max_chars: int = _TRANSCRIPT_MAX_CHARS,
+) -> str:
+    """Bound the diagnose prompt transcript without dropping the first user turn."""
+    if not lines:
+        return ""
+    if len(lines) <= max_lines:
+        text = "\n".join(lines)
+    else:
+        omitted = len(lines) - max_lines
+        text = "\n".join(
+            [lines[0], f"(… {omitted} earlier lines omitted …)", *lines[-(max_lines - 1) :]]
+        )
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 20].rstrip() + "\n(… truncated …)"
+
 
 def build_diagnostic_user_prompt(
     *,

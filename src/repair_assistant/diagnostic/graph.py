@@ -17,7 +17,10 @@ from repair_assistant.corpus.support import (
     no_evidence_message,
     unsupported_appliance_message,
 )
-from repair_assistant.diagnostic.prompts import build_diagnostic_user_prompt
+from repair_assistant.diagnostic.prompts import (
+    build_diagnostic_user_prompt,
+    window_transcript,
+)
 from repair_assistant.diagnostic.state import DiagnosticGraphState
 from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import child_observation, update_span
@@ -110,7 +113,7 @@ def _transcript(messages: list) -> str:
             lines.append(f"User: {msg.content}")
         elif isinstance(msg, AIMessage):
             lines.append(f"Assistant: {msg.content}")
-    return "\n".join(lines)
+    return window_transcript(lines)
 
 
 # Follow-up acknowledgements are detected via repair_assistant.qa.acks.
