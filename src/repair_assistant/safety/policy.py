@@ -307,6 +307,7 @@ def apply_owner_evidence_policy(
 def _severity(action: SafetyAction) -> int:
     return {
         SafetyAction.ALLOW: 0,
+        SafetyAction.UNGROUNDED: 0,
         SafetyAction.WARN: 1,
         SafetyAction.ESCALATE: 2,
         SafetyAction.BLOCK: 3,

@@ -115,7 +115,7 @@ fixtures:
       1. Verify that the load is not bunched.
       2. Ensure you are using HE detergent.
       3. Confirm the correct wash cycle.
-    sample_gate_action: allow
+    sample_gate_action: ungrounded
     sample_must_contain_any:
       - "ABSTAIN:"
     sample_must_not_contain:

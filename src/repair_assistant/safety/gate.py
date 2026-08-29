@@ -96,7 +96,7 @@ def gate_answer(
     if needs_grounding_citation(text):
         return SafetyGateResult(
             text=_UNGROUNDED_ABSTAIN,
-            action=SafetyAction.ALLOW,
+            action=SafetyAction.UNGROUNDED,
             rule_id="ungrounded-procedure",
             notice="Procedural answer lacked evidence citations.",
             blocked=True,

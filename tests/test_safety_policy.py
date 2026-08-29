@@ -105,6 +105,7 @@ def test_gate_ungrounded_procedure_abstains() -> None:
     )
     gated = gate_answer(assessment, raw)
     assert gated.blocked
+    assert gated.action == SafetyAction.UNGROUNDED
     assert gated.text.upper().startswith("ABSTAIN:")
     assert "HE detergent" not in gated.text
 

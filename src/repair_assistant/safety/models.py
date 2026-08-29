@@ -16,6 +16,9 @@ class SafetyAction(StrEnum):
     WARN = "warn"
     ESCALATE = "escalate"
     BLOCK = "block"
+    #: Post-LLM: procedural text without citations. Distinct from ALLOW so
+    #: telemetry does not under-count the intervention (review R9).
+    UNGROUNDED = "ungrounded"
 
 
 @dataclass(frozen=True)
