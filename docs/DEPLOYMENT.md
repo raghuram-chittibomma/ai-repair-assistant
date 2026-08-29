@@ -129,3 +129,13 @@ docker compose --env-file .env.local -f docker/compose.yaml up -d --build
 ```
 
 See [INFRASTRUCTURE.md](INFRASTRUCTURE.md) for host/port policy.
+
+The API image runs as a non-root `app` user (uid 1000). `.dockerignore` keeps
+`corpus/documents` and `.env.local` out of the build context.
+
+**Embeddings cache (not baked into the image).** `BAAI/bge-base-en-v1.5` is
+~400MB; the Dockerfile sets `HF_HOME=/home/app/.cache/huggingface` and
+downloads on first use. To run without Hugging Face on the network, copy a
+pre-populated cache into that path (or bind-mount your host
+`~/.cache/huggingface`) and set `HF_HUB_OFFLINE=1` so `sentence-transformers`
+uses local files only.

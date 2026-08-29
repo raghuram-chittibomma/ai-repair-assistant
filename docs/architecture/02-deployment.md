@@ -52,8 +52,8 @@ flowchart LR
   apiC --> pg
 ```
 
-- **Compose:** `docker/compose.yaml` `api` service builds `docker/Dockerfile` ([ADR-0016](../adr/0016-http-api-docker.md)).
-- **Embedder:** Still local BGE inside the API process (shared warmup, pool, session TTL — [ADR-0021](../adr/0021-api-hardening-embedder-sessions.md)).
+- **Compose:** `docker/compose.yaml` `api` service builds `docker/Dockerfile` ([ADR-0016](../adr/0016-http-api-docker.md)). The image is non-root; `.dockerignore` excludes `corpus/documents` and `.env.local`.
+- **Embedder:** Still local BGE inside the API process (shared warmup, pool, session TTL — [ADR-0021](../adr/0021-api-hardening-embedder-sessions.md)). The model is not baked into the image; cache via `HF_HOME` / `HF_HUB_OFFLINE` ([Deployment](../DEPLOYMENT.md)).
 
 ## Runtime concerns on the API box
 

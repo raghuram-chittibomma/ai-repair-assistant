@@ -1,0 +1,32 @@
+# Build context is the repo root (docker/compose.yaml `context: ..`).
+# Manufacturer PDFs and secrets must never enter the image (review R39).
+
+.git
+.github
+.cursor
+.agents
+
+.env
+.env.*
+!.env.example
+
+corpus/documents
+corpus/_staging
+corpus/snapshots
+corpus/parsed
+**/*.pdf
+**/*.PDF
+
+.venv
+venv
+**/__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+evals/**/results
+*.log
+
+docs/INFRASTRUCTURE.local.md

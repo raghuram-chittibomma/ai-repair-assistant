@@ -1,5 +1,12 @@
 # Response to the external architecture review
 
+**S1 progress (2026-08-29).** Landed on this branch: **R1** streaming gate,
+**R36** LLM taxonomy/retry/degrade, **R9** ungrounded gate action, **R10** UI
+disclaimer, **R5** loopback default, **R7** input/turn caps, **R8** evidence
+delimiting, **R25** (partial) `temperature=0` + `max_tokens`, **R39**
+`.dockerignore` + non-root image. S2 (lockfile, safety-in-CI, R28, R4) waits
+for owner confirmation. Held-out retrieval fixtures (S4) are owner-authored.
+
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)
 **Scope:** commit `63a4369` (branch `master`) — the same commit the review read, so
