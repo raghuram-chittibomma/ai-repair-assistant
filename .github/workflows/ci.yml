@@ -16,26 +16,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
+          enable-cache: true
 
-      - name: Install
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+      - name: Install from the lockfile
+        run: uv sync --frozen --extra dev
 
       - name: Lint
-        run: ruff check src tests
+        run: uv run ruff check src tests
 
       - name: Validate the corpus manifest
-        run: repair-corpus validate
+        run: uv run repair-corpus validate
 
       - name: Tests
-        run: pytest -q
+        run: uv run pytest -q
 
       - name: A clean clone must report exactly what is missing
-        run: repair-corpus status
+        run: uv run repair-corpus status
 
   copyright-guard:
     # The licensing guarantee in docs/CORPUS_LICENSING.md, enforced. A README

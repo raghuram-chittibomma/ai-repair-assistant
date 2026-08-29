@@ -7,19 +7,23 @@
 
 FROM python:3.12-slim-bookworm
 
+COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /usr/local/bin/uv
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    HF_HOME=/home/app/.cache/huggingface
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    HF_HOME=/home/app/.cache/huggingface \
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
 # Manifest is required at runtime; documents stay user-supplied off-image.
-COPY pyproject.toml README.md LICENSE ./
+COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY corpus/manifest ./corpus/manifest
 COPY src ./src
 
-RUN pip install --upgrade pip && pip install . \
+RUN uv sync --frozen --no-dev --no-editable \
     && useradd --create-home --uid 1000 --shell /usr/sbin/nologin app \
     && mkdir -p /home/app/.cache/huggingface \
     && chown -R app:app /app /home/app

@@ -380,8 +380,12 @@ def _eval_pair_assert(
 
 
 def scorecard_markdown(results: list[FixtureResult]) -> str:
+    from repair_assistant.eval.repro import scorecard_repro_lines
+
     lines = [
         "# Parsing bake-off scorecard",
+        "",
+        *scorecard_repro_lines(),
         "",
         "| Extractor | Strategy | Fixture | Result | Detail |",
         "| --- | --- | --- | --- | --- |",

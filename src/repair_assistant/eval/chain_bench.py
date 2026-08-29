@@ -248,8 +248,12 @@ def run_chain_bench(
 
 def scorecard_markdown(results: list[ChainStageResult]) -> str:
     passed = sum(1 for r in results if r.passed)
+    from repair_assistant.eval.repro import scorecard_repro_lines
+
     lines = [
         "# Chain smoke bench",
+        "",
+        *scorecard_repro_lines(),
         "",
         f"**{passed}/{len(results)} stages passed**",
         "",

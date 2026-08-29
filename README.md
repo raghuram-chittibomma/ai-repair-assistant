@@ -101,12 +101,15 @@ Assumes Postgres is up, `.env.local` is configured, and a corpus is ingested.
 Full install: [Deployment](docs/DEPLOYMENT.md).
 
 ```bash
-pip install -e ".[dev]"
+uv sync --frozen --extra dev
 
 # API + UI (same machine)
-python -m repair_assistant.api.main
+uv run python -m repair_assistant.api.main
 # open http://localhost:8080/ui
 ```
+
+`uv.lock` pins the resolved environment so ADR scorecards can be regenerated.
+`pip install -e ".[dev]"` still works but is not the reproducible path.
 
 CLI (Windows-friendly module form):
 

@@ -21,7 +21,8 @@ harnesses are explicitly later phases.
    as numbered evidence blocks, then call OpenAI chat completion.
 2. **CLI:** `repair-corpus ask "…" --model WFW5620HW0` — same appliance
    context as `search`.
-3. **Model:** default `gpt-4o-mini` via `LLM_MODEL`; temperature 0.2.
+3. **Model:** default dated snapshot `gpt-4o-mini-2024-07-18` via `LLM_MODEL`
+   (not the floating alias; review R37). Generation uses `temperature=0`.
 4. **Citations:** the model cites evidence as `[1]`, `[2]`, …; the CLI maps
    those back to `doc_id` / `chunk_id` / publication label.
 5. **Abstention:**

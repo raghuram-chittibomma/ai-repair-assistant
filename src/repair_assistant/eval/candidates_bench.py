@@ -193,7 +193,16 @@ def run_candidates_bench(
 def scorecard_markdown(results: list[CandidateBenchResult]) -> str:
     runnable = [r for r in results if not r.skipped]
     passed = sum(1 for r in runnable if r.passed)
-    lines = ["# Candidate scenarios bench", "", f"**{passed}/{len(runnable)} passed**", ""]
+    from repair_assistant.eval.repro import scorecard_repro_lines
+
+    lines = [
+        "# Candidate scenarios bench",
+        "",
+        *scorecard_repro_lines(),
+        "",
+        f"**{passed}/{len(runnable)} passed**",
+        "",
+    ]
     lines.append("| scenario | family | pass | ms | detail |")
     lines.append("| --- | --- | --- | ---: | --- |")
     for r in results:

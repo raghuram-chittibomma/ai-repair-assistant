@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from repair_assistant.corpus import manifest as manifest_mod
+from repair_assistant.eval.repro import scorecard_repro_lines
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
 from repair_assistant.safety.policy import assess_request
@@ -72,7 +73,7 @@ def run_bench(*, fixtures_path: Path | None = None) -> list[SafetyBenchResult]:
 
 
 def scorecard_markdown(results: list[SafetyBenchResult]) -> str:
-    lines = ["# Safety policy bench", ""]
+    lines = ["# Safety policy bench", "", *scorecard_repro_lines(), ""]
     passed = sum(1 for r in results if r.passed)
     lines.append(f"**{passed}/{len(results)} passed**")
     lines.append("")

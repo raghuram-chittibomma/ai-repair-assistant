@@ -21,7 +21,7 @@ Copy from `.env.example`. Minimum:
 ```ini
 DATABASE_URL=postgresql://repair:YOUR_PASSWORD@LAN_HOST:5436/repair_assistant
 OPENAI_API_KEY=sk-...
-LLM_MODEL=gpt-4o-mini
+LLM_MODEL=gpt-4o-mini-2024-07-18
 REPAIR_API_KEY=
 ```
 

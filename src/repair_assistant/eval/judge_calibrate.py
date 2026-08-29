@@ -76,8 +76,12 @@ def run_calibration(
 
 def scorecard_markdown(results: list[CalibrationCaseResult]) -> str:
     agreed = sum(1 for r in results if r.agreed)
+    from repair_assistant.eval.repro import scorecard_repro_lines
+
     lines = [
         "# Judge calibration",
+        "",
+        *scorecard_repro_lines(),
         "",
         f"**{agreed}/{len(results)} agreed** with expected_passed",
         "",

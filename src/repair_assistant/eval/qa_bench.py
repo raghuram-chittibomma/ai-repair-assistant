@@ -16,6 +16,7 @@ from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.diagnostic.session import DiagnosticSession
 from repair_assistant.eval.grading import grade_answer, grade_diagnose_turns
 from repair_assistant.eval.llm_judge import JudgeClient, grade_with_optional_judge, needs_llm_judge
+from repair_assistant.eval.repro import scorecard_repro_lines
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.context import Citation
 from repair_assistant.qa.generate import ask
@@ -256,7 +257,14 @@ def write_run_log(results: list[QAScenarioResult], path: Path) -> None:
 
 def scorecard_markdown(results: list[QAScenarioResult]) -> str:
     passed = sum(1 for r in results if r.passed)
-    lines = ["# Q&A smoke bench", "", f"**{passed}/{len(results)} passed**", ""]
+    lines = [
+        "# Q&A smoke bench",
+        "",
+        *scorecard_repro_lines(),
+        "",
+        f"**{passed}/{len(results)} passed**",
+        "",
+    ]
     lines.append("| scenario | command | pass | ms | detail |")
     lines.append("| --- | --- | --- | ---: | --- |")
     for r in results:

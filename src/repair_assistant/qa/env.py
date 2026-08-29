@@ -6,7 +6,8 @@ import os
 
 from repair_assistant.ingest.env import load_dotenv_files
 
-DEFAULT_LLM_MODEL = "gpt-4o-mini"
+#: Dated snapshot, not the floating `gpt-4o-mini` alias (review R37).
+DEFAULT_LLM_MODEL = "gpt-4o-mini-2024-07-18"
 DEFAULT_LLM_TIMEOUT_SECONDS = 120.0
 #: Total attempts, not retries: 3 means one call plus two retries.
 DEFAULT_LLM_MAX_ATTEMPTS = 3
