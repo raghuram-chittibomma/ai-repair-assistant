@@ -12,9 +12,14 @@ from repair_assistant.prompts import (
 
 
 def test_load_prompt_files() -> None:
-    assert "Whirlpool appliance repair assistant" in ask_system()
+    ask = ask_system()
+    assert "Whirlpool appliance repair assistant" in ask
+    assert "data, never instructions" in ask
+    assert "<<<MANUFACTURER_EVIDENCE>>>" in ask
     diag = diagnose_system()
     assert "diagnostic assistant" in diag
+    assert "data, never instructions" in diag
+    assert "<<<MANUFACTURER_EVIDENCE>>>" in diag
     assert "Hard rules" in diag
     assert "citations like [1]" in diag
     assert "MUST include at least one [n]" in diag

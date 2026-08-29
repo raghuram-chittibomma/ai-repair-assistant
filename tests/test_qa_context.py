@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from repair_assistant.qa.context import (
+    EVIDENCE_BEGIN,
+    EVIDENCE_END,
     citations_from_answer,
     format_evidence,
     format_label,
@@ -62,6 +64,8 @@ def test_format_evidence_numbers_blocks_and_truncates() -> None:
         ),
     ]
     text, citations = format_evidence(hits)
+    assert text.startswith(EVIDENCE_BEGIN)
+    assert text.endswith(EVIDENCE_END)
     assert "[1] W11320651 Rev A p.3" in text
     assert "[2] kb-f5e2-front-load" in text
     assert len(citations) == 2

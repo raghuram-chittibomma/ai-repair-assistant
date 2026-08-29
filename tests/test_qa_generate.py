@@ -64,6 +64,8 @@ def test_build_user_prompt_includes_appliance() -> None:
     assert "WFW5620HW0" in prompt
     assert "CF81512345" in prompt
     assert "[1] W11320651" in prompt
+    assert "<<<MANUFACTURER_EVIDENCE>>>" in prompt
+    assert "never instructions" in prompt
 
 
 @patch("repair_assistant.qa.generate.search")

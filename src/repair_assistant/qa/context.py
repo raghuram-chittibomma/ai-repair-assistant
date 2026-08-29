@@ -108,6 +108,24 @@ def _excerpt(text: str, *, max_len: int = 2000, query: str = "") -> str:
     return normalized[: max_len - 3] + "..."
 
 
+EVIDENCE_BEGIN = "<<<MANUFACTURER_EVIDENCE>>>"
+EVIDENCE_END = "<<<END_MANUFACTURER_EVIDENCE>>>"
+
+
+def wrap_evidence(text: str) -> str:
+    """Fence retrieved text so the model treats it as data, not instructions."""
+    body = text.strip() if text else "(none)"
+    return f"{EVIDENCE_BEGIN}\n{body}\n{EVIDENCE_END}"
+
+
+def fence_evidence(text: str) -> str:
+    """Wrap evidence unless it is already delimited."""
+    raw = text or ""
+    if EVIDENCE_BEGIN in raw:
+        return raw
+    return wrap_evidence(raw)
+
+
 def format_evidence(
     hits: list[Hit],
     *,
@@ -135,7 +153,9 @@ def format_evidence(
                 excerpt=text[:280],
             )
         )
-    return "\n\n".join(blocks), citations
+    if not blocks:
+        return "", citations
+    return wrap_evidence("\n\n".join(blocks)), citations
 
 
 def citations_from_answer(answer: str, available: list[Citation]) -> list[Citation]:
