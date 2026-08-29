@@ -131,3 +131,52 @@ Ask mode has no session grouping (one trace per question).
 
 Benches (`bench-qa`, `bench-candidates`, …) do **not** require Langfuse. If keys
 are set during a bench run, traces will also be sent (OpenAI cost unchanged).
+
+## Data governance (review R44)
+
+This product is a single-user LAN assistant. Tracing is opt-in. There is no
+multi-user privacy program, no subject-access API, and no automatic redaction of
+free-text symptoms. The following is the whole available action space.
+
+### What a trace holds
+
+When keys are set, Langfuse receives the question or diagnose message, appliance
+model and serial, retrieved evidence excerpts, the LLM prompt and completion, and
+safety metadata. Serial numbers are device-identifying; combined with free text
+they can edge toward personal data.
+
+Leave `LANGFUSE_*` empty to stop sending new traces. Existing data stays in the
+Langfuse volumes until you delete it.
+
+### Redaction
+
+Set `REPAIR_TRACE_REDACT_SERIAL=1` in `.env.local` to replace `serial` /
+`appliance_serial` fields and serial-shaped tokens (two letters + 8+ digits, not
+`W########` publication numbers) with `[serial]` before a payload is sent.
+Questions and symptoms are otherwise stored as typed. Redaction is off by
+default so a local debug session can still see the serial the operator typed.
+
+### Retention
+
+Self-hosted Langfuse **keeps event data indefinitely** until a project retention
+period is set. In the Langfuse UI: **Project Settings → Data Retention**, number
+of days (minimum 3). A nightly job then deletes traces, observations, scores,
+and media older than that window. See
+[Langfuse data retention](https://langfuse.com/docs/administration/data-retention).
+On the laptop Docker Compose stack, retention also needs MinIO/S3 delete
+permission (the upstream compose already grants it).
+
+This repo does not set a retention default — that is an operator choice on the
+Langfuse project, not an application setting.
+
+### Deletion
+
+| Goal | How |
+| --- | --- |
+| One trace | Langfuse UI → Traces → open the trace → delete. Irreversible. |
+| Time window | Project retention above. Nightly; cannot recover. |
+| Everything on this machine | In the Langfuse checkout: `docker compose down -v`. Destroys Postgres, ClickHouse, and MinIO volumes. |
+| Stop sending | Clear `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` and restart the app. |
+
+There is no deletion route in this application's API or UI. While the charter is
+single-user LAN, adding one would be theatre.

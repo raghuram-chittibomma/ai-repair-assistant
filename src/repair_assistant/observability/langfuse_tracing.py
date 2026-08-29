@@ -12,6 +12,7 @@ from typing import Any
 
 from repair_assistant.ingest.env import load_dotenv_files
 from repair_assistant.observability.eval_context import merge_eval_metadata
+from repair_assistant.observability.redact import redact_for_trace
 
 _DEFAULT_TRACE_MAX = 12_000
 
@@ -103,6 +104,11 @@ def truncate_for_trace(value: Any, *, max_chars: int | None = None) -> Any:
     return value
 
 
+def prepare_trace_value(value: Any, *, max_chars: int | None = None) -> Any:
+    """Truncate, then optionally redact serials (review R44)."""
+    return redact_for_trace(truncate_for_trace(value, max_chars=max_chars))
+
+
 def _span_ids(span: Any) -> tuple[str, str] | None:
     trace_id = getattr(span, "trace_id", None)
     span_id = getattr(span, "id", None)
@@ -190,8 +196,8 @@ def _start_observation(
     kwargs: dict[str, Any] = {
         "name": name,
         "as_type": as_type,
-        "input": truncate_for_trace(input) if input is not None else None,
-        "metadata": merge_eval_metadata(metadata),
+        "input": prepare_trace_value(input) if input is not None else None,
+        "metadata": prepare_trace_value(merge_eval_metadata(metadata)),
     }
     if trace_context is not None:
         kwargs["trace_context"] = trace_context
@@ -353,9 +359,11 @@ def update_span(span: Any, **kwargs: Any) -> None:
         return
     payload = dict(kwargs)
     if "input" in payload:
-        payload["input"] = truncate_for_trace(payload["input"])
+        payload["input"] = prepare_trace_value(payload["input"])
     if "output" in payload:
-        payload["output"] = truncate_for_trace(payload["output"])
+        payload["output"] = prepare_trace_value(payload["output"])
+    if "metadata" in payload:
+        payload["metadata"] = prepare_trace_value(payload["metadata"])
     usage = payload.pop("usage", None)
     if usage:
         payload["usage_details"] = usage
@@ -369,6 +377,7 @@ __all__ = [
     "child_observation",
     "generation",
     "observation",
+    "prepare_trace_value",
     "trace_max_chars",
     "truncate_for_trace",
     "tracing_enabled",

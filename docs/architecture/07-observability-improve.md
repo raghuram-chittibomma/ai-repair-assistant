@@ -24,6 +24,7 @@ flowchart LR
 ```
 
 - **Opt-in:** Empty `LANGFUSE_*` keys → no-op tracing ([ADR-0018](../adr/0018-langfuse-observability.md), [LANGFUSE](../LANGFUSE.md)).
+- **Governance:** What traces hold, optional serial redaction, retention, and deletion are documented in [LANGFUSE.md](../LANGFUSE.md#data-governance-review-r44) (review R44).
 - **Mine:** `--write` only emits analysis under `evals/qa/drafts/` — no live fixture edits, no auto-promote ([ADR-0023](../adr/0023-trace-driven-eval-mining.md)).
 - **Promote:** Human `promote-eval` only; golden fixtures stay under review.
 - **Evals:** Layer benches remain the quality bar ([EVALS](../EVALS.md)).

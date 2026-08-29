@@ -9,6 +9,9 @@ false-escalation; not a CI gate; `policy.py` not retuned). S3 landed: **R38**
 synthetic pgvector in CI, **R16** embedding-model guard, **R35** release the
 pool connection before generation, **R15** trigram GIN, **R40** manifest cache
 with mtime + reload. S4 held-out retrieval fixtures remain owner-authored.
+S7 agent-doable items landed: **R33**, **R34**, **R43**, ADR-0025 detectors,
+**R19**, **R25** transcript window, **R42** parts-list linkage, **R2** audience
+attestation, **R44** trace governance. **R41** feedback UI is deferred.
 
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)
