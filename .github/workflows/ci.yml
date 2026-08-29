@@ -33,6 +33,9 @@ jobs:
       - name: Tests
         run: uv run pytest -q
 
+      - name: Safety policy bench
+        run: uv run repair-corpus bench-safety
+
       - name: A clean clone must report exactly what is missing
         run: uv run repair-corpus status
 

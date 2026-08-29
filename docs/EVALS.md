@@ -20,7 +20,7 @@ not on PATH.
 | Parsing | `bench-parse --write` | local PDFs for fixtures | `evals/parsing/fixtures.yaml` | `evals/parsing/results/scorecard.md` |
 | Chain smoke | `bench-chain --write` | DB + embedder (+ OpenAI unless `--skip-ask`) | `evals/chain/fixtures.yaml` | `evals/chain/results/scorecard.md` |
 | Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K) |
-| Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` | stdout scorecard |
+| Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` | stdout + CI gate |
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
 | Promote failure | `promote-eval --run … --scenario ID` | prior run JSON | — | YAML draft (optional `--write` into grading overlay) |
@@ -195,7 +195,7 @@ report by hand if you want new smoke/candidates.
 
 | Bench | Result | Notes |
 | --- | --- | --- |
-| Safety | 10/10 | Deterministic; manual (`bench-safety`) |
+| Safety | 15/15 | Deterministic; required CI check (`bench-safety`) |
 | Retrieval | 14/14 hard (`vector_apply_boost`) | Includes `production_search` strategy |
 | Chain smoke | — | `bench-chain` harness ready; E12 deferred (no boundary failure to bake) |
 | Q&A smoke | 5/5 | Live |
@@ -216,8 +216,9 @@ Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
 ## Out of scope (for now)
 
-- CI / scheduled eval benches of any kind (including offline `bench-safety`) —
-  operators run the EVALS.md sequence by hand
+- CI benches that need OpenAI or the real corpus (`bench-qa`, `bench-retrieve`,
+  `--judge`) — operators run those by hand. Offline `bench-safety` is a
+  required CI check.
 - Auto-merging promoted drafts into live overlay keys (always human review)
 - Auto-merging `mine-traces` report suggestions into `status: ready` (ADR-0023)
 
