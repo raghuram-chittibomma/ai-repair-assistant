@@ -24,6 +24,7 @@ from repair_assistant.observability.langfuse_tracing import (
     generation,
     observation,
     update_span,
+    usage_from_openai,
 )
 from repair_assistant.prompts import ask_system
 from repair_assistant.qa.acks import ACK_IN_ASK_MODE, is_ack_only_message
@@ -175,13 +176,16 @@ class OpenAIClient:
         last: Exception | None = None
         for attempt in range(1, attempts + 1):
             try:
-                return self._client().chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=0,
-                    max_tokens=self._max_tokens(),
-                    stream=stream,
-                )
+                kwargs: dict[str, Any] = {
+                    "model": self.model,
+                    "messages": messages,
+                    "temperature": 0,
+                    "max_tokens": self._max_tokens(),
+                    "stream": stream,
+                }
+                if stream:
+                    kwargs["stream_options"] = {"include_usage": True}
+                return self._client().chat.completions.create(**kwargs)
             except Exception as exc:  # noqa: BLE001 — classified immediately below
                 mapped = classify_llm_error(exc, timeout_seconds=self._timeout_seconds())
                 last = mapped
@@ -210,7 +214,7 @@ class OpenAIClient:
         ) as span:
             response = self._create(messages, stream=False)
             text = (response.choices[0].message.content or "").strip()
-            update_span(span, output={"content": text})
+            update_span(span, output={"content": text}, usage=usage_from_openai(response))
             return text
 
     def stream(self, system: str, user: str):
@@ -232,8 +236,12 @@ class OpenAIClient:
         ) as span:
             response = self._create(messages, stream=True)
             parts: list[str] = []
+            usage = None
             try:
                 for chunk in response:
+                    chunk_usage = usage_from_openai(chunk)
+                    if chunk_usage:
+                        usage = chunk_usage
                     choices = getattr(chunk, "choices", None) or []
                     if not choices:
                         continue
@@ -246,7 +254,9 @@ class OpenAIClient:
                 raise classify_llm_error(
                     exc, timeout_seconds=self._timeout_seconds()
                 ) from exc
-            update_span(span, output={"content": "".join(parts).strip()})
+            update_span(
+                span, output={"content": "".join(parts).strip()}, usage=usage
+            )
 
 
 def build_user_prompt(

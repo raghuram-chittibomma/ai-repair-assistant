@@ -324,6 +324,28 @@ def generation(
         yield span
 
 
+def usage_from_openai(response: Any) -> dict[str, int] | None:
+    """Map an OpenAI usage object onto Langfuse ``usage_details`` (review R43)."""
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    prompt = getattr(usage, "prompt_tokens", None)
+    completion = getattr(usage, "completion_tokens", None)
+    total = getattr(usage, "total_tokens", None)
+    if prompt is None and completion is None and total is None:
+        return None
+    details: dict[str, int] = {}
+    if prompt is not None:
+        details["input"] = int(prompt)
+    if completion is not None:
+        details["output"] = int(completion)
+    if total is not None:
+        details["total"] = int(total)
+    elif details:
+        details["total"] = details.get("input", 0) + details.get("output", 0)
+    return details
+
+
 def update_span(span: Any, **kwargs: Any) -> None:
     """Best-effort span.update (no-op span ignores). Truncates input/output."""
     update = getattr(span, "update", None)
@@ -334,6 +356,9 @@ def update_span(span: Any, **kwargs: Any) -> None:
         payload["input"] = truncate_for_trace(payload["input"])
     if "output" in payload:
         payload["output"] = truncate_for_trace(payload["output"])
+    usage = payload.pop("usage", None)
+    if usage:
+        payload["usage_details"] = usage
     update(**payload)
 
 
@@ -348,4 +373,5 @@ __all__ = [
     "truncate_for_trace",
     "tracing_enabled",
     "update_span",
+    "usage_from_openai",
 ]

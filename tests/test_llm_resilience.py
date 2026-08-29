@@ -119,6 +119,29 @@ def _client_with(completions) -> OpenAIClient:
     return client
 
 
+def test_complete_records_token_usage_on_generation_span(monkeypatch):
+    completions = _FlakyCompletions(_openai_error("RateLimitError"), failures=0)
+    orig = completions.create
+
+    def create_with_usage(**kwargs):
+        response = orig(**kwargs)
+        usage = MagicMock()
+        usage.prompt_tokens = 20
+        usage.completion_tokens = 8
+        usage.total_tokens = 28
+        response.usage = usage
+        return response
+
+    completions.create = create_with_usage  # type: ignore[method-assign]
+    recorded: dict = {}
+    monkeypatch.setattr(
+        "repair_assistant.qa.generate.update_span",
+        lambda _span, **kwargs: recorded.update(kwargs),
+    )
+    _client_with(completions).complete("sys", "user")
+    assert recorded["usage"] == {"input": 20, "output": 8, "total": 28}
+
+
 def test_transient_rate_limit_is_retried_then_succeeds(monkeypatch):
     monkeypatch.setenv("LLM_RETRY_BASE_SECONDS", "0")
     completions = _FlakyCompletions(_openai_error("RateLimitError"), failures=2)

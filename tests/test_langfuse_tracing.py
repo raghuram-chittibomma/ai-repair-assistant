@@ -107,6 +107,33 @@ def test_child_observation_does_not_flush(monkeypatch) -> None:
     fake_span.end.assert_called_once()
 
 
+def test_usage_from_openai_maps_token_counts() -> None:
+    usage = MagicMock()
+    usage.prompt_tokens = 12
+    usage.completion_tokens = 4
+    usage.total_tokens = 16
+    response = MagicMock()
+    response.usage = usage
+    assert tracing.usage_from_openai(response) == {
+        "input": 12,
+        "output": 4,
+        "total": 16,
+    }
+    assert tracing.usage_from_openai(MagicMock(usage=None)) is None
+
+
+def test_update_span_passes_usage_details() -> None:
+    span = MagicMock()
+    tracing.update_span(
+        span,
+        output={"content": "hi"},
+        usage={"input": 12, "output": 4, "total": 16},
+    )
+    kwargs = span.update.call_args.kwargs
+    assert kwargs["usage_details"] == {"input": 12, "output": 4, "total": 16}
+    assert "usage" not in kwargs
+
+
 def test_generation_observation_uses_generation_type(monkeypatch) -> None:
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
