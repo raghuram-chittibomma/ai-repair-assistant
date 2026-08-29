@@ -66,6 +66,9 @@ packages = ["src/repair_assistant"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "postgres: needs REPAIR_TEST_DATABASE_URL (CI pgvector service)",
+]
 
 [tool.ruff]
 line-length = 100

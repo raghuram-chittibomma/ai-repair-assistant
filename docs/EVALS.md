@@ -218,7 +218,9 @@ Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 
 - CI benches that need OpenAI or the real corpus (`bench-qa`, `bench-retrieve`,
   `--judge`) — operators run those by hand. Offline `bench-safety` is a
-  required CI check.
+  required CI check. SQL correctness tests (`tests/test_postgres_sql.py`) run
+  against a disposable `pgvector` service in CI via `REPAIR_TEST_DATABASE_URL`;
+  they never use the LAN `DATABASE_URL`.
 - Auto-merging promoted drafts into live overlay keys (always human review)
 - Auto-merging `mine-traces` report suggestions into `status: ready` (ADR-0023)
 
