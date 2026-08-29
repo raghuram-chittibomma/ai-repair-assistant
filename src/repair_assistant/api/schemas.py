@@ -6,6 +6,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+#: Caps request bodies so a single call cannot flood the LLM (review R7).
+MAX_QUERY_CHARS = 4000
+MAX_MODEL_CHARS = 32
+MAX_SERIAL_CHARS = 32
+
 
 class CitationOut(BaseModel):
     index: int
@@ -16,9 +21,9 @@ class CitationOut(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    query: str
-    model: str | None = None
-    serial: str | None = None
+    query: str = Field(max_length=MAX_QUERY_CHARS)
+    model: str | None = Field(default=None, max_length=MAX_MODEL_CHARS)
+    serial: str | None = Field(default=None, max_length=MAX_SERIAL_CHARS)
     limit: int = Field(default=8, ge=1, le=20)
     overfetch: int = Field(default=40, ge=1, le=200)
 
@@ -43,9 +48,9 @@ class SearchResponse(BaseModel):
 
 
 class AskRequest(BaseModel):
-    question: str
-    model: str | None = None
-    serial: str | None = None
+    question: str = Field(max_length=MAX_QUERY_CHARS)
+    model: str | None = Field(default=None, max_length=MAX_MODEL_CHARS)
+    serial: str | None = Field(default=None, max_length=MAX_SERIAL_CHARS)
     audience: Literal["owner", "technician"] = "owner"
     limit: int = Field(default=8, ge=1, le=20)
     overfetch: int = Field(default=40, ge=1, le=200)
@@ -65,9 +70,9 @@ class AskResponse(BaseModel):
 
 
 class DiagnoseRequest(BaseModel):
-    message: str
-    model: str
-    serial: str | None = None
+    message: str = Field(max_length=MAX_QUERY_CHARS)
+    model: str = Field(max_length=MAX_MODEL_CHARS)
+    serial: str | None = Field(default=None, max_length=MAX_SERIAL_CHARS)
     audience: Literal["owner", "technician"] = "owner"
     session_id: str | None = None
     limit: int = Field(default=8, ge=1, le=20)

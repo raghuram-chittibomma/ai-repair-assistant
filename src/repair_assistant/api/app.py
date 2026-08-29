@@ -38,6 +38,10 @@ from repair_assistant.api.sessions import (
     DEFAULT_SESSION_TTL_SECONDS,
     SessionStore,
 )
+from repair_assistant.diagnostic.session import (
+    DEFAULT_SESSION_MAX_TURNS,
+    SessionTurnLimitError,
+)
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.support import (
@@ -144,6 +148,7 @@ def create_app(
     store = session_store or SessionStore(
         ttl_seconds=_env_int("REPAIR_SESSION_TTL_SECONDS", DEFAULT_SESSION_TTL_SECONDS),
         max_sessions=_env_int("REPAIR_SESSION_MAX", DEFAULT_SESSION_MAX),
+        max_turns=_env_int("REPAIR_SESSION_MAX_TURNS", DEFAULT_SESSION_MAX_TURNS),
     )
     pool: DatabasePool | None = None
     if db_factory is None:
@@ -390,6 +395,11 @@ def create_app(
             ) from None
         try:
             turn = session.send(db, body.message)
+        except SessionTurnLimitError as exc:
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail=exc.client_message,
+            ) from exc
         except LLMTimeoutError as exc:
             raise _llm_timeout_http(exc) from exc
         except LLMError as exc:
@@ -435,6 +445,11 @@ def create_app(
                     "start a new chat"
                 ),
             ) from None
+        if session.turn_count >= session.max_turns:
+            raise HTTPException(
+                status_code=SessionTurnLimitError.status_code,
+                detail=SessionTurnLimitError.client_message,
+            )
 
         async def event_iter():
             gen = session.send_stream(db, body.message)

@@ -9,7 +9,10 @@ from dataclasses import dataclass
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Manifest
-from repair_assistant.diagnostic.session import DiagnosticSession
+from repair_assistant.diagnostic.session import (
+    DEFAULT_SESSION_MAX_TURNS,
+    DiagnosticSession,
+)
 from repair_assistant.safety.models import Audience
 
 DEFAULT_SESSION_TTL_SECONDS = 3600
@@ -30,11 +33,13 @@ class SessionStore:
         *,
         ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS,
         max_sessions: int = DEFAULT_SESSION_MAX,
+        max_turns: int = DEFAULT_SESSION_MAX_TURNS,
     ) -> None:
         self._lock = threading.Lock()
         self._sessions: dict[str, _Entry] = {}
         self._ttl_seconds = max(0, int(ttl_seconds))
         self._max_sessions = max(1, int(max_sessions))
+        self._max_turns = max(1, int(max_turns))
 
     def get_or_create(
         self,
@@ -66,6 +71,7 @@ class SessionStore:
                 retrieval_limit=retrieval_limit,
                 overfetch=overfetch,
                 session_id=sid,
+                max_turns=self._max_turns,
             )
             self._sessions[sid] = _Entry(session=session, last_access=now)
             return sid, session

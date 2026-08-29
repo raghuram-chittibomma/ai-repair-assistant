@@ -26,6 +26,15 @@ from repair_assistant.observability.langfuse_tracing import observation, update_
 from repair_assistant.qa.generate import LLMClient
 from repair_assistant.safety.models import Audience, SafetyAction
 
+DEFAULT_SESSION_MAX_TURNS = 24
+
+
+class SessionTurnLimitError(ValueError):
+    """The session has used its allowed turns; start a new chat (review R7)."""
+
+    status_code = 400
+    client_message = "This session has reached the turn limit. Start a new chat."
+
 
 class DiagnosticSession:
     """Multi-turn grounded troubleshooting for one appliance."""
@@ -40,12 +49,14 @@ class DiagnosticSession:
         retrieval_limit: int = 8,
         overfetch: int = 40,
         session_id: str | None = None,
+        max_turns: int = DEFAULT_SESSION_MAX_TURNS,
     ) -> None:
         self._manifest = manifest
         self._session_id = session_id
         self._llm = llm
         self._retrieval_limit = retrieval_limit
         self._overfetch = overfetch
+        self._max_turns = max(1, int(max_turns))
         self._state: DiagnosticGraphState = {
             "messages": [],
             "appliance_model": appliance.model if appliance else None,
@@ -70,11 +81,20 @@ class DiagnosticSession:
         return self._turn
 
     @property
+    def max_turns(self) -> int:
+        return self._max_turns
+
+    @property
     def session_id(self) -> str | None:
         return self._session_id
 
+    def _ensure_turn_allowed(self) -> None:
+        if self._turn >= self._max_turns:
+            raise SessionTurnLimitError(SessionTurnLimitError.client_message)
+
     def send(self, db: Database, user_message: str) -> TurnResult:
         """Process one user message and return the assistant turn."""
+        self._ensure_turn_allowed()
         self._turn += 1
         meta = {
             "turn": self._turn,
@@ -175,6 +195,7 @@ class DiagnosticSession:
 
     def send_stream(self, db: Database, user_message: str) -> Iterator[dict[str, Any]]:
         """Process one user message and yield SSE-friendly events."""
+        self._ensure_turn_allowed()
         self._turn += 1
         meta = {
             "turn": self._turn,

@@ -78,6 +78,11 @@ def test_ask_llm_timeout_returns_504(mock_ask: MagicMock, client: TestClient) ->
     assert "timed out" in response.json()["detail"]
 
 
+def test_ask_rejects_oversized_question(client: TestClient) -> None:
+    response = client.post("/v1/ask", json={"question": "x" * 4001})
+    assert response.status_code == 422
+
+
 @patch("repair_assistant.api.app.ask")
 def test_ask_route(mock_ask: MagicMock, client: TestClient) -> None:
     mock_ask.return_value = AnswerResult(
@@ -146,6 +151,8 @@ def test_diagnose_route_returns_session_id(mock_session_cls: MagicMock, client: 
         escalated=False,
     )
     instance.send.return_value = turn
+    instance.turn_count = 0
+    instance.max_turns = 24
     mock_session_cls.return_value = instance
 
     response = client.post(
@@ -173,6 +180,42 @@ def test_diagnose_unknown_session_returns_410(
     assert response.status_code == 410
     assert "expired" in response.json()["detail"].lower()
     mock_session_cls.assert_not_called()
+
+
+@patch("repair_assistant.api.sessions.DiagnosticSession")
+def test_diagnose_turn_limit_returns_400(
+    mock_session_cls: MagicMock, client: TestClient
+) -> None:
+    from repair_assistant.diagnostic.session import SessionTurnLimitError
+
+    instance = MagicMock()
+    instance.send.side_effect = SessionTurnLimitError(SessionTurnLimitError.client_message)
+    instance.turn_count = 24
+    instance.max_turns = 24
+    mock_session_cls.return_value = instance
+    response = client.post(
+        "/v1/diagnose",
+        json={"message": "still stuck", "model": "WFW5620HW0"},
+    )
+    assert response.status_code == 400
+    assert "turn limit" in response.json()["detail"].lower()
+
+
+@patch("repair_assistant.api.sessions.DiagnosticSession")
+def test_diagnose_stream_turn_limit_returns_400(
+    mock_session_cls: MagicMock, client: TestClient
+) -> None:
+    instance = MagicMock()
+    instance.turn_count = 24
+    instance.max_turns = 24
+    mock_session_cls.return_value = instance
+    response = client.post(
+        "/v1/diagnose/stream",
+        json={"message": "still stuck", "model": "WFW5620HW0"},
+    )
+    assert response.status_code == 400
+    assert "turn limit" in response.json()["detail"].lower()
+    instance.send_stream.assert_not_called()
 
 
 @patch("repair_assistant.api.app.ask_stream")
@@ -219,6 +262,8 @@ def test_ask_stream_route_exhaustion_no_stopiteration_error(
 @patch("repair_assistant.api.sessions.DiagnosticSession")
 def test_diagnose_stream_route_sse(mock_session_cls: MagicMock, client: TestClient) -> None:
     instance = MagicMock()
+    instance.turn_count = 0
+    instance.max_turns = 24
     instance.send_stream.return_value = iter(
         [
             {"type": "status", "phase": "retrieving"},
@@ -256,6 +301,8 @@ def test_diagnose_stream_route_exhaustion_no_stopiteration_error(
     mock_session_cls: MagicMock, client: TestClient
 ) -> None:
     instance = MagicMock()
+    instance.turn_count = 0
+    instance.max_turns = 24
     instance.send_stream.return_value = iter(
         [{"type": "done", "assistant_message": "Done.", "abstained": False, "turn": 1}]
     )

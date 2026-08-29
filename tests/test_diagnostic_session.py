@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Document, Manifest
-from repair_assistant.diagnostic.session import DiagnosticSession
+from repair_assistant.diagnostic.session import DiagnosticSession, SessionTurnLimitError
 from repair_assistant.retrieval.search import Hit, SearchResult
 
 
@@ -124,3 +126,17 @@ def test_diagnostic_session_abstains_without_hits(mock_search: MagicMock) -> Non
     result = session.send(db, "What is ZZ99?")
     assert result.abstained
     assert "manufacturer evidence" in result.assistant_message.lower()
+
+
+def test_diagnostic_session_enforces_turn_cap() -> None:
+    session = DiagnosticSession(
+        _manifest(),
+        appliance=Appliance(model="WFW5620HW0"),
+        llm=FakeLLM(["unused"]),
+        max_turns=1,
+    )
+    session._turn = 1
+    with pytest.raises(SessionTurnLimitError):
+        session.send(MagicMock(), "another question")
+    with pytest.raises(SessionTurnLimitError):
+        next(session.send_stream(MagicMock(), "another question"))
