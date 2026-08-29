@@ -170,6 +170,39 @@
       font-size: 0.88rem;
       line-height: 1.4;
     }
+    .disclaimer {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.45;
+      max-width: 52rem;
+      margin: 0 auto;
+      padding: 0.65rem 1.5rem 0.85rem;
+    }
+    .disclaimer strong { color: var(--text); font-weight: 600; }
+    .ack-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 40;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .ack-overlay.visible { display: flex; }
+    .ack-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      max-width: 32rem;
+      padding: 1.25rem 1.35rem;
+    }
+    .ack-card h2 { margin: 0 0 0.6rem; font-size: 1rem; }
+    .ack-card p { margin: 0 0 0.75rem; color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
+    .ack-card label { color: var(--text); font-size: 0.85rem; display: flex; gap: 0.5rem; align-items: flex-start; }
+    .ack-card input[type="checkbox"] { width: auto; margin-top: 0.2rem; }
+    .ack-card button { margin-top: 0.9rem; }
+    .ack-card button:disabled { opacity: 0.45; cursor: not-allowed; }
     .safety-banner.visible { display: block; }
     .safety-banner.block {
       border-color: var(--danger);
@@ -205,6 +238,29 @@
       <button type="button" id="exportMd" class="secondary" title="Download chat history as Markdown">Export MD</button>
     </div>
   </header>
+  <p class="disclaimer" id="disclaimerBar">
+    <strong>Not a substitute for a qualified appliance technician.</strong>
+    Guidance is grounded in manufacturer literature you supply and may be incomplete
+    or inapplicable. DIY repair can injure you or others and may void the product
+    warranty. Consult the cited source documents, unplug the appliance before any
+    inspection unless the literature says otherwise, and stop if you are unsure.
+  </p>
+  <div id="ackOverlay" class="ack-overlay" role="dialog" aria-modal="true" aria-labelledby="ackTitle">
+    <div class="ack-card">
+      <h2 id="ackTitle">Before you use this assistant</h2>
+      <p>
+        This tool is not a substitute for a qualified technician. Answers cite
+        manufacturer documents and can still be wrong or incomplete. DIY work can
+        create electrical or mechanical hazards and may void the warranty.
+        You assume the risk of any repair you attempt.
+      </p>
+      <label>
+        <input type="checkbox" id="ackCheck" />
+        <span>I understand this is not professional service advice and I will consult the cited manuals.</span>
+      </label>
+      <button type="button" id="ackBtn" disabled>Continue</button>
+    </div>
+  </div>
   <main>
     <div class="controls">
       <div>
@@ -266,6 +322,31 @@
     const exportMdBtn = document.getElementById("exportMd");
 
     const FETCH_TIMEOUT_MS = 180000;
+    const DISCLAIMER_ACK_KEY = "repair_assistant_disclaimer_ack_v1";
+
+    const ackOverlay = document.getElementById("ackOverlay");
+    const ackCheck = document.getElementById("ackCheck");
+    const ackBtn = document.getElementById("ackBtn");
+
+    function maybeShowDisclaimerAck() {
+      try {
+        if (localStorage.getItem(DISCLAIMER_ACK_KEY) === "1") return;
+      } catch (_err) {
+        /* private mode — still require the interstitial this session */
+      }
+      ackOverlay.classList.add("visible");
+      ackCheck.addEventListener("change", () => {
+        ackBtn.disabled = !ackCheck.checked;
+      });
+      ackBtn.addEventListener("click", () => {
+        if (!ackCheck.checked) return;
+        try {
+          localStorage.setItem(DISCLAIMER_ACK_KEY, "1");
+        } catch (_err) { /* ignore */ }
+        ackOverlay.classList.remove("visible");
+      });
+    }
+    maybeShowDisclaimerAck();
 
     let sessionId = null;
     let turn = 0;
