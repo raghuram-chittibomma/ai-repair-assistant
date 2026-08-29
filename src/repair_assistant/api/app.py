@@ -48,7 +48,7 @@ from repair_assistant.corpus.support import (
 from repair_assistant.ingest.embeddings import get_shared_embedder, shared_embedder_loaded
 from repair_assistant.ingest.env import database_url, load_dotenv_files
 from repair_assistant.ingest.store import Database
-from repair_assistant.qa.generate import LLMTimeoutError, ask, ask_stream
+from repair_assistant.qa.generate import LLMError, LLMTimeoutError, ask, ask_stream
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.models import Audience
 
@@ -56,10 +56,36 @@ _log = logging.getLogger("repair_assistant.api")
 
 
 def _llm_timeout_http(exc: BaseException) -> HTTPException:
+    return HTTPException(status_code=504, detail=_client_detail(exc, "LLM request timed out"))
+
+
+def _client_detail(exc: BaseException, fallback: str) -> str:
+    """Client-safe message for an exception, always logging the real one.
+
+    Errors carrying a `client_message` (the LLM taxonomy) report that instead of
+    provider text, which can include request ids, org ids, and key prefixes. The
+    project's own `RuntimeError` messages are deliberately still surfaced: for a
+    self-hosted operator "OPENAI_API_KEY is required" is the useful answer, and it
+    is our text, not a third party's (review R36).
+    """
+    _log.warning("%s: %s", type(exc).__name__, exc)
+    return getattr(exc, "client_message", None) or str(exc) or fallback
+
+
+def _llm_error_http(exc: BaseException) -> HTTPException:
+    status = getattr(exc, "status_code", None) or 503
     return HTTPException(
-        status_code=504,
-        detail=str(exc) or "LLM request timed out",
+        status_code=status,
+        detail=_client_detail(exc, "The language model is unavailable."),
     )
+
+
+def _stream_error_event(exc: BaseException, *, generic: bool = False) -> dict[str, str]:
+    """SSE error payload. `generic` withholds detail for unanticipated errors."""
+    if generic:
+        _log.exception("Unhandled error on a streaming route", exc_info=exc)
+        return {"type": "error", "detail": "The request could not be completed."}
+    return {"type": "error", "detail": _client_detail(exc, "The request failed.")}
 
 def _citation_out(cite) -> CitationOut:
     return CitationOut(
@@ -267,8 +293,10 @@ def create_app(
             )
         except LLMTimeoutError as exc:
             raise _llm_timeout_http(exc) from exc
+        except LLMError as exc:
+            raise _llm_error_http(exc) from exc
         except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+            raise HTTPException(status_code=503, detail=_client_detail(exc, "Unavailable")) from exc
         return AskResponse(
             question=result.question,
             answer=result.answer,
@@ -307,16 +335,12 @@ def create_app(
                         break
                     try:
                         event = await asyncio.to_thread(_pull_stream_event, gen)
-                    except LLMTimeoutError as exc:
-                        err = {"type": "error", "detail": str(exc)}
+                    except (LLMTimeoutError, RuntimeError) as exc:
+                        err = _stream_error_event(exc)
                         yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
                         break
-                    except RuntimeError as exc:
-                        err = {"type": "error", "detail": str(exc)}
-                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-                        break
-                    except Exception as exc:  # noqa: BLE001 — surface to client
-                        err = {"type": "error", "detail": str(exc)}
+                    except Exception as exc:  # noqa: BLE001 — logged, not echoed
+                        err = _stream_error_event(exc, generic=True)
                         yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
                         break
                     if event is None:
@@ -360,8 +384,10 @@ def create_app(
             turn = session.send(db, body.message)
         except LLMTimeoutError as exc:
             raise _llm_timeout_http(exc) from exc
+        except LLMError as exc:
+            raise _llm_error_http(exc) from exc
         except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+            raise HTTPException(status_code=503, detail=_client_detail(exc, "Unavailable")) from exc
         return DiagnoseResponse(
             session_id=sid,
             turn=turn.turn,
@@ -410,16 +436,12 @@ def create_app(
                         break
                     try:
                         event = await asyncio.to_thread(_pull_stream_event, gen)
-                    except LLMTimeoutError as exc:
-                        err = {"type": "error", "detail": str(exc)}
+                    except (LLMTimeoutError, RuntimeError) as exc:
+                        err = _stream_error_event(exc)
                         yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
                         break
-                    except RuntimeError as exc:
-                        err = {"type": "error", "detail": str(exc)}
-                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-                        break
-                    except Exception as exc:  # noqa: BLE001 — surface to client
-                        err = {"type": "error", "detail": str(exc)}
+                    except Exception as exc:  # noqa: BLE001 — logged, not echoed
+                        err = _stream_error_event(exc, generic=True)
                         yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
                         break
                     if event is None:

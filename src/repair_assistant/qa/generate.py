@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import random
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -32,7 +34,13 @@ from repair_assistant.qa.context import (
     format_evidence,
     format_label,
 )
-from repair_assistant.qa.env import llm_model, llm_timeout_seconds, openai_api_key
+from repair_assistant.qa.env import (
+    llm_max_attempts,
+    llm_model,
+    llm_retry_base_seconds,
+    llm_timeout_seconds,
+    openai_api_key,
+)
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
@@ -43,9 +51,85 @@ from repair_assistant.safety.policy import (
 )
 from repair_assistant.safety.stream_gate import StreamGate, may_stream
 
+_log = logging.getLogger("repair_assistant.qa")
+
 
 class LLMTimeoutError(TimeoutError):
     """OpenAI request exceeded LLM_TIMEOUT_SECONDS (or client timeout)."""
+
+    status_code = 504
+    #: Empty on purpose: this exception's message is constructed here and names
+    #: the configured budget, which is useful to a self-hosted operator and
+    #: contains no provider detail. Callers fall back to `str(exc)`.
+    client_message = ""
+
+
+class LLMError(RuntimeError):
+    """An LLM call failed for a reason other than timeout.
+
+    Deliberately a `RuntimeError`: the API routes already map `RuntimeError` to a
+    503, so a provider error class nobody anticipated degrades to a handled
+    response instead of an unhandled 500 (review R36).
+    """
+
+    status_code = 503
+    client_message = "The language model is unavailable. Please try again."
+
+
+class LLMRateLimitError(LLMError):
+    """Provider rate limit or quota exhaustion."""
+
+    status_code = 429
+    client_message = "The language model is rate limited. Please try again shortly."
+
+
+class LLMUnavailableError(LLMError):
+    """Connection failure or a provider 5xx."""
+
+
+class LLMRequestError(LLMError):
+    """Provider rejected the request (4xx): bad key, bad model, malformed call."""
+
+    status_code = 502
+    client_message = "The language model rejected the request. Check server configuration."
+
+
+#: Classes worth retrying. A timeout is excluded on purpose — see llm_max_attempts.
+_RETRYABLE = (LLMRateLimitError, LLMUnavailableError)
+
+
+def classify_llm_error(exc: BaseException, *, timeout_seconds: float | None = None) -> Exception:
+    """Map an OpenAI exception onto this module's taxonomy.
+
+    `RateLimitError` and `APIStatusError` inherit from neither `TimeoutError` nor
+    `RuntimeError`, so before this existed they escaped every route handler and
+    became an HTTP 500 (review R36).
+    """
+    from openai import (
+        APIConnectionError,
+        APIStatusError,
+        APITimeoutError,
+        RateLimitError,
+    )
+
+    if isinstance(exc, APITimeoutError):
+        suffix = f" after {timeout_seconds:g}s" if timeout_seconds else ""
+        return LLMTimeoutError(f"OpenAI request timed out{suffix}")
+    if isinstance(exc, RateLimitError):
+        return LLMRateLimitError(f"OpenAI rate limit: {exc}")
+    if isinstance(exc, APIConnectionError):
+        return LLMUnavailableError(f"OpenAI connection failed: {exc}")
+    if isinstance(exc, APIStatusError):
+        status = getattr(exc, "status_code", None) or 0
+        if status >= 500:
+            return LLMUnavailableError(f"OpenAI returned {status}: {exc}")
+        return LLMRequestError(f"OpenAI returned {status}: {exc}")
+    return LLMUnavailableError(f"OpenAI call failed: {exc}")
+
+
+def _retry_sleep(attempt: int, base: float) -> float:
+    """Exponential backoff with jitter, so concurrent callers do not resynchronise."""
+    return base * (2 ** (attempt - 1)) * (1.0 + random.random() * 0.25)
 
 
 class LLMClient(Protocol):
@@ -63,6 +147,7 @@ class OpenAIClient:
     api_key: str
     model: str
     timeout: float | None = None
+    max_attempts: int | None = None
 
     def _timeout_seconds(self) -> float:
         if self.timeout is not None:
@@ -74,9 +159,39 @@ class OpenAIClient:
 
         return OpenAI(api_key=self.api_key, timeout=self._timeout_seconds())
 
-    def complete(self, system: str, user: str) -> str:
-        from openai import APITimeoutError
+    def _attempts(self) -> int:
+        return self.max_attempts if self.max_attempts is not None else llm_max_attempts()
 
+    def _create(self, messages: list[dict[str, str]], *, stream: bool):
+        """Call the provider, retrying transient failures with backoff."""
+        attempts = self._attempts()
+        base = llm_retry_base_seconds()
+        last: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            try:
+                return self._client().chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.2,
+                    stream=stream,
+                )
+            except Exception as exc:  # noqa: BLE001 — classified immediately below
+                mapped = classify_llm_error(exc, timeout_seconds=self._timeout_seconds())
+                last = mapped
+                if not isinstance(mapped, _RETRYABLE) or attempt == attempts:
+                    raise mapped from exc
+                delay = _retry_sleep(attempt, base)
+                _log.warning(
+                    "LLM attempt %d/%d failed (%s); retrying in %.2fs",
+                    attempt,
+                    attempts,
+                    type(mapped).__name__,
+                    delay,
+                )
+                time.sleep(delay)
+        raise last if last else LLMUnavailableError("OpenAI call failed")
+
+    def complete(self, system: str, user: str) -> str:
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -86,25 +201,19 @@ class OpenAIClient:
             model=self.model,
             input={"messages": messages},
         ) as span:
-            client = self._client()
-            try:
-                response = client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=0.2,
-                )
-            except APITimeoutError as exc:
-                raise LLMTimeoutError(
-                    f"OpenAI request timed out after {self._timeout_seconds():g}s"
-                ) from exc
+            response = self._create(messages, stream=False)
             text = (response.choices[0].message.content or "").strip()
             update_span(span, output={"content": text})
             return text
 
     def stream(self, system: str, user: str):
-        """Yield text deltas from OpenAI chat completions."""
-        from openai import APITimeoutError
+        """Yield text deltas from OpenAI chat completions.
 
+        Retry happens inside `_create`, before any delta is yielded. Once the
+        first delta is out there is no safe retry: the caller has already been
+        given part of an answer, and a second attempt would splice two different
+        generations together.
+        """
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -114,15 +223,9 @@ class OpenAIClient:
             model=self.model,
             input={"messages": messages, "stream": True},
         ) as span:
-            client = self._client()
+            response = self._create(messages, stream=True)
+            parts: list[str] = []
             try:
-                response = client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=0.2,
-                    stream=True,
-                )
-                parts: list[str] = []
                 for chunk in response:
                     choices = getattr(chunk, "choices", None) or []
                     if not choices:
@@ -132,11 +235,11 @@ class OpenAIClient:
                     if text:
                         parts.append(text)
                         yield text
-                update_span(span, output={"content": "".join(parts).strip()})
-            except APITimeoutError as exc:
-                raise LLMTimeoutError(
-                    f"OpenAI request timed out after {self._timeout_seconds():g}s"
+            except Exception as exc:  # noqa: BLE001 — classified, not swallowed
+                raise classify_llm_error(
+                    exc, timeout_seconds=self._timeout_seconds()
                 ) from exc
+            update_span(span, output={"content": "".join(parts).strip()})
 
 
 def build_user_prompt(
@@ -196,6 +299,55 @@ def _no_evidence_answer(question: str, appliance: Appliance | None, *, assessmen
         abstain_code=ABSTAIN_NO_EVIDENCE,
         citations=[],
         retrieval_count=0,
+        safety_action=assessment.action.value,
+        safety_notice=assessment.reason,
+    )
+
+
+#: Marks an answer that carries evidence but no generated prose (review R36).
+ABSTAIN_LLM_UNAVAILABLE = "llm_unavailable"
+
+_DEGRADED_PREAMBLE = (
+    "The assistant could not compose an answer because the language model is "
+    "unavailable. The applicable manufacturer evidence for your question is "
+    "listed below with citations; it has passed the same applicability and "
+    "precedence checks a normal answer uses."
+)
+
+
+def _degraded_payload(
+    citations: list[Citation],
+    exc: BaseException,
+) -> tuple[str, str]:
+    """Answer text and abstain reason for an evidence-only response.
+
+    Generation failing after retrieval succeeded is not a dead end: applicable,
+    cited evidence is already in hand, and returning it beats an error page.
+    """
+    lines = [_DEGRADED_PREAMBLE, ""]
+    for cite in citations:
+        lines.append(f"[{cite.index}] {cite.label}")
+    reason = getattr(exc, "client_message", None) or "The language model is unavailable."
+    return "\n".join(lines).strip(), reason
+
+
+def _degraded_answer(
+    question: str,
+    *,
+    citations: list[Citation],
+    retrieval_count: int,
+    assessment,
+    exc: BaseException,
+) -> AnswerResult:
+    text, reason = _degraded_payload(citations, exc)
+    return AnswerResult(
+        question=question,
+        answer=text,
+        abstained=True,
+        abstain_reason=reason,
+        abstain_code=ABSTAIN_LLM_UNAVAILABLE,
+        citations=citations,
+        retrieval_count=retrieval_count,
         safety_action=assessment.action.value,
         safety_notice=assessment.reason,
     )
@@ -453,7 +605,17 @@ def _ask_impl(
         user_codes=plan.user_codes,
         plan_codes=plan.plan_codes,
     )
-    raw = llm.complete(system, user_prompt)
+    try:
+        raw = llm.complete(system, user_prompt)
+    except (LLMError, LLMTimeoutError) as exc:
+        _log.warning("Generation failed; returning retrieved evidence instead: %s", exc)
+        return _degraded_answer(
+            question,
+            citations=available,
+            retrieval_count=len(result.hits),
+            assessment=assessment,
+            exc=exc,
+        )
 
     if raw.upper().startswith("ABSTAIN:"):
         return AnswerResult(
@@ -641,13 +803,48 @@ def ask_stream(
         # assessment already decides the outcome, withhold tokens entirely.
         stream_tokens = may_stream(assessment)
         stream_gate = StreamGate(assessment)
-        for delta in client.stream(system, user_prompt):
-            safe = stream_gate.push(delta)
-            if safe and stream_tokens:
-                yield {"type": "token", "text": safe}
-        tail = stream_gate.finish()
-        if tail and stream_tokens:
-            yield {"type": "token", "text": tail}
+        try:
+            for delta in client.stream(system, user_prompt):
+                safe = stream_gate.push(delta)
+                if safe and stream_tokens:
+                    yield {"type": "token", "text": safe}
+            tail = stream_gate.finish()
+            if tail and stream_tokens:
+                yield {"type": "token", "text": tail}
+        except (LLMError, LLMTimeoutError) as exc:
+            # R36: retrieval already succeeded, so degrade to cited evidence
+            # rather than failing the request.
+            _log.warning("Streamed generation failed; returning evidence: %s", exc)
+            degraded = _degraded_answer(
+                question,
+                citations=available,
+                retrieval_count=len(result.hits),
+                assessment=assessment,
+                exc=exc,
+            )
+            yield {
+                "type": "done",
+                "question": question,
+                "answer": degraded.answer,
+                "abstained": True,
+                "abstain_reason": degraded.abstain_reason,
+                "abstain_code": degraded.abstain_code,
+                "citations": [
+                    {
+                        "index": c.index,
+                        "doc_id": c.doc_id,
+                        "chunk_id": c.chunk_id,
+                        "label": c.label,
+                        "page": c.page,
+                    }
+                    for c in degraded.citations
+                ],
+                "retrieval_count": degraded.retrieval_count,
+                "safety_action": degraded.safety_action,
+                "safety_notice": degraded.safety_notice,
+                "escalated": False,
+            }
+            return
 
         raw = stream_gate.accumulated.strip()
         if raw.upper().startswith("ABSTAIN:"):
