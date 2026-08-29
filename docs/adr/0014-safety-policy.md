@@ -43,4 +43,5 @@ Safety section; Phase 8).
 - Policy rules are maintainable regex lists; corpus-specific hazards should be
   added as fixtures when discovered.
 - Automated grading of “correct escalation wording” awaits the Phase 9 eval
-  harness; deterministic action classification is enforced in CI today.
+  harness; deterministic action classification is enforced in CI by
+  `repair-corpus bench-safety` (and the same YAML fixtures via pytest).

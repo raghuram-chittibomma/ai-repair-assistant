@@ -57,7 +57,7 @@ can slip between layers.
 | --- | --- | --- | --- |
 | **E1** | ~~IR strategy grading production `search()`~~ **Done** — `production_search` on retrieve bake-off | — | Retrieval |
 | **E2** | ~~Every `ready` candidate gets ≥1 deterministic rule~~ **Done** — overlay + unit gate; `requires_judge` for prose | — | Candidates |
-| **E3** | ~~Wire `bench-safety` into CI~~ **Skipped** — all evals remain manual | — | Safety / CI |
+| **E3** | ~~Wire `bench-safety` into CI~~ **Done** — required check in `.github/workflows/ci.yml` | — | Safety / CI |
 | **E4** | ~~Align IR↔candidates / ready-fail fog~~ **Done** — F5E2 `expect_cites_any`; `serial-inside-range` deferred | — | Cross-layer |
 | **E5** | ~~`must_not_cite_as_current` in `grade_answer`~~ **Done** | — | Grading |
 | **E6** | ~~Thin chain smoke~~ **Done** — `bench-chain` + `evals/chain/fixtures.yaml` (manual) | — | Cross-layer |
@@ -69,10 +69,10 @@ can slip between layers.
 | **E12** | **Thin reopen (ADR-0022)** — contextual enrichment + bounded audit/repair; not a full D4 chunker bake | 2026-08-27 | Parsing |
 | **E13** | ~~Langfuse mine → draft evals~~ **Done** — ADR-0023 `mine-traces` (stamp + window + replay; analysis report; human promote) | — | Observability / Eval |
 
-**Suggested first slice:** E8 → E5 → E4 → E1 (E3 skipped — no scheduled/CI evals).
+**Suggested first slice:** E8 → E5 → E4 → E1 (E3 done — `bench-safety` is a CI gate).
 
-**Slice status (2026-08-26):** Eval-framework backlog **closed** for the
-audited slice. E3 skipped (no CI evals); E12 deferred (no boundary failure).
+**Slice status (2026-08-29):** Eval-framework backlog **closed** for the
+audited slice. E3 done (`bench-safety` in CI); E12 deferred (no boundary failure).
 **E4 done** — `f5e2-three-way` uses `expect_cites_any` (wrong-KB bans kept);
 `serial-inside-range` is `status: deferred` to match soft IR. No remaining
 open E-items from that audit (**E13** added later as Phase 11).
