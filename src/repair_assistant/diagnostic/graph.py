@@ -35,6 +35,7 @@ from repair_assistant.qa.generate import (
     _trace_evidence_prompt,
     _trace_gate,
 )
+from repair_assistant.qa.parts import related_parts_note
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
@@ -249,6 +250,9 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 "abstain_reason": "No matching manufacturer evidence for this question.",
             }
         evidence_text, citations = format_evidence(result.hits, manifest=manifest)
+        parts = related_parts_note(result.hits, manifest, appliance)
+        if parts:
+            evidence_text = f"{evidence_text}\n\n{parts}"
         return {
             "retrieval_query": query,
             "evidence_text": evidence_text,

@@ -44,6 +44,7 @@ from repair_assistant.qa.env import (
     llm_timeout_seconds,
     openai_api_key,
 )
+from repair_assistant.qa.parts import related_parts_note
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
@@ -386,8 +387,17 @@ def _trace_safety_assess(question: str, audience: Audience, assessment) -> None:
         )
 
 
-def _trace_evidence(hits, *, query: str, manifest: Manifest | None = None) -> tuple[str, list[Citation]]:
+def _trace_evidence(
+    hits,
+    *,
+    query: str,
+    manifest: Manifest | None = None,
+    appliance: Appliance | None = None,
+) -> tuple[str, list[Citation]]:
     evidence_text, available = format_evidence(hits, query=query, manifest=manifest)
+    parts = related_parts_note(hits, manifest, appliance)
+    if parts:
+        evidence_text = f"{evidence_text}\n\n{parts}"
     _trace_evidence_prompt(
         evidence_text,
         retrieval_count=len(hits),
@@ -625,7 +635,7 @@ def prepare_ask(
         )
 
     evidence_text, available = _trace_evidence(
-        result.hits, query=question, manifest=manifest
+        result.hits, query=question, manifest=manifest, appliance=appliance
     )
     assessment = apply_owner_evidence_policy(assessment, evidence_text)
     system = ask_system()
