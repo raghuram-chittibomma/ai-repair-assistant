@@ -92,6 +92,12 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0023](0023-trace-driven-eval-mining.md) | `mine-traces`: stamp + window + replay → analysis report; human promote only | Charter Phase 11 / E13 |
 
+## Scope
+
+| ADR | Decision | Driver |
+| --- | --- | --- |
+| [0025](0025-deferred-scope-multi-user-outcome-curation.md) | Multi-user, product-outcome, and curation-at-scale findings deferred with reopen triggers and detectors; three permanent non-goals named | External review triage ([response](../ARCHITECTURE_REVIEW_RESPONSE.md)); affirms charter D8 |
+
 ## Infrastructure
 
 | ADR | Decision | Driver |

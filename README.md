@@ -149,6 +149,8 @@ tests/                   deterministic tests
 - [Deployment](docs/DEPLOYMENT.md) — run API/UI/CLI against LAN Postgres
 - [Architecture diagrams](docs/architecture/) — system, deploy, ingest, retrieve, runtime, safety, traces
 - [Evaluation](docs/EVALS.md) — manual benches at every pipeline layer
+- [Architecture review](docs/ARCHITECTURE_REVIEW.md) — external audit, 48 findings
+- [Review response](docs/ARCHITECTURE_REVIEW_RESPONSE.md) — claims re-verified, disposition per finding, remediation slices
 - [Project charter](docs/CHARTER.md) — vision, constraints, roadmap
 - [Langfuse](docs/LANGFUSE.md) — optional self-hosted tracing
 - [Architecture decision records](docs/adr/) — design decisions
