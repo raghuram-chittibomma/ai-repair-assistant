@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -126,6 +127,33 @@ def test_diagnostic_session_abstains_without_hits(mock_search: MagicMock) -> Non
     result = session.send(db, "What is ZZ99?")
     assert result.abstained
     assert "manufacturer evidence" in result.assistant_message.lower()
+
+
+@patch("repair_assistant.diagnostic.graph.search")
+def test_send_releasing_closes_before_llm(mock_search: MagicMock) -> None:
+    """Review R35: generation must not run inside the DB factory."""
+    mock_search.return_value = SearchResult(query="F5E2", hits=[_hit()])
+    held = {"n": 0}
+
+    @contextmanager
+    def factory():
+        held["n"] += 1
+        yield MagicMock()
+        held["n"] -= 1
+
+    class TrackingLLM:
+        def complete(self, system: str, user: str) -> str:
+            assert held["n"] == 0
+            return "F5E2 indicates a door lock fault [1]."
+
+    session = DiagnosticSession(
+        _manifest(),
+        appliance=Appliance(model="WFW5620HW0"),
+        llm=TrackingLLM(),  # type: ignore[arg-type]
+    )
+    result = session.send_releasing(factory, "What does F5E2 mean?")
+    assert not result.abstained
+    assert held["n"] == 0
 
 
 def test_diagnostic_session_enforces_turn_cap() -> None:

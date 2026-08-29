@@ -58,21 +58,28 @@ def test_api_key_required_when_configured(client: TestClient, monkeypatch: pytes
     monkeypatch.setenv("REPAIR_API_KEY", "secret")
     response = client.post("/v1/ask", json={"question": "hi"})
     assert response.status_code == 401
-    with patch("repair_assistant.api.app.ask") as mock_ask:
-        mock_ask.return_value = AnswerResult(question="hi", answer="ok", abstained=False)
+    with (
+        patch("repair_assistant.api.app.prepare_ask") as mock_prep,
+        patch("repair_assistant.api.app.complete_ask") as mock_complete,
+    ):
+        mock_complete.return_value = AnswerResult(question="hi", answer="ok", abstained=False)
         response = client.post(
             "/v1/ask",
             json={"question": "hi"},
             headers={"X-API-Key": "secret"},
         )
     assert response.status_code == 200
+    mock_prep.assert_called_once()
 
 
-@patch("repair_assistant.api.app.ask")
-def test_ask_llm_timeout_returns_504(mock_ask: MagicMock, client: TestClient) -> None:
+@patch("repair_assistant.api.app.complete_ask")
+@patch("repair_assistant.api.app.prepare_ask")
+def test_ask_llm_timeout_returns_504(
+    mock_prep: MagicMock, mock_complete: MagicMock, client: TestClient
+) -> None:
     from repair_assistant.qa.generate import LLMTimeoutError
 
-    mock_ask.side_effect = LLMTimeoutError("OpenAI request timed out after 120s")
+    mock_complete.side_effect = LLMTimeoutError("OpenAI request timed out after 120s")
     response = client.post("/v1/ask", json={"question": "What is F5E2?"})
     assert response.status_code == 504
     assert "timed out" in response.json()["detail"]
@@ -83,9 +90,10 @@ def test_ask_rejects_oversized_question(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-@patch("repair_assistant.api.app.ask")
-def test_ask_route(mock_ask: MagicMock, client: TestClient) -> None:
-    mock_ask.return_value = AnswerResult(
+@patch("repair_assistant.api.app.complete_ask")
+@patch("repair_assistant.api.app.prepare_ask")
+def test_ask_route(mock_prep: MagicMock, mock_complete: MagicMock, client: TestClient) -> None:
+    mock_complete.return_value = AnswerResult(
         question="What is F5E2?",
         answer="Door lock failure [1].",
         abstained=False,
@@ -106,6 +114,40 @@ def test_ask_route(mock_ask: MagicMock, client: TestClient) -> None:
     body = response.json()
     assert "F5E2" in body["question"]
     assert body["citations"][0]["doc_id"] == "tech-sheet-w11320651"
+
+
+def test_ask_releases_db_before_generation(mock_db: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Review R35: the pool connection must not be held across complete_ask."""
+    held = {"n": 0}
+
+    @contextmanager
+    def factory():
+        held["n"] += 1
+        yield mock_db
+        held["n"] -= 1
+
+    monkeypatch.setenv("REPAIR_SKIP_EMBEDDER_WARMUP", "1")
+    app = create_app(
+        session_store=SessionStore(ttl_seconds=3600, max_sessions=8),
+        db_factory=factory,
+        warmup_embedder=False,
+    )
+
+    def fake_prepare(*_args, **_kwargs):
+        assert held["n"] == 1
+        return MagicMock()
+
+    def fake_complete(_prep, **_kwargs):
+        assert held["n"] == 0
+        return AnswerResult(question="What is F5E2?", answer="ok", abstained=False)
+
+    with (
+        TestClient(app) as test_client,
+        patch("repair_assistant.api.app.prepare_ask", side_effect=fake_prepare),
+        patch("repair_assistant.api.app.complete_ask", side_effect=fake_complete),
+    ):
+        response = test_client.post("/v1/ask", json={"question": "What is F5E2?"})
+    assert response.status_code == 200
 
 
 @patch("repair_assistant.api.app.search")
@@ -150,7 +192,7 @@ def test_diagnose_route_returns_session_id(mock_session_cls: MagicMock, client: 
         safety_notice="",
         escalated=False,
     )
-    instance.send.return_value = turn
+    instance.send_releasing.return_value = turn
     instance.turn_count = 0
     instance.max_turns = 24
     mock_session_cls.return_value = instance
@@ -189,7 +231,7 @@ def test_diagnose_turn_limit_returns_400(
     from repair_assistant.diagnostic.session import SessionTurnLimitError
 
     instance = MagicMock()
-    instance.send.side_effect = SessionTurnLimitError(SessionTurnLimitError.client_message)
+    instance.send_releasing.side_effect = SessionTurnLimitError(SessionTurnLimitError.client_message)
     instance.turn_count = 24
     instance.max_turns = 24
     mock_session_cls.return_value = instance

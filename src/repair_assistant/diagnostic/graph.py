@@ -524,6 +524,32 @@ def diagnose_turn_stream(
     yield _done_payload(state, gated.text)
 
 
+def retrieve_diagnose_state(
+    db: Database,
+    manifest: Manifest,
+    state: DiagnosticGraphState,
+    *,
+    retrieval_limit: int,
+    overfetch: int,
+) -> tuple[DiagnosticGraphState, bool]:
+    """Assess safety and retrieve evidence. Returns (state, needs_respond).
+
+    The database is unused after this returns (review R35).
+    """
+    state = _apply_delta(state, make_assess_node()(state))
+    if state.get("safety_action") == SafetyAction.BLOCK.value:
+        return _apply_delta(state, make_blocked_node()(state)), False
+    retrieve = make_retrieve_node(
+        db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch
+    )
+    return _apply_delta(state, retrieve(state)), True
+
+
+def respond_diagnose_state(state: DiagnosticGraphState, llm: LLMClient) -> DiagnosticGraphState:
+    """Generate the assistant turn. Must not be called while holding a pool connection."""
+    return _apply_delta(state, make_respond_node(llm)(state))
+
+
 def _route_after_assess(state: DiagnosticGraphState) -> str:
     if state.get("safety_action") == SafetyAction.BLOCK.value:
         return "blocked"

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -16,14 +17,16 @@ from repair_assistant.corpus.support import (
     unsupported_appliance_message,
 )
 from repair_assistant.diagnostic.graph import (
-    build_diagnostic_graph,
     citations_for_turn,
     diagnose_turn_stream,
+    respond_diagnose_state,
+    retrieve_diagnose_state,
 )
 from repair_assistant.diagnostic.state import DiagnosticGraphState, TurnResult
 from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import observation, update_span
-from repair_assistant.qa.generate import LLMClient
+from repair_assistant.qa.env import llm_model, openai_api_key
+from repair_assistant.qa.generate import LLMClient, OpenAIClient
 from repair_assistant.safety.models import Audience, SafetyAction
 
 DEFAULT_SESSION_MAX_TURNS = 24
@@ -94,6 +97,23 @@ class DiagnosticSession:
 
     def send(self, db: Database, user_message: str) -> TurnResult:
         """Process one user message and return the assistant turn."""
+
+        @contextmanager
+        def already_open() -> Iterator[Database]:
+            yield db
+
+        return self.send_releasing(already_open, user_message)
+
+    def send_releasing(
+        self,
+        factory: Callable[[], Any],
+        user_message: str,
+    ) -> TurnResult:
+        """Retrieve under ``factory()``; generate after that connection is released.
+
+        CLI ``send()`` passes an already-open connection. The API passes the
+        pool factory so generation does not pin a pooled client (review R35).
+        """
         self._ensure_turn_allowed()
         self._turn += 1
         meta = {
@@ -142,38 +162,41 @@ class DiagnosticSession:
                     )
                     return turn
 
-            graph = build_diagnostic_graph(
-                db,
-                self._manifest,
-                llm=self._llm,
-                retrieval_limit=self._retrieval_limit,
-                overfetch=self._overfetch,
-            )
             invoke_state: DiagnosticGraphState = {
                 **self._state,
                 "messages": [*self._state["messages"], HumanMessage(content=user_message)],
             }
-            result = graph.invoke(invoke_state)
-            self._state = result
+            with factory() as db:
+                pending, needs_respond = retrieve_diagnose_state(
+                    db,
+                    self._manifest,
+                    invoke_state,
+                    retrieval_limit=self._retrieval_limit,
+                    overfetch=self._overfetch,
+                )
+            if needs_respond:
+                llm = self._llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+                pending = respond_diagnose_state(pending, llm)
+            self._state = pending
 
             assistant = ""
-            for msg in reversed(result["messages"]):
+            for msg in reversed(pending["messages"]):
                 if isinstance(msg, AIMessage):
                     assistant = str(msg.content)
                     break
 
-            cited = [] if result.get("abstained") else citations_for_turn(result, assistant)
+            cited = [] if pending.get("abstained") else citations_for_turn(pending, assistant)
             turn = TurnResult(
                 user_message=user_message,
                 assistant_message=assistant,
-                abstained=bool(result.get("abstained")),
-                abstain_reason=result.get("abstain_reason", ""),
+                abstained=bool(pending.get("abstained")),
+                abstain_reason=pending.get("abstain_reason", ""),
                 citations=cited,
-                retrieval_count=int(result.get("retrieval_count") or 0),
+                retrieval_count=int(pending.get("retrieval_count") or 0),
                 turn=self._turn,
-                safety_action=result.get("safety_action", SafetyAction.ALLOW.value),
-                safety_notice=result.get("safety_notice", ""),
-                escalated=bool(result.get("escalated")),
+                safety_action=pending.get("safety_action", SafetyAction.ALLOW.value),
+                safety_notice=pending.get("safety_notice", ""),
+                escalated=bool(pending.get("escalated")),
             )
             update_span(
                 span,

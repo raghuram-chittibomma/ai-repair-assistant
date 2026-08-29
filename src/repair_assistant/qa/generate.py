@@ -6,7 +6,7 @@ import logging
 import random
 import time
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from repair_assistant.corpus.applicability import Appliance
@@ -360,40 +360,6 @@ def _degraded_answer(
     )
 
 
-def _stream_done_unsupported(question: str, appliance: Appliance, *, assessment) -> dict[str, Any]:
-    msg = unsupported_appliance_message(appliance)
-    return {
-        "type": "done",
-        "question": question,
-        "answer": msg,
-        "abstained": True,
-        "abstain_reason": "This model is not covered by our documentation set.",
-        "abstain_code": ABSTAIN_UNSUPPORTED_MODEL,
-        "citations": [],
-        "retrieval_count": 0,
-        "safety_action": assessment.action.value,
-        "safety_notice": assessment.reason,
-        "escalated": False,
-    }
-
-
-def _stream_done_no_evidence(question: str, appliance: Appliance | None, *, assessment) -> dict[str, Any]:
-    msg = no_evidence_message(appliance)
-    return {
-        "type": "done",
-        "question": question,
-        "answer": msg,
-        "abstained": True,
-        "abstain_reason": "No matching manufacturer evidence for this question.",
-        "abstain_code": ABSTAIN_NO_EVIDENCE,
-        "citations": [],
-        "retrieval_count": 0,
-        "safety_action": assessment.action.value,
-        "safety_notice": assessment.reason,
-        "escalated": False,
-    }
-
-
 def _trace_safety_assess(question: str, audience: Audience, assessment) -> None:
     with child_observation(
         "safety_assess",
@@ -524,7 +490,26 @@ def _clarification_result(question: str, clarify: str, *, assessment) -> AnswerR
     )
 
 
-def _ask_impl(
+@dataclass
+class AskPrep:
+    """Ask retrieval outcome. Generation must not use the database (review R35)."""
+
+    question: str
+    appliance: Appliance | None
+    assessment: Any
+    early: AnswerResult | None = None
+    hits: list = field(default_factory=list)
+    evidence_text: str = ""
+    available: list[Citation] = field(default_factory=list)
+    system: str = ""
+    user_prompt: str = ""
+
+
+def _early_prep(question: str, appliance: Appliance | None, assessment, result: AnswerResult) -> AskPrep:
+    return AskPrep(question=question, appliance=appliance, assessment=assessment, early=result)
+
+
+def prepare_ask(
     db: Database,
     manifest: Manifest,
     question: str,
@@ -533,8 +518,8 @@ def _ask_impl(
     audience: Audience = Audience.OWNER,
     retrieval_limit: int = 8,
     overfetch: int = 40,
-    llm: LLMClient | None = None,
-) -> AnswerResult:
+) -> AskPrep:
+    """Assess, plan, and search. Safe to drop the DB connection afterwards."""
     from repair_assistant.retrieval.intent import extract_intent, intent_to_dict
     from repair_assistant.retrieval.planner import (
         check_evidence_fit,
@@ -545,23 +530,38 @@ def _ask_impl(
     assessment = assess_request(question, audience=audience)
     _trace_safety_assess(question, audience, assessment)
     if assessment.action == SafetyAction.BLOCK:
-        return AnswerResult(
-            question=question,
-            answer=block_message(assessment),
-            abstained=True,
-            abstain_reason=assessment.reason,
-            citations=[],
-            retrieval_count=0,
-            safety_action=assessment.action.value,
-            safety_notice=assessment.reason,
-            escalated=True,
+        return _early_prep(
+            question,
+            appliance,
+            assessment,
+            AnswerResult(
+                question=question,
+                answer=block_message(assessment),
+                abstained=True,
+                abstain_reason=assessment.reason,
+                citations=[],
+                retrieval_count=0,
+                safety_action=assessment.action.value,
+                safety_notice=assessment.reason,
+                escalated=True,
+            ),
         )
 
     if appliance is not None and not corpus_supports_appliance(manifest, appliance).supported:
-        return _unsupported_appliance_answer(question, appliance, assessment=assessment)
+        return _early_prep(
+            question,
+            appliance,
+            assessment,
+            _unsupported_appliance_answer(question, appliance, assessment=assessment),
+        )
 
     if is_ack_only_message(question):
-        return _clarification_result(question, ACK_IN_ASK_MODE, assessment=assessment)
+        return _early_prep(
+            question,
+            appliance,
+            assessment,
+            _clarification_result(question, ACK_IN_ASK_MODE, assessment=assessment),
+        )
 
     intent = extract_intent(question, audience=audience.value)
     if intent.needs_clarification and intent.clarify_question:
@@ -571,7 +571,12 @@ def _ask_impl(
             metadata={"audience": audience.value},
         ) as span:
             update_span(span, output=intent_to_dict(intent))
-        return _clarification_result(question, intent.clarify_question, assessment=assessment)
+        return _early_prep(
+            question,
+            appliance,
+            assessment,
+            _clarification_result(question, intent.clarify_question, assessment=assessment),
+        )
 
     plan = plan_retrieval(intent)
     with child_observation(
@@ -593,18 +598,27 @@ def _ask_impl(
     )
 
     if not result.hits:
-        return _no_evidence_answer(question, appliance, assessment=assessment)
+        return _early_prep(
+            question,
+            appliance,
+            assessment,
+            _no_evidence_answer(question, appliance, assessment=assessment),
+        )
 
     fit = check_evidence_fit(intent, [h.text for h in result.hits])
     if not fit.ok and fit.clarify_question:
-        return _clarification_result(question, fit.clarify_question, assessment=assessment)
+        return _early_prep(
+            question,
+            appliance,
+            assessment,
+            _clarification_result(question, fit.clarify_question, assessment=assessment),
+        )
 
     evidence_text, available = _trace_evidence(result.hits, query=question)
     assessment = apply_owner_evidence_policy(assessment, evidence_text)
     system = ask_system()
     if assessment.prompt_directive:
         system = f"{system}\n\n{assessment.prompt_directive}"
-    llm = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
     user_prompt = build_user_prompt(
         question,
         appliance,
@@ -612,44 +626,176 @@ def _ask_impl(
         user_codes=plan.user_codes,
         plan_codes=plan.plan_codes,
     )
+    return AskPrep(
+        question=question,
+        appliance=appliance,
+        assessment=assessment,
+        hits=list(result.hits),
+        evidence_text=evidence_text,
+        available=available,
+        system=system,
+        user_prompt=user_prompt,
+    )
+
+
+def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult:
+    """Generate from a prep. Must not be called while holding a pool connection."""
+    if prep.early is not None:
+        return prep.early
+
+    llm = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
     try:
-        raw = llm.complete(system, user_prompt)
+        raw = llm.complete(prep.system, prep.user_prompt)
     except (LLMError, LLMTimeoutError) as exc:
         _log.warning("Generation failed; returning retrieved evidence instead: %s", exc)
         return _degraded_answer(
-            question,
-            citations=available,
-            retrieval_count=len(result.hits),
-            assessment=assessment,
+            prep.question,
+            citations=prep.available,
+            retrieval_count=len(prep.hits),
+            assessment=prep.assessment,
             exc=exc,
         )
 
     if raw.upper().startswith("ABSTAIN:"):
         return AnswerResult(
-            question=question,
+            question=prep.question,
             answer=raw,
             abstained=True,
             abstain_reason=raw.split(":", 1)[-1].strip(),
             citations=[],
-            retrieval_count=len(result.hits),
-            safety_action=assessment.action.value,
-            safety_notice=assessment.reason,
+            retrieval_count=len(prep.hits),
+            safety_action=prep.assessment.action.value,
+            safety_notice=prep.assessment.reason,
             escalated=False,
         )
 
-    gated = _trace_gate(assessment, raw, evidence_text)
-    cited = [] if gated.blocked else citations_from_answer(gated.text, available)
+    gated = _trace_gate(prep.assessment, raw, prep.evidence_text)
+    cited = [] if gated.blocked else citations_from_answer(gated.text, prep.available)
     return AnswerResult(
-        question=question,
+        question=prep.question,
         answer=gated.text,
         abstained=gated.blocked,
         abstain_reason=gated.notice if gated.blocked else "",
         citations=cited,
-        retrieval_count=len(result.hits),
+        retrieval_count=len(prep.hits),
         safety_action=gated.action.value,
         safety_notice=gated.notice,
         escalated=gated.escalated,
     )
+
+
+def _answer_result_to_done(result: AnswerResult) -> dict[str, Any]:
+    return {
+        "type": "done",
+        "question": result.question,
+        "answer": result.answer,
+        "abstained": result.abstained,
+        "abstain_reason": result.abstain_reason,
+        "abstain_code": result.abstain_code,
+        "citations": [
+            {
+                "index": c.index,
+                "doc_id": c.doc_id,
+                "chunk_id": c.chunk_id,
+                "label": c.label,
+                "page": c.page,
+            }
+            for c in result.citations
+        ],
+        "retrieval_count": result.retrieval_count,
+        "safety_action": result.safety_action,
+        "safety_notice": result.safety_notice,
+        "escalated": result.escalated,
+    }
+
+
+def stream_from_prep(
+    prep: AskPrep,
+    *,
+    llm: OpenAIClient | None = None,
+) -> Iterator[dict[str, Any]]:
+    """Token stream + done event. Must not be called while holding a pool connection."""
+    if prep.early is not None:
+        yield _answer_result_to_done(prep.early)
+        return
+
+    client = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+    stream_tokens = may_stream(prep.assessment)
+    stream_gate = StreamGate(prep.assessment)
+    try:
+        for delta in client.stream(prep.system, prep.user_prompt):
+            safe = stream_gate.push(delta)
+            if safe and stream_tokens:
+                yield {"type": "token", "text": safe}
+        tail = stream_gate.finish()
+        if tail and stream_tokens:
+            yield {"type": "token", "text": tail}
+    except (LLMError, LLMTimeoutError) as exc:
+        _log.warning("Streamed generation failed; returning evidence: %s", exc)
+        degraded = _degraded_answer(
+            prep.question,
+            citations=prep.available,
+            retrieval_count=len(prep.hits),
+            assessment=prep.assessment,
+            exc=exc,
+        )
+        yield _answer_result_to_done(degraded)
+        return
+
+    raw = stream_gate.accumulated.strip()
+    if raw.upper().startswith("ABSTAIN:"):
+        yield {
+            "type": "done",
+            "question": prep.question,
+            "answer": raw,
+            "abstained": True,
+            "abstain_reason": raw.split(":", 1)[-1].strip(),
+            "citations": [],
+            "retrieval_count": len(prep.hits),
+            "safety_action": prep.assessment.action.value,
+            "safety_notice": prep.assessment.reason,
+            "escalated": False,
+        }
+        return
+
+    gated = _trace_gate(prep.assessment, raw, prep.evidence_text)
+    cited = [] if gated.blocked else citations_from_answer(gated.text, prep.available)
+    yield _answer_result_to_done(
+        AnswerResult(
+            question=prep.question,
+            answer=gated.text,
+            abstained=gated.blocked,
+            abstain_reason=gated.notice if gated.blocked else "",
+            citations=cited,
+            retrieval_count=len(prep.hits),
+            safety_action=gated.action.value,
+            safety_notice=gated.notice,
+            escalated=gated.escalated,
+        )
+    )
+
+
+def _ask_impl(
+    db: Database,
+    manifest: Manifest,
+    question: str,
+    *,
+    appliance: Appliance | None = None,
+    audience: Audience = Audience.OWNER,
+    retrieval_limit: int = 8,
+    overfetch: int = 40,
+    llm: LLMClient | None = None,
+) -> AnswerResult:
+    prep = prepare_ask(
+        db,
+        manifest,
+        question,
+        appliance=appliance,
+        audience=audience,
+        retrieval_limit=retrieval_limit,
+        overfetch=overfetch,
+    )
+    return complete_ask(prep, llm=llm)
 
 
 def ask_stream(
@@ -680,218 +826,26 @@ def ask_stream(
     started = time.perf_counter()
 
     def _events() -> Iterator[dict[str, Any]]:
-        assessment = assess_request(question, audience=audience)
-        _trace_safety_assess(question, audience, assessment)
-        if assessment.action == SafetyAction.BLOCK:
-            yield {
-                "type": "done",
-                "question": question,
-                "answer": block_message(assessment),
-                "abstained": True,
-                "abstain_reason": assessment.reason,
-                "citations": [],
-                "retrieval_count": 0,
-                "safety_action": assessment.action.value,
-                "safety_notice": assessment.reason,
-                "escalated": True,
-            }
-            return
-
-        if appliance is not None and not corpus_supports_appliance(manifest, appliance).supported:
-            yield _stream_done_unsupported(question, appliance, assessment=assessment)
-            return
-
-        if is_ack_only_message(question):
-            yield {
-                "type": "done",
-                "question": question,
-                "answer": ACK_IN_ASK_MODE,
-                "abstained": False,
-                "abstain_reason": "",
-                "abstain_code": "clarify",
-                "citations": [],
-                "retrieval_count": 0,
-                "safety_action": assessment.action.value,
-                "safety_notice": assessment.reason,
-                "escalated": False,
-            }
-            return
-
-        from repair_assistant.retrieval.intent import extract_intent, intent_to_dict
-        from repair_assistant.retrieval.planner import (
-            check_evidence_fit,
-            plan_retrieval,
-            plan_to_dict,
-        )
-
-        intent = extract_intent(question, audience=audience.value)
-        if intent.needs_clarification and intent.clarify_question:
-            with child_observation(
-                "intent",
-                input={"question": question},
-                metadata={"audience": audience.value},
-            ) as span:
-                update_span(span, output=intent_to_dict(intent))
-            yield {
-                "type": "done",
-                "question": question,
-                "answer": intent.clarify_question,
-                "abstained": False,
-                "abstain_reason": "",
-                "abstain_code": "clarify",
-                "citations": [],
-                "retrieval_count": 0,
-                "safety_action": assessment.action.value,
-                "safety_notice": assessment.reason,
-                "escalated": False,
-            }
-            return
-
-        plan = plan_retrieval(intent)
-        with child_observation(
-            "retrieval_plan",
-            input={"question": question},
-            metadata={"audience": audience.value},
-        ) as span:
-            update_span(span, output=plan_to_dict(plan))
-
         yield {"type": "status", "phase": "retrieving"}
-        result = search(
+        prep = prepare_ask(
             db,
             manifest,
             question,
             appliance=appliance,
-            limit=retrieval_limit,
+            audience=audience,
+            retrieval_limit=retrieval_limit,
             overfetch=overfetch,
-            audience=audience.value,
-            plan=plan,
         )
-        if not result.hits:
-            yield _stream_done_no_evidence(question, appliance, assessment=assessment)
+        if prep.early is not None:
+            yield _answer_result_to_done(prep.early)
             return
 
-        fit = check_evidence_fit(intent, [h.text for h in result.hits])
-        if not fit.ok and fit.clarify_question:
-            yield {
-                "type": "done",
-                "question": question,
-                "answer": fit.clarify_question,
-                "abstained": False,
-                "abstain_reason": "",
-                "abstain_code": "clarify",
-                "citations": [],
-                "retrieval_count": len(result.hits),
-                "safety_action": assessment.action.value,
-                "safety_notice": assessment.reason,
-                "escalated": False,
-            }
-            return
-
-        evidence_text, available = _trace_evidence(result.hits, query=question)
-        assessment = apply_owner_evidence_policy(assessment, evidence_text)
-        system = ask_system()
-        if assessment.prompt_directive:
-            system = f"{system}\n\n{assessment.prompt_directive}"
-        client = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
-        user_prompt = build_user_prompt(
-            question,
-            appliance,
-            evidence_text,
-            user_codes=plan.user_codes,
-            plan_codes=plan.plan_codes,
-        )
         yield {
             "type": "status",
             "phase": "generating",
-            "retrieval_count": len(result.hits),
+            "retrieval_count": len(prep.hits),
         }
-
-        # R1: never emit a token the post-LLM gate has not cleared. When the
-        # assessment already decides the outcome, withhold tokens entirely.
-        stream_tokens = may_stream(assessment)
-        stream_gate = StreamGate(assessment)
-        try:
-            for delta in client.stream(system, user_prompt):
-                safe = stream_gate.push(delta)
-                if safe and stream_tokens:
-                    yield {"type": "token", "text": safe}
-            tail = stream_gate.finish()
-            if tail and stream_tokens:
-                yield {"type": "token", "text": tail}
-        except (LLMError, LLMTimeoutError) as exc:
-            # R36: retrieval already succeeded, so degrade to cited evidence
-            # rather than failing the request.
-            _log.warning("Streamed generation failed; returning evidence: %s", exc)
-            degraded = _degraded_answer(
-                question,
-                citations=available,
-                retrieval_count=len(result.hits),
-                assessment=assessment,
-                exc=exc,
-            )
-            yield {
-                "type": "done",
-                "question": question,
-                "answer": degraded.answer,
-                "abstained": True,
-                "abstain_reason": degraded.abstain_reason,
-                "abstain_code": degraded.abstain_code,
-                "citations": [
-                    {
-                        "index": c.index,
-                        "doc_id": c.doc_id,
-                        "chunk_id": c.chunk_id,
-                        "label": c.label,
-                        "page": c.page,
-                    }
-                    for c in degraded.citations
-                ],
-                "retrieval_count": degraded.retrieval_count,
-                "safety_action": degraded.safety_action,
-                "safety_notice": degraded.safety_notice,
-                "escalated": False,
-            }
-            return
-
-        raw = stream_gate.accumulated.strip()
-        if raw.upper().startswith("ABSTAIN:"):
-            yield {
-                "type": "done",
-                "question": question,
-                "answer": raw,
-                "abstained": True,
-                "abstain_reason": raw.split(":", 1)[-1].strip(),
-                "citations": [],
-                "retrieval_count": len(result.hits),
-                "safety_action": assessment.action.value,
-                "safety_notice": assessment.reason,
-                "escalated": False,
-            }
-            return
-
-        gated = _trace_gate(assessment, raw, evidence_text)
-        cited = [] if gated.blocked else citations_from_answer(gated.text, available)
-        yield {
-            "type": "done",
-            "question": question,
-            "answer": gated.text,
-            "abstained": gated.blocked,
-            "abstain_reason": gated.notice if gated.blocked else "",
-            "citations": [
-                {
-                    "index": c.index,
-                    "doc_id": c.doc_id,
-                    "chunk_id": c.chunk_id,
-                    "label": c.label,
-                    "page": c.page,
-                }
-                for c in cited
-            ],
-            "retrieval_count": len(result.hits),
-            "safety_action": gated.action.value,
-            "safety_notice": gated.notice,
-            "escalated": gated.escalated,
-        }
+        yield from stream_from_prep(prep, llm=llm)
 
     with observation("ask", input={"question": question, "stream": True}, metadata=meta) as span:
         final: dict[str, Any] | None = None
@@ -922,10 +876,14 @@ def ask_stream(
 
 __all__ = [
     "AnswerResult",
+    "AskPrep",
     "Citation",
     "LLMTimeoutError",
     "OpenAIClient",
     "ask",
     "ask_stream",
     "build_user_prompt",
+    "complete_ask",
+    "prepare_ask",
+    "stream_from_prep",
 ]

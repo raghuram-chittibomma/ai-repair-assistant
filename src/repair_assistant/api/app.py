@@ -57,7 +57,13 @@ from repair_assistant.ingest.embeddings import (
 )
 from repair_assistant.ingest.env import database_url, load_dotenv_files
 from repair_assistant.ingest.store import Database
-from repair_assistant.qa.generate import LLMError, LLMTimeoutError, ask, ask_stream
+from repair_assistant.qa.generate import (
+    LLMError,
+    LLMTimeoutError,
+    ask_stream,
+    complete_ask,
+    prepare_ask,
+)
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.models import Audience
 
@@ -141,6 +147,13 @@ def _pull_stream_event(gen: Iterator[Any]) -> Any | None:
         return next(gen)
     except StopIteration:
         return None
+
+
+def _generation_begun(event: dict[str, Any]) -> bool:
+    """True once retrieval is finished and the LLM (or its tokens) may start."""
+    if event.get("type") == "status" and event.get("phase") == "generating":
+        return True
+    return event.get("type") == "token"
 
 
 def create_app(
@@ -304,25 +317,91 @@ def create_app(
             filtered_out=result.filtered_out,
         )
 
+    def _db_factory():
+        factory = db_connection if db_factory is None else db_factory
+        return factory
+
+    def _db_error_http(exc: BaseException) -> HTTPException:
+        return HTTPException(status_code=503, detail=_client_detail(exc, "Unavailable"))
+
+    async def _sse_releasing(
+        request: Request,
+        start_gen,
+        *,
+        mutate_event=None,
+    ) -> AsyncIterator[str]:
+        """Yield SSE lines; return the pool connection once generation begins (R35)."""
+        gen = None
+        factory = _db_factory()
+        try:
+            with factory() as db:
+                gen = start_gen(db)
+                while True:
+                    if await request.is_disconnected():
+                        return
+                    try:
+                        event = await asyncio.to_thread(_pull_stream_event, gen)
+                    except (LLMTimeoutError, RuntimeError) as exc:
+                        yield f"data: {json.dumps(_stream_error_event(exc), ensure_ascii=False)}\n\n"
+                        return
+                    except Exception as exc:  # noqa: BLE001 — logged, not echoed
+                        yield f"data: {json.dumps(_stream_error_event(exc, generic=True), ensure_ascii=False)}\n\n"
+                        return
+                    if event is None:
+                        return
+                    if mutate_event is not None:
+                        mutate_event(event)
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                    if event.get("type") == "done":
+                        return
+                    if _generation_begun(event):
+                        break
+            while True:
+                if await request.is_disconnected():
+                    return
+                try:
+                    event = await asyncio.to_thread(_pull_stream_event, gen)
+                except (LLMTimeoutError, RuntimeError) as exc:
+                    yield f"data: {json.dumps(_stream_error_event(exc), ensure_ascii=False)}\n\n"
+                    return
+                except Exception as exc:  # noqa: BLE001 — logged, not echoed
+                    yield f"data: {json.dumps(_stream_error_event(exc, generic=True), ensure_ascii=False)}\n\n"
+                    return
+                if event is None:
+                    return
+                if mutate_event is not None:
+                    mutate_event(event)
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event.get("type") == "done":
+                    return
+        except RuntimeError as exc:
+            yield f"data: {json.dumps(_stream_error_event(exc), ensure_ascii=False)}\n\n"
+        finally:
+            close = getattr(gen, "close", None)
+            if callable(close):
+                close()
+
     @app.post("/v1/ask", response_model=AskResponse, dependencies=[Depends(require_api_key)])
-    def ask_route(body: AskRequest, db: Database = Depends(get_db)) -> AskResponse:
+    def ask_route(body: AskRequest) -> AskResponse:
         appliance = Appliance(model=body.model, serial=body.serial) if body.model else None
         try:
-            result = ask(
-                db,
-                _manifest(),
-                body.question,
-                appliance=appliance,
-                audience=Audience(body.audience),
-                retrieval_limit=body.limit,
-                overfetch=body.overfetch,
-            )
+            with _db_factory()() as db:
+                prep = prepare_ask(
+                    db,
+                    _manifest(),
+                    body.question,
+                    appliance=appliance,
+                    audience=Audience(body.audience),
+                    retrieval_limit=body.limit,
+                    overfetch=body.overfetch,
+                )
+            result = complete_ask(prep)
         except LLMTimeoutError as exc:
             raise _llm_timeout_http(exc) from exc
         except LLMError as exc:
             raise _llm_error_http(exc) from exc
         except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=_client_detail(exc, "Unavailable")) from exc
+            raise _db_error_http(exc) from exc
         return AskResponse(
             question=result.question,
             answer=result.answer,
@@ -340,13 +419,12 @@ def create_app(
     async def ask_stream_route(
         request: Request,
         body: AskRequest,
-        db: Database = Depends(get_db),
     ) -> StreamingResponse:
         """SSE stream: status / token / done events for grounded ask()."""
         appliance = Appliance(model=body.model, serial=body.serial) if body.model else None
 
-        async def event_iter():
-            gen = ask_stream(
+        def start_gen(db: Database):
+            return ask_stream(
                 db,
                 _manifest(),
                 body.question,
@@ -355,30 +433,9 @@ def create_app(
                 retrieval_limit=body.limit,
                 overfetch=body.overfetch,
             )
-            try:
-                while True:
-                    if await request.is_disconnected():
-                        break
-                    try:
-                        event = await asyncio.to_thread(_pull_stream_event, gen)
-                    except (LLMTimeoutError, RuntimeError) as exc:
-                        err = _stream_error_event(exc)
-                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-                        break
-                    except Exception as exc:  # noqa: BLE001 — logged, not echoed
-                        err = _stream_error_event(exc, generic=True)
-                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-                        break
-                    if event is None:
-                        break
-                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-            finally:
-                close = getattr(gen, "close", None)
-                if callable(close):
-                    close()
 
         return StreamingResponse(
-            event_iter(),
+            _sse_releasing(request, start_gen),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -387,7 +444,7 @@ def create_app(
         )
 
     @app.post("/v1/diagnose", response_model=DiagnoseResponse, dependencies=[Depends(require_api_key)])
-    def diagnose_route(body: DiagnoseRequest, db: Database = Depends(get_db)) -> DiagnoseResponse:
+    def diagnose_route(body: DiagnoseRequest) -> DiagnoseResponse:
         appliance = Appliance(model=body.model, serial=body.serial)
         try:
             sid, session = store.get_or_create(
@@ -407,7 +464,7 @@ def create_app(
                 ),
             ) from None
         try:
-            turn = session.send(db, body.message)
+            turn = session.send_releasing(_db_factory(), body.message)
         except SessionTurnLimitError as exc:
             raise HTTPException(
                 status_code=exc.status_code,
@@ -418,7 +475,7 @@ def create_app(
         except LLMError as exc:
             raise _llm_error_http(exc) from exc
         except RuntimeError as exc:
-            raise HTTPException(status_code=503, detail=_client_detail(exc, "Unavailable")) from exc
+            raise _db_error_http(exc) from exc
         return DiagnoseResponse(
             session_id=sid,
             turn=turn.turn,
@@ -437,7 +494,6 @@ def create_app(
     async def diagnose_stream_route(
         request: Request,
         body: DiagnoseRequest,
-        db: Database = Depends(get_db),
     ) -> StreamingResponse:
         """SSE stream: status / token / done events for multi-turn diagnose()."""
         appliance = Appliance(model=body.model, serial=body.serial)
@@ -464,34 +520,15 @@ def create_app(
                 detail=SessionTurnLimitError.client_message,
             )
 
-        async def event_iter():
-            gen = session.send_stream(db, body.message)
-            try:
-                while True:
-                    if await request.is_disconnected():
-                        break
-                    try:
-                        event = await asyncio.to_thread(_pull_stream_event, gen)
-                    except (LLMTimeoutError, RuntimeError) as exc:
-                        err = _stream_error_event(exc)
-                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-                        break
-                    except Exception as exc:  # noqa: BLE001 — logged, not echoed
-                        err = _stream_error_event(exc, generic=True)
-                        yield f"data: {json.dumps(err, ensure_ascii=False)}\n\n"
-                        break
-                    if event is None:
-                        break
-                    if event.get("type") == "done":
-                        event["session_id"] = sid
-                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-            finally:
-                close = getattr(gen, "close", None)
-                if callable(close):
-                    close()
+        def start_gen(db: Database):
+            return session.send_stream(db, body.message)
+
+        def attach_session(event: dict[str, Any]) -> None:
+            if event.get("type") == "done":
+                event["session_id"] = sid
 
         return StreamingResponse(
-            event_iter(),
+            _sse_releasing(request, start_gen, mutate_event=attach_session),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
