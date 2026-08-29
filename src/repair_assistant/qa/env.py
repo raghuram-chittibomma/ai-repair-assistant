@@ -11,6 +11,8 @@ DEFAULT_LLM_TIMEOUT_SECONDS = 120.0
 #: Total attempts, not retries: 3 means one call plus two retries.
 DEFAULT_LLM_MAX_ATTEMPTS = 3
 DEFAULT_LLM_RETRY_BASE_SECONDS = 0.5
+#: Bound completion length (review R25). Transcript windowing is a later slice.
+DEFAULT_LLM_MAX_TOKENS = 2048
 
 
 def openai_api_key() -> str:
@@ -73,3 +75,16 @@ def llm_retry_base_seconds() -> float:
     except ValueError:
         return DEFAULT_LLM_RETRY_BASE_SECONDS
     return value if value >= 0 else DEFAULT_LLM_RETRY_BASE_SECONDS
+
+
+def llm_max_tokens() -> int:
+    """Cap on generated tokens. Override with LLM_MAX_TOKENS."""
+    load_dotenv_files()
+    raw = os.environ.get("LLM_MAX_TOKENS", "").strip()
+    if not raw:
+        return DEFAULT_LLM_MAX_TOKENS
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_LLM_MAX_TOKENS
+    return value if value > 0 else DEFAULT_LLM_MAX_TOKENS

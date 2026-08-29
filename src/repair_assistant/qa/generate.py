@@ -37,6 +37,7 @@ from repair_assistant.qa.context import (
 )
 from repair_assistant.qa.env import (
     llm_max_attempts,
+    llm_max_tokens,
     llm_model,
     llm_retry_base_seconds,
     llm_timeout_seconds,
@@ -149,6 +150,7 @@ class OpenAIClient:
     model: str
     timeout: float | None = None
     max_attempts: int | None = None
+    max_tokens: int | None = None
 
     def _timeout_seconds(self) -> float:
         if self.timeout is not None:
@@ -163,6 +165,9 @@ class OpenAIClient:
     def _attempts(self) -> int:
         return self.max_attempts if self.max_attempts is not None else llm_max_attempts()
 
+    def _max_tokens(self) -> int:
+        return self.max_tokens if self.max_tokens is not None else llm_max_tokens()
+
     def _create(self, messages: list[dict[str, str]], *, stream: bool):
         """Call the provider, retrying transient failures with backoff."""
         attempts = self._attempts()
@@ -173,7 +178,8 @@ class OpenAIClient:
                 return self._client().chat.completions.create(
                     model=self.model,
                     messages=messages,
-                    temperature=0.2,
+                    temperature=0,
+                    max_tokens=self._max_tokens(),
                     stream=stream,
                 )
             except Exception as exc:  # noqa: BLE001 — classified immediately below

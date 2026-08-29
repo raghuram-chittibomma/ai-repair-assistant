@@ -8,7 +8,7 @@ import pytest
 from openai import APITimeoutError
 
 from repair_assistant.api.db_pool import DatabasePool, PoolTimeoutError
-from repair_assistant.qa.env import llm_timeout_seconds
+from repair_assistant.qa.env import llm_max_tokens, llm_timeout_seconds
 from repair_assistant.qa.generate import LLMTimeoutError, OpenAIClient
 
 
@@ -45,3 +45,30 @@ def test_llm_timeout_seconds_default(monkeypatch: pytest.MonkeyPatch) -> None:
     assert llm_timeout_seconds() == 120.0
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "45")
     assert llm_timeout_seconds() == 45.0
+
+
+def test_llm_max_tokens_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LLM_MAX_TOKENS", raising=False)
+    assert llm_max_tokens() == 2048
+    monkeypatch.setenv("LLM_MAX_TOKENS", "512")
+    assert llm_max_tokens() == 512
+
+
+def test_openai_client_uses_zero_temperature_and_max_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_MAX_TOKENS", "256")
+    client = OpenAIClient(api_key="sk-test", model="gpt-test", timeout=12.0)
+    mock_openai = MagicMock()
+    message = MagicMock()
+    message.content = "ok"
+    choice = MagicMock()
+    choice.message = message
+    response = MagicMock()
+    response.choices = [choice]
+    mock_openai.chat.completions.create.return_value = response
+    with patch("openai.OpenAI", return_value=mock_openai):
+        assert client.complete("sys", "user") == "ok"
+    kwargs = mock_openai.chat.completions.create.call_args.kwargs
+    assert kwargs["temperature"] == 0
+    assert kwargs["max_tokens"] == 256
