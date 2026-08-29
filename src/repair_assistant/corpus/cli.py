@@ -17,6 +17,7 @@ from pathlib import Path
 
 import click
 
+from repair_assistant.corpus.precedence_drift import drift_notices
 from repair_assistant.observability.scope_detectors import curation_scale_notice
 
 from . import identity, pinning
@@ -102,6 +103,9 @@ def status() -> None:
     if scale:
         click.echo()
         click.secho(scale, fg="yellow")
+    for notice in drift_notices(corpus):
+        click.echo()
+        click.secho(notice, fg="yellow")
 
     if missing:
         click.echo()

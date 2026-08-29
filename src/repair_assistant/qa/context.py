@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from repair_assistant.corpus.precedence_drift import newer_revision_note
 from repair_assistant.parsing.page_classify import evidence_cites_unread_figure
 from repair_assistant.retrieval.search import Hit
 
@@ -137,6 +138,7 @@ def format_evidence(
     *,
     query: str = "",
     max_chars: int = 12_000,
+    manifest=None,
 ) -> tuple[str, list[Citation]]:
     """Numbered evidence blocks for the LLM prompt."""
     blocks: list[str] = []
@@ -163,8 +165,15 @@ def format_evidence(
         return "", citations
     body = wrap_evidence("\n\n".join(blocks))
     cited_hits = hits[: len(citations)]
+    notes: list[str] = []
     if any(evidence_cites_unread_figure(h.text) for h in cited_hits):
-        return f"{body}\n\n{FIGURE_UNREADABLE_NOTE}", citations
+        notes.append(FIGURE_UNREADABLE_NOTE)
+    if manifest is not None:
+        stale = newer_revision_note(cited_hits, manifest)
+        if stale:
+            notes.append(stale)
+    if notes:
+        return f"{body}\n\n" + "\n".join(notes), citations
     return body, citations
 
 

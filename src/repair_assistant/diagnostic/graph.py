@@ -245,7 +245,7 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 "abstained": True,
                 "abstain_reason": "No matching manufacturer evidence for this question.",
             }
-        evidence_text, citations = format_evidence(result.hits)
+        evidence_text, citations = format_evidence(result.hits, manifest=manifest)
         return {
             "retrieval_query": query,
             "evidence_text": evidence_text,
