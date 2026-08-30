@@ -20,7 +20,7 @@ not on PATH.
 | Parsing | `bench-parse --write` | local PDFs for fixtures | `evals/parsing/fixtures.yaml` | `evals/parsing/results/scorecard.md` |
 | Chain smoke | `bench-chain --write` | DB + embedder (+ OpenAI unless `--skip-ask`) | `evals/chain/fixtures.yaml` | `evals/chain/results/scorecard.md` |
 | Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K / MRR / nDCG@K / latency) |
-| Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` (CI gate) + `evals/safety/adversarial.yaml` (R4 rates, not a gate) | stdout + CI gate |
+| Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` (CI gate) + `evals/safety/adversarial.yaml` (R4 rates, not a gate). Optional `--classifier` (needs OpenAI; R3 union; not CI) | stdout + CI gate |
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
 | Promote failure | `promote-eval --run … --scenario ID` | prior run JSON | — | YAML draft (optional `--write` into grading overlay) |

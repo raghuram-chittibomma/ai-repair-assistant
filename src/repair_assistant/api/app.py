@@ -67,6 +67,7 @@ from repair_assistant.qa.generate import (
 )
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.audience_claim import record_audience_claim
+from repair_assistant.safety.classifier import runtime_classifier
 from repair_assistant.safety.models import Audience
 
 _log = logging.getLogger("repair_assistant.api")
@@ -435,6 +436,7 @@ def create_app(
                     audience=Audience(body.audience),
                     retrieval_limit=body.limit,
                     overfetch=body.overfetch,
+                    classifier=runtime_classifier(),
                 )
             result = complete_ask(prep)
         except LLMTimeoutError as exc:

@@ -8,6 +8,7 @@ from repair_assistant.prompts import (
     prompt_digest,
     prompt_stamp,
     runtime_prompt_digest,
+    safety_classifier,
     safety_escalate,
     safety_technician,
     safety_warn,
@@ -45,6 +46,8 @@ def test_load_prompt_files() -> None:
     assert "live-voltage" in safety_escalate()
     assert "disconnect-power" in safety_warn()
     assert "qualified appliance service personnel" in safety_technician()
+    assert "defeating a door/lid interlock" in safety_classifier()
+    assert "Prefer allow when unsure" in safety_classifier()
     assert load_prompt("ask_system") == ask_system()
 
 

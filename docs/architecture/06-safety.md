@@ -64,6 +64,8 @@ Audience is **self-asserted**. Choosing Technician logs the claim (`audience_ver
 
 Rules are regex lists in `safety/policy.py` — maintainable fixtures, not an LLM judge. Graded by `repair-corpus bench-safety` without OpenAI or Postgres.
 
+At runtime, when an OpenAI key is set, `assess_layered` may also consult a small structured classifier and take the **maximum** severity ([ADR-0032](../adr/0032-safety-classifier-union.md)). The classifier cannot lower a regex hit and is skipped on `block`. Failures keep the regex result. `bench-safety` and CI stay on `assess_request` (regex only); `bench-safety --classifier` measures the union on the R4 set by hand.
+
 ## Post-LLM gate (owner hard stops)
 
 ```mermaid

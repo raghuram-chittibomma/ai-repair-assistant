@@ -12,7 +12,7 @@ with mtime + reload. S4 uses the current 18 fixtures as the decision set
 (held-out test waived). **R29** MRR / nDCG / retrieve latency land on that set.
 S6 landed (non-ranking): **R23** structured claims, **R27** claim groundedness,
 **R24** prompt version stamps. S7 agent-doable items landed: **R33**, **R34**,
-**R31** diagnose board,
+**R31** diagnose board, **R3** safety union,
 **R43**, ADR-0025 detectors, **R19**, **R25** transcript window, **R42**
 parts-list linkage, **R2** audience attestation, **R44** trace governance.
 **R41** feedback UI is deferred. Ranking items **R11** / **R18** / **R20** /
@@ -279,7 +279,7 @@ transcript windowing.
 `R33` figure honesty · `R34` non-English as a non-goal · `R41` feedback capture ·
 `R43` token usage · `R44` trace governance · `R19` precedence drift check ·
 `R31` structured diagnostic state ([ADR-0031](adr/0031-structured-diagnostic-state.md)) · `R2` audience claim logging · `R3` safety
-defence in depth · `R30` judge diversity · plus the deferral ADR covering
+defence in depth ([ADR-0032](adr/0032-safety-classifier-union.md)) · `R30` judge diversity · plus the deferral ADR covering
 `R6`, `R32`, `R42`, `R47`.
 
 ---

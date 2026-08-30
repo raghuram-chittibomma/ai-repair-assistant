@@ -106,7 +106,7 @@ ask | diagnose
 | `retrieval` | query, source counts (vector/code/connector/reference/revision), merged candidates, **selected** chunks (score, apply_reason, preview), **rejected** (applicability), **ranked_before_diversity**, **diversity_dropped** |
 | `evidence` | full `evidence_text` prompt block (truncated at `REPAIR_TRACE_MAX_CHARS`, default 12000) |
 | `llm` | `messages` array (system + user) in; `content` (full model output) out; `prompt_name` / `prompt_file_sha256` / `prompt_sha256` (ADR-0030) |
-| `safety_assess` | action, rule_id, reason, prompt_directive |
+| `safety_assess` | action, rule_id, reason, prompt_directive (`llm-*` rule ids mean the classifier raised severity — ADR-0032) |
 | `safety_gate` | raw preview, blocked, notice, gated text preview |
 
 Long strings are truncated automatically. Override with `REPAIR_TRACE_MAX_CHARS` in

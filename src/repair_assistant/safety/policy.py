@@ -244,36 +244,47 @@ def assess_request(question: str, *, audience: Audience = Audience.OWNER) -> Saf
     best: _Rule | None = None
     for rule in _rules_for(audience):
         if rule.pattern.search(text):
-            if best is None or _severity(rule.action) > _severity(best.action):
+            if best is None or severity(rule.action) > severity(best.action):
                 best = rule
 
     if best is None:
-        directive = safety_technician() if audience == Audience.TECHNICIAN else ""
         return SafetyAssessment(
             action=SafetyAction.ALLOW,
             rule_id="allow",
             reason="",
             audience=audience,
-            prompt_directive=directive,
+            prompt_directive=directive_for(SafetyAction.ALLOW, audience),
         )
-
-    directive = ""
-    if best.action == SafetyAction.ESCALATE:
-        directive = safety_escalate()
-    elif best.action == SafetyAction.WARN:
-        directive = safety_warn()
-    elif best.action == SafetyAction.BLOCK:
-        directive = ""
-    elif audience == Audience.TECHNICIAN:
-        directive = safety_technician()
 
     return SafetyAssessment(
         action=best.action,
         rule_id=best.rule_id,
         reason=best.reason,
         audience=audience,
-        prompt_directive=directive,
+        prompt_directive=directive_for(best.action, audience),
     )
+
+
+def directive_for(action: SafetyAction, audience: Audience) -> str:
+    if action == SafetyAction.ESCALATE:
+        return safety_escalate()
+    if action == SafetyAction.WARN:
+        return safety_warn()
+    if action == SafetyAction.BLOCK:
+        return ""
+    if audience == Audience.TECHNICIAN:
+        return safety_technician()
+    return ""
+
+
+def severity(action: SafetyAction) -> int:
+    return {
+        SafetyAction.ALLOW: 0,
+        SafetyAction.UNGROUNDED: 0,
+        SafetyAction.WARN: 1,
+        SafetyAction.ESCALATE: 2,
+        SafetyAction.BLOCK: 3,
+    }[action]
 
 
 def evidence_looks_like_service_literature(evidence_text: str) -> bool:
@@ -302,16 +313,6 @@ def apply_owner_evidence_policy(
         else _OWNER_SERVICE_LIT_DIRECTIVE
     )
     return replace(assessment, prompt_directive=directive)
-
-
-def _severity(action: SafetyAction) -> int:
-    return {
-        SafetyAction.ALLOW: 0,
-        SafetyAction.UNGROUNDED: 0,
-        SafetyAction.WARN: 1,
-        SafetyAction.ESCALATE: 2,
-        SafetyAction.BLOCK: 3,
-    }[action]
 
 
 def block_message(assessment: SafetyAssessment) -> str:

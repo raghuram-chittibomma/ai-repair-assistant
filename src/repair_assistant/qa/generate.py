@@ -54,11 +54,11 @@ from repair_assistant.qa.structured import (
 )
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.audience_claim import record_audience_claim
+from repair_assistant.safety.classifier import assess_layered
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction
 from repair_assistant.safety.policy import (
     apply_owner_evidence_policy,
-    assess_request,
     block_message,
 )
 from repair_assistant.safety.stream_gate import StreamGate, may_stream
@@ -569,6 +569,7 @@ def prepare_ask(
     audience: Audience = Audience.OWNER,
     retrieval_limit: int = 8,
     overfetch: int = 40,
+    classifier=None,
 ) -> AskPrep:
     """Assess, plan, and search. Safe to drop the DB connection afterwards."""
     from repair_assistant.retrieval.intent import extract_intent, intent_to_dict
@@ -578,7 +579,7 @@ def prepare_ask(
         plan_to_dict,
     )
 
-    assessment = assess_request(question, audience=audience)
+    assessment = assess_layered(question, audience=audience, classifier=classifier)
     _trace_safety_assess(question, audience, assessment)
     if assessment.action == SafetyAction.BLOCK:
         return _early_prep(
@@ -865,6 +866,8 @@ def _ask_impl(
     overfetch: int = 40,
     llm: LLMClient | None = None,
 ) -> AnswerResult:
+    from repair_assistant.safety.classifier import runtime_classifier
+
     prep = prepare_ask(
         db,
         manifest,
@@ -873,6 +876,7 @@ def _ask_impl(
         audience=audience,
         retrieval_limit=retrieval_limit,
         overfetch=overfetch,
+        classifier=None if llm is not None else runtime_classifier(),
     )
     return complete_ask(prep, llm=llm)
 
@@ -910,6 +914,8 @@ def ask_stream(
 
     def _events() -> Iterator[dict[str, Any]]:
         yield {"type": "status", "phase": "retrieving"}
+        from repair_assistant.safety.classifier import runtime_classifier
+
         prep = prepare_ask(
             db,
             manifest,
@@ -918,6 +924,7 @@ def ask_stream(
             audience=audience,
             retrieval_limit=retrieval_limit,
             overfetch=overfetch,
+            classifier=None if llm is not None else runtime_classifier(),
         )
         if prep.early is not None:
             yield _answer_result_to_done(prep.early)

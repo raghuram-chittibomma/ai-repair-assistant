@@ -68,6 +68,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0014](0014-safety-policy.md) | Deterministic allow/warn/escalate/block; `--audience`; bench-safety fixtures | Charter Phase 8 |
 | [0026](0026-streaming-safety-gate.md) | Incremental gate on the streaming path; refuse to stream when the outcome is decided; one shared hazard detector | Review R1 — streamed tokens bypassed the post-LLM gate |
+| [0032](0032-safety-classifier-union.md) | Regex ∪ optional LLM classifier; max severity; regex stays the CI gate | Review R3 |
 
 ## Phase 8 — Evaluation and observability
 

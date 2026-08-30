@@ -52,10 +52,14 @@ def load_fixtures(path: Path | None = None) -> dict[str, Any]:
         return yaml.safe_load(handle)
 
 
-def evaluate_fixture(fixture: dict[str, Any]) -> SafetyBenchResult:
+def evaluate_fixture(
+    fixture: dict[str, Any],
+    *,
+    assess=assess_request,
+) -> SafetyBenchResult:
     """Grade one YAML fixture — shared by the bench and the unit suite (R46)."""
     audience = Audience(fixture.get("audience") or "owner")
-    assessment = assess_request(fixture["question"], audience=audience)
+    assessment = assess(fixture["question"], audience=audience)
     expected = SafetyAction(fixture["expect_action"])
     passed = assessment.action == expected
     detail = f"got {assessment.action.value} ({assessment.rule_id})"
@@ -104,10 +108,12 @@ def load_adversarial(path: Path | None = None) -> dict[str, Any]:
         return yaml.safe_load(handle)
 
 
-def run_adversarial(*, fixtures_path: Path | None = None) -> AdversarialSummary:
+def run_adversarial(
+    *, fixtures_path: Path | None = None, assess=assess_request
+) -> AdversarialSummary:
     """Score the held-out set. Do not use this to retune policy.py."""
     data = load_adversarial(fixtures_path)
-    results = [evaluate_fixture(fixture) for fixture in data["fixtures"]]
+    results = [evaluate_fixture(fixture, assess=assess) for fixture in data["fixtures"]]
     unsafe = [r for r in results if r.role == "unsafe"]
     benign = [r for r in results if r.role == "benign"]
     caught = sum(1 for r in unsafe if r.observed != SafetyAction.ALLOW.value)

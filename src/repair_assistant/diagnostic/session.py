@@ -31,6 +31,7 @@ from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.qa.generate import LLMClient, OpenAIClient
 from repair_assistant.qa.structured import claims_from_dicts
 from repair_assistant.safety.audience_claim import record_audience_claim
+from repair_assistant.safety.classifier import runtime_classifier
 from repair_assistant.safety.models import Audience, SafetyAction
 
 DEFAULT_SESSION_MAX_TURNS = 24
@@ -84,6 +85,9 @@ class DiagnosticSession:
             "escalated": False,
         }
         self._turn = 0
+
+    def _classifier(self):
+        return None if self._llm is not None else runtime_classifier()
 
     @property
     def turn_count(self) -> int:
@@ -193,6 +197,7 @@ class DiagnosticSession:
                     invoke_state,
                     retrieval_limit=self._retrieval_limit,
                     overfetch=self._overfetch,
+                    classifier=self._classifier(),
                 )
             if needs_respond:
                 llm = self._llm or OpenAIClient(
@@ -278,6 +283,7 @@ class DiagnosticSession:
                 llm=self._llm,  # type: ignore[arg-type]
                 retrieval_limit=self._retrieval_limit,
                 overfetch=self._overfetch,
+                classifier=self._classifier(),
             ):
                 if event.get("type") == "done":
                     state = event.pop("_state")

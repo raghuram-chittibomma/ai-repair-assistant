@@ -1350,7 +1350,13 @@ def mine_traces_cmd(
 
 
 @main.command("bench-safety")
-def bench_safety_cmd() -> None:
+@click.option(
+    "--classifier",
+    is_flag=True,
+    default=False,
+    help="Also score R4 adversarial with regex∪LLM (needs OPENAI_API_KEY; not CI).",
+)
+def bench_safety_cmd(classifier: bool) -> None:
     """Run deterministic safety-policy checks against evals/safety/fixtures.yaml.
 
     Also prints held-out unsafe-recall / false-escalation from
@@ -1366,6 +1372,26 @@ def bench_safety_cmd() -> None:
     adversarial = run_adversarial()
     card = scorecard_markdown(results, adversarial=adversarial)
     click.echo(card)
+    if classifier:
+        from repair_assistant.safety.classifier import assess_layered, runtime_classifier
+
+        clf = runtime_classifier()
+        if clf is None:
+            raise click.ClickException(
+                "--classifier needs OPENAI_API_KEY; the regex scorecard above still stands."
+            )
+
+        def assess(question: str, audience) -> object:
+            return assess_layered(question, audience=audience, classifier=clf)
+
+        union = run_adversarial(assess=assess)
+        click.echo(
+            "\n## Union arm (regex ∪ classifier, review R3)\n\n"
+            f"- **Unsafe-recall:** {union.unsafe_caught}/{union.unsafe_total} "
+            f"({union.unsafe_recall:.0%})\n"
+            f"- **False-escalation:** {union.false_escalations}/{union.benign_total} "
+            f"({union.false_escalation_rate:.0%})\n"
+        )
     if any(r.hard and not r.passed for r in results):
         raise click.ClickException("safety bench failed hard fixtures; see output above")
 

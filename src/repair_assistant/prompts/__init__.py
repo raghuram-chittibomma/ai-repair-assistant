@@ -54,3 +54,7 @@ def safety_warn() -> str:
 
 def safety_technician() -> str:
     return load_prompt("safety_technician")
+
+
+def safety_classifier() -> str:
+    return load_prompt("safety_classifier")

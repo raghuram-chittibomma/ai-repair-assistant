@@ -45,11 +45,11 @@ from repair_assistant.qa.structured import (
     claims_from_dicts,
 )
 from repair_assistant.retrieval.search import search
+from repair_assistant.safety.classifier import assess_layered
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
 from repair_assistant.safety.policy import (
     apply_owner_evidence_policy,
-    assess_request,
     block_message,
 )
 from repair_assistant.safety.stream_gate import may_stream
@@ -214,11 +214,11 @@ def _retrieval_query(messages: list) -> str:
     return query
 
 
-def make_assess_node():
+def make_assess_node(classifier=None):
     def assess(state: DiagnosticGraphState) -> dict:
         audience = Audience(state.get("audience") or Audience.OWNER.value)
         question = _latest_human(state["messages"])
-        assessment = assess_request(question, audience=audience)
+        assessment = assess_layered(question, audience=audience, classifier=classifier)
         blocked = assessment.action == SafetyAction.BLOCK
         return {
             "safety_action": assessment.action.value,
@@ -433,13 +433,14 @@ def diagnose_turn_stream(
     llm: OpenAIClient | None = None,
     retrieval_limit: int = 8,
     overfetch: int = 40,
+    classifier=None,
 ) -> Iterator[dict[str, Any]]:
     """Yield SSE events for one turn: status, token deltas, then done."""
     client = llm or OpenAIClient(
         api_key=openai_api_key(), model=llm_model(), prompt_name="diagnose_system"
     )
 
-    state = _apply_delta(state, make_assess_node()(state))
+    state = _apply_delta(state, make_assess_node(classifier)(state))
     with child_observation(
         "safety_assess",
         input={"message": _latest_human(state["messages"]), "audience": state.get("audience")},
@@ -607,12 +608,13 @@ def retrieve_diagnose_state(
     *,
     retrieval_limit: int,
     overfetch: int,
+    classifier=None,
 ) -> tuple[DiagnosticGraphState, bool]:
     """Assess safety and retrieve evidence. Returns (state, needs_respond).
 
     The database is unused after this returns (review R35).
     """
-    state = _apply_delta(state, make_assess_node()(state))
+    state = _apply_delta(state, make_assess_node(classifier)(state))
     if state.get("safety_action") == SafetyAction.BLOCK.value:
         blocked = _apply_delta(state, make_blocked_node()(state))
         return _stamp_board(blocked, phase_hint="escalate"), False
@@ -645,7 +647,7 @@ def build_diagnostic_graph(
         api_key=openai_api_key(), model=llm_model(), prompt_name="diagnose_system"
     )
     graph = StateGraph(DiagnosticGraphState)
-    graph.add_node("assess", make_assess_node())
+    graph.add_node("assess", make_assess_node())  # regex-only unless a classifier is wired
     graph.add_node("blocked", make_blocked_node())
     graph.add_node("retrieve", make_retrieve_node(db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch))
     graph.add_node("respond", make_respond_node(llm))
