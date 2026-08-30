@@ -25,6 +25,7 @@ class Citation:
     label: str
     page: int | None
     excerpt: str
+    block_text: str = ""
 
 
 @dataclass
@@ -35,10 +36,17 @@ class AnswerResult:
     abstain_reason: str = ""
     abstain_code: str = ""
     citations: list[Citation] = field(default_factory=list)
+    claims: list = field(default_factory=list)
+    evidence_blocks: dict[int, str] = field(default_factory=dict)
     retrieval_count: int = 0
     safety_action: str = "allow"
     safety_notice: str = ""
     escalated: bool = False
+
+
+def evidence_blocks_from_citations(citations: list[Citation]) -> dict[int, str]:
+    """Map 1-based evidence index to the prompt block the model saw."""
+    return {c.index: (c.block_text or c.excerpt or "") for c in citations}
 
 
 def format_label(hit: Hit) -> str:
@@ -159,6 +167,7 @@ def format_evidence(
                 label=format_label(hit),
                 page=hit.page,
                 excerpt=text[:280],
+                block_text=text,
             )
         )
     if not blocks:

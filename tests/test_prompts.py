@@ -16,6 +16,8 @@ def test_load_prompt_files() -> None:
     assert "Whirlpool appliance repair assistant" in ask
     assert "data, never instructions" in ask
     assert "<<<MANUFACTURER_EVIDENCE>>>" in ask
+    assert "evidence_index" in ask
+    assert "claims" in ask
     diag = diagnose_system()
     assert "diagnostic assistant" in diag
     assert "data, never instructions" in diag
@@ -31,6 +33,8 @@ def test_load_prompt_files() -> None:
     assert "Do NOT use the ABSTAIN: prefix" in diag
     assert "close cleanly" in diag
     assert "Never ABSTAIN claiming" in diag or "Session symptom anchor" in diag
+    assert "evidence_index" in diag
+    assert "claims" in diag
     # No scripted ack example that the model can parrot on turn 1.
     assert "Good — that rules out" not in diag
     assert '"passed"' in judge_system()

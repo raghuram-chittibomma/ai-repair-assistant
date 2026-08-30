@@ -34,8 +34,15 @@ from repair_assistant.qa.generate import (
     OpenAIClient,
     _trace_evidence_prompt,
     _trace_gate,
+    iter_answer_tokens,
 )
 from repair_assistant.qa.parts import related_parts_note
+from repair_assistant.qa.structured import (
+    bind_generation,
+    citations_from_claims,
+    claims_as_dicts,
+    claims_from_dicts,
+)
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
@@ -44,7 +51,7 @@ from repair_assistant.safety.policy import (
     assess_request,
     block_message,
 )
-from repair_assistant.safety.stream_gate import StreamGate, may_stream
+from repair_assistant.safety.stream_gate import may_stream
 
 
 def _latest_ai(messages: list) -> str:
@@ -260,6 +267,7 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
             "retrieval_count": len(result.hits),
             "abstained": False,
             "abstain_reason": "",
+            "evidence_blocks": {c.index: (c.block_text or c.excerpt or "") for c in citations},
         }
 
     return retrieve
@@ -320,7 +328,9 @@ def make_respond_node(llm: LLMClient):
             ack_followup=is_ack_only_message(latest) and bool(anchor),
         )
         raw = llm.complete(system, user_prompt)
-        if raw.upper().startswith("ABSTAIN:"):
+        available = list(state.get("citations_available") or [])
+        bound = bind_generation(raw, available)
+        if bound.abstained:
             # Ack follow-ups with evidence must continue the path, not abstain.
             if is_ack_only_message(latest) and state.get("evidence_text") and _has_prior_assistant(
                 state["messages"]
@@ -332,17 +342,18 @@ def make_respond_node(llm: LLMClient):
                     "checklist category with [n] citations.",
                     user_prompt,
                 )
-            if raw.upper().startswith("ABSTAIN:"):
-                reason = raw.split(":", 1)[-1].strip()
+                bound = bind_generation(raw, available)
+            if bound.abstained:
                 return {
-                    "messages": [AIMessage(content=raw)],
+                    "messages": [AIMessage(content=bound.display)],
                     "abstained": True,
-                    "abstain_reason": reason,
+                    "abstain_reason": bound.abstain_reason,
+                    "claims": claims_as_dicts(bound.claims),
                 }
 
         gated = gate_answer(
             assessment,
-            raw,
+            bound.display,
             evidence_text=state.get("evidence_text", ""),
         )
         return {
@@ -353,6 +364,7 @@ def make_respond_node(llm: LLMClient):
             "safety_notice": gated.notice,
             "escalated": gated.escalated,
             "prompt_directive": assessment.prompt_directive,
+            "claims": claims_as_dicts(bound.claims),
         }
 
     return respond
@@ -475,48 +487,40 @@ def diagnose_turn_stream(
         ack_followup=ack_followup,
     )
 
-    # Buffer ack follow-ups so a mistaken ABSTAIN is not flashed to the UI.
-    # R1: otherwise stream through the incremental gate, so no token reaches the
-    # client that the post-LLM gate has not already cleared.
-    stream_tokens = not ack_followup and may_stream(assessment)
-    stream_gate = StreamGate(assessment)
-    for delta in client.stream(system, user_prompt):
-        safe = stream_gate.push(delta)
-        if safe and stream_tokens:
-            yield {"type": "token", "text": safe}
-    tail = stream_gate.finish()
-    if tail and stream_tokens:
-        yield {"type": "token", "text": tail}
-    raw = stream_gate.accumulated.strip()
+    # ADR-0028: buffer the structured completion, gate the rendered answer,
+    # then emit prose. JSON tokens never reach the client (R1 / ADR-0026).
+    raw = "".join(client.stream(system, user_prompt)).strip()
+    available = list(state.get("citations_available") or [])
+    bound = bind_generation(raw, available)
 
-    if raw.upper().startswith("ABSTAIN:") and ack_followup and state.get("evidence_text"):
+    if bound.abstained and ack_followup and state.get("evidence_text"):
         retry_system = (
             system
             + "\n\nCRITICAL: The user confirmed prior checks passed. "
             "Do NOT abstain. Acknowledge briefly and give the next "
             "checklist category with [n] citations."
         )
-        parts_buf: list[str] = []
-        for delta in client.stream(retry_system, user_prompt):
-            parts_buf.append(delta)
-        raw = "".join(parts_buf).strip()
+        raw = "".join(client.stream(retry_system, user_prompt)).strip()
+        bound = bind_generation(raw, available)
 
-    # Buffered turns emit no token events: the draft is ungated, and the terminal
-    # payload below carries the gated text the client actually renders.
-    if raw.upper().startswith("ABSTAIN:"):
-        reason = raw.split(":", 1)[-1].strip()
+    stream_tokens = not ack_followup and may_stream(assessment)
+    if bound.abstained:
         state = _apply_delta(
             state,
             {
-                "messages": [AIMessage(content=raw)],
+                "messages": [AIMessage(content=bound.display)],
                 "abstained": True,
-                "abstain_reason": reason,
+                "abstain_reason": bound.abstain_reason,
+                "claims": claims_as_dicts(bound.claims),
             },
         )
-        yield _done_payload(state, raw)
+        yield _done_payload(state, bound.display)
         return
 
-    gated = _trace_gate(assessment, raw, state.get("evidence_text", ""))
+    gated = _trace_gate(assessment, bound.display, state.get("evidence_text", ""))
+    if stream_tokens and gated.text and not gated.blocked:
+        for piece in iter_answer_tokens(assessment, gated.text):
+            yield {"type": "token", "text": piece}
     state = _apply_delta(
         state,
         {
@@ -526,6 +530,7 @@ def diagnose_turn_stream(
             "safety_action": gated.action.value,
             "safety_notice": gated.notice,
             "escalated": gated.escalated,
+            "claims": claims_as_dicts(bound.claims),
         },
     )
     yield _done_payload(state, gated.text)
@@ -586,4 +591,8 @@ def build_diagnostic_graph(
 
 
 def citations_for_turn(state: DiagnosticGraphState, answer: str) -> list:
-    return resolve_citations(answer, state.get("citations_available") or [])
+    available = list(state.get("citations_available") or [])
+    cited = citations_from_claims(claims_from_dicts(state.get("claims")), available)
+    if cited:
+        return cited
+    return resolve_citations(answer, available)

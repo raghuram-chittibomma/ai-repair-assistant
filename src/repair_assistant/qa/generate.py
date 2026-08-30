@@ -31,7 +31,7 @@ from repair_assistant.qa.acks import ACK_IN_ASK_MODE, is_ack_only_message
 from repair_assistant.qa.context import (
     AnswerResult,
     Citation,
-    citations_from_answer,
+    evidence_blocks_from_citations,
     fence_evidence,
     format_evidence,
     format_label,
@@ -45,6 +45,11 @@ from repair_assistant.qa.env import (
     openai_api_key,
 )
 from repair_assistant.qa.parts import related_parts_note
+from repair_assistant.qa.structured import (
+    OPENAI_RESPONSE_FORMAT,
+    bind_generation,
+    claims_as_dicts,
+)
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.audience_claim import record_audience_claim
 from repair_assistant.safety.gate import gate_answer
@@ -187,6 +192,7 @@ class OpenAIClient:
                 }
                 if stream:
                     kwargs["stream_options"] = {"include_usage": True}
+                kwargs["response_format"] = OPENAI_RESPONSE_FORMAT
                 return self._client().chat.completions.create(**kwargs)
             except Exception as exc:  # noqa: BLE001 — classified immediately below
                 mapped = classify_llm_error(exc, timeout_seconds=self._timeout_seconds())
@@ -682,32 +688,52 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
             exc=exc,
         )
 
-    if raw.upper().startswith("ABSTAIN:"):
+    bound = bind_generation(raw, prep.available)
+    blocks = evidence_blocks_from_citations(prep.available)
+    if bound.abstained:
         return AnswerResult(
             question=prep.question,
-            answer=raw,
+            answer=bound.display,
             abstained=True,
-            abstain_reason=raw.split(":", 1)[-1].strip(),
+            abstain_reason=bound.abstain_reason,
             citations=[],
+            claims=list(bound.claims),
+            evidence_blocks=blocks,
             retrieval_count=len(prep.hits),
             safety_action=prep.assessment.action.value,
             safety_notice=prep.assessment.reason,
             escalated=False,
         )
 
-    gated = _trace_gate(prep.assessment, raw, prep.evidence_text)
-    cited = [] if gated.blocked else citations_from_answer(gated.text, prep.available)
+    gated = _trace_gate(prep.assessment, bound.display, prep.evidence_text)
+    cited = [] if gated.blocked else bound.citations
     return AnswerResult(
         question=prep.question,
         answer=gated.text,
         abstained=gated.blocked,
         abstain_reason=gated.notice if gated.blocked else "",
         citations=cited,
+        claims=list(bound.claims),
+        evidence_blocks=blocks,
         retrieval_count=len(prep.hits),
         safety_action=gated.action.value,
         safety_notice=gated.notice,
         escalated=gated.escalated,
     )
+
+
+def iter_answer_tokens(assessment, text: str, *, chunk: int = 24) -> Iterator[str]:
+    """Replay gated prose through the incremental gate (ADR-0026 / ADR-0028)."""
+    if not text:
+        return
+    gate = StreamGate(assessment)
+    for i in range(0, len(text), chunk):
+        safe = gate.push(text[i : i + chunk])
+        if safe:
+            yield safe
+    tail = gate.finish()
+    if tail:
+        yield tail
 
 
 def _answer_result_to_done(result: AnswerResult) -> dict[str, Any]:
@@ -728,6 +754,7 @@ def _answer_result_to_done(result: AnswerResult) -> dict[str, Any]:
             }
             for c in result.citations
         ],
+        "claims": claims_as_dicts(list(result.claims or [])),
         "retrieval_count": result.retrieval_count,
         "safety_action": result.safety_action,
         "safety_notice": result.safety_notice,
@@ -747,15 +774,8 @@ def stream_from_prep(
 
     client = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
     stream_tokens = may_stream(prep.assessment)
-    stream_gate = StreamGate(prep.assessment)
     try:
-        for delta in client.stream(prep.system, prep.user_prompt):
-            safe = stream_gate.push(delta)
-            if safe and stream_tokens:
-                yield {"type": "token", "text": safe}
-        tail = stream_gate.finish()
-        if tail and stream_tokens:
-            yield {"type": "token", "text": tail}
+        raw = "".join(client.stream(prep.system, prep.user_prompt)).strip()
     except (LLMError, LLMTimeoutError) as exc:
         _log.warning("Streamed generation failed; returning evidence: %s", exc)
         degraded = _degraded_answer(
@@ -768,31 +788,39 @@ def stream_from_prep(
         yield _answer_result_to_done(degraded)
         return
 
-    raw = stream_gate.accumulated.strip()
-    if raw.upper().startswith("ABSTAIN:"):
-        yield {
-            "type": "done",
-            "question": prep.question,
-            "answer": raw,
-            "abstained": True,
-            "abstain_reason": raw.split(":", 1)[-1].strip(),
-            "citations": [],
-            "retrieval_count": len(prep.hits),
-            "safety_action": prep.assessment.action.value,
-            "safety_notice": prep.assessment.reason,
-            "escalated": False,
-        }
+    bound = bind_generation(raw, prep.available)
+    blocks = evidence_blocks_from_citations(prep.available)
+    if bound.abstained:
+        yield _answer_result_to_done(
+            AnswerResult(
+                question=prep.question,
+                answer=bound.display,
+                abstained=True,
+                abstain_reason=bound.abstain_reason,
+                citations=[],
+                claims=list(bound.claims),
+                evidence_blocks=blocks,
+                retrieval_count=len(prep.hits),
+                safety_action=prep.assessment.action.value,
+                safety_notice=prep.assessment.reason,
+                escalated=False,
+            )
+        )
         return
 
-    gated = _trace_gate(prep.assessment, raw, prep.evidence_text)
-    cited = [] if gated.blocked else citations_from_answer(gated.text, prep.available)
+    gated = _trace_gate(prep.assessment, bound.display, prep.evidence_text)
+    if stream_tokens and gated.text and not gated.blocked:
+        for piece in iter_answer_tokens(prep.assessment, gated.text):
+            yield {"type": "token", "text": piece}
     yield _answer_result_to_done(
         AnswerResult(
             question=prep.question,
             answer=gated.text,
             abstained=gated.blocked,
             abstain_reason=gated.notice if gated.blocked else "",
-            citations=cited,
+            citations=[] if gated.blocked else bound.citations,
+            claims=list(bound.claims),
+            evidence_blocks=blocks,
             retrieval_count=len(prep.hits),
             safety_action=gated.action.value,
             safety_notice=gated.notice,

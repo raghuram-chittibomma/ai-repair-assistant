@@ -27,6 +27,7 @@ from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import observation, update_span
 from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.qa.generate import LLMClient, OpenAIClient
+from repair_assistant.qa.structured import claims_from_dicts
 from repair_assistant.safety.audience_claim import record_audience_claim
 from repair_assistant.safety.models import Audience, SafetyAction
 
@@ -204,6 +205,8 @@ class DiagnosticSession:
                 safety_action=pending.get("safety_action", SafetyAction.ALLOW.value),
                 safety_notice=pending.get("safety_notice", ""),
                 escalated=bool(pending.get("escalated")),
+                claims=claims_from_dicts(pending.get("claims")),
+                evidence_blocks=dict(pending.get("evidence_blocks") or {}),
             )
             update_span(
                 span,

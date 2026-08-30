@@ -129,6 +129,29 @@ def test_ask_returns_cited_answer(mock_search: MagicMock) -> None:
 
 
 @patch("repair_assistant.qa.generate.search")
+def test_ask_binds_citations_from_structured_claims(mock_search: MagicMock) -> None:
+    mock_search.return_value = SearchResult(query="q", hits=[_hit()])
+    db = MagicMock()
+    llm = FakeLLM(
+        '{"abstained": false, "abstain_reason": "",'
+        ' "answer": "Per the service literature this is a lid switch fault.",'
+        ' "claims": [{"text": "lid switch fault", "evidence_index": 1}]}'
+    )
+    result = ask(
+        db,
+        _manifest(),
+        "What is F5E2?",
+        appliance=Appliance(model="WFW5620HW0"),
+        llm=llm,
+    )
+    assert not result.abstained
+    assert "[1]" not in result.answer
+    assert len(result.citations) == 1
+    assert result.citations[0].doc_id == "tech-sheet-w11320651"
+    assert result.claims[0].evidence_index == 1
+
+
+@patch("repair_assistant.qa.generate.search")
 def test_ask_honours_llm_abstain(mock_search: MagicMock) -> None:
     mock_search.return_value = SearchResult(query="q", hits=[_hit()])
     db = MagicMock()

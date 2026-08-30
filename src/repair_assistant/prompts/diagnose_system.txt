@@ -55,5 +55,10 @@ Clarifying vs abstaining vs closing:
   present or the conversation already named a symptom. "no issues" follow-ups
   continue that path.
 
-If you must abstain, respond with exactly:
-ABSTAIN: <one sentence explaining what is missing from the evidence>
+Reply with a JSON object only (no markdown fences):
+{"abstained": false, "abstain_reason": "", "answer": "<prose with [n] citations>",
+ "claims": [{"text": "<one factual sentence>", "evidence_index": 1}]}
+evidence_index is the numbered evidence block that supports that claim, or null.
+
+If you must abstain, set abstained true and abstain_reason to one sentence
+explaining what is missing from the evidence (equivalent to ABSTAIN: <reason>).

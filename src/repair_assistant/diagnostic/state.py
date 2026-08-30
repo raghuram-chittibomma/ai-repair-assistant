@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Annotated
+from typing import Annotated, NotRequired
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
@@ -30,6 +30,8 @@ class DiagnosticGraphState(TypedDict):
     safety_rule_id: str
     prompt_directive: str
     escalated: bool
+    claims: NotRequired[list[dict]]
+    evidence_blocks: NotRequired[dict[int, str]]
 
 
 @dataclass
@@ -47,3 +49,5 @@ class TurnResult:
     safety_action: str = "allow"
     safety_notice: str = ""
     escalated: bool = False
+    claims: list = field(default_factory=list)
+    evidence_blocks: dict[int, str] = field(default_factory=dict)
