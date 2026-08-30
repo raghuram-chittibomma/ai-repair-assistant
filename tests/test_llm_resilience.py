@@ -210,7 +210,7 @@ def test_ask_degrades_to_cited_evidence_when_generation_fails():
     )
     fit = MagicMock(ok=True, clarify_question="")
     with (
-        patch("repair_assistant.qa.generate.assess_request", return_value=assessment),
+        patch("repair_assistant.qa.generate.assess_layered", return_value=assessment),
         patch("repair_assistant.qa.generate.search") as search,
         patch("repair_assistant.retrieval.planner.check_evidence_fit", return_value=fit),
     ):
@@ -239,7 +239,7 @@ def test_ask_stream_degrades_to_cited_evidence_when_generation_fails():
     )
     fit = MagicMock(ok=True, clarify_question="")
     with (
-        patch("repair_assistant.qa.generate.assess_request", return_value=assessment),
+        patch("repair_assistant.qa.generate.assess_layered", return_value=assessment),
         patch("repair_assistant.qa.generate.search") as search,
         patch("repair_assistant.retrieval.planner.check_evidence_fit", return_value=fit),
     ):

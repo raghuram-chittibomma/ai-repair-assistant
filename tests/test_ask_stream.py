@@ -35,7 +35,7 @@ def test_ask_stream_emits_status_tokens_done():
         )
     ]
     with (
-        patch("repair_assistant.qa.generate.assess_request") as assess,
+        patch("repair_assistant.qa.generate.assess_layered") as assess,
         patch("repair_assistant.qa.generate.search") as search,
         patch("repair_assistant.qa.generate.gate_answer") as gate,
     ):

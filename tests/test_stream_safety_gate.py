@@ -73,7 +73,7 @@ def _run_stream(answer: str, *, action: SafetyAction, audience: Audience) -> lis
     # output, not on the question, so a plain question is enough.
     fit = MagicMock(ok=True, clarify_question="")
     with (
-        patch("repair_assistant.qa.generate.assess_request", return_value=assessment),
+        patch("repair_assistant.qa.generate.assess_layered", return_value=assessment),
         patch("repair_assistant.qa.generate.search") as search,
         patch("repair_assistant.retrieval.planner.check_evidence_fit", return_value=fit),
     ):
