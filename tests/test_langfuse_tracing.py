@@ -203,3 +203,29 @@ def test_trace_context_survives_generator_yield(monkeypatch) -> None:
         "trace_id": "trace-stream",
         "parent_span_id": "span-stream",
     }
+
+
+def test_sync_prompt_file_noops_when_tracing_disabled(monkeypatch) -> None:
+    monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
+    monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
+    monkeypatch.setattr(tracing, "load_dotenv_files", lambda: None)
+    fake_client = MagicMock()
+    with patch.object(tracing, "_client", return_value=fake_client):
+        tracing.sync_prompt_file("ask_system")
+    fake_client.create_prompt.assert_not_called()
+
+
+def test_sync_prompt_file_creates_when_missing(monkeypatch) -> None:
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
+    tracing._synced_prompts.clear()
+    fake_client = MagicMock()
+    fake_client.get_prompt.side_effect = RuntimeError("not found")
+    with patch.object(tracing, "_client", return_value=fake_client):
+        tracing.sync_prompt_file("ask_system")
+        tracing.sync_prompt_file("ask_system")
+    fake_client.create_prompt.assert_called_once()
+    kwargs = fake_client.create_prompt.call_args.kwargs
+    assert kwargs["name"] == "ask_system"
+    assert kwargs["type"] == "text"
+    assert "Whirlpool" in kwargs["prompt"]

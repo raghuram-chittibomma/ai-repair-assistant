@@ -25,6 +25,7 @@ from repair_assistant.diagnostic.graph import (
 from repair_assistant.diagnostic.state import DiagnosticGraphState, TurnResult
 from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import observation, update_span
+from repair_assistant.prompts import prompt_stamp
 from repair_assistant.qa.env import llm_model, openai_api_key
 from repair_assistant.qa.generate import LLMClient, OpenAIClient
 from repair_assistant.qa.structured import claims_from_dicts
@@ -128,6 +129,7 @@ class DiagnosticSession:
                 attested=self._technician_attested,
                 source="diagnose",
             ),
+            **prompt_stamp("diagnose_system"),
         }
         started = time.perf_counter()
         with observation(
@@ -183,7 +185,11 @@ class DiagnosticSession:
                     overfetch=self._overfetch,
                 )
             if needs_respond:
-                llm = self._llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+                llm = self._llm or OpenAIClient(
+                    api_key=openai_api_key(),
+                    model=llm_model(),
+                    prompt_name="diagnose_system",
+                )
                 pending = respond_diagnose_state(pending, llm)
             self._state = pending
 
@@ -238,6 +244,7 @@ class DiagnosticSession:
                 attested=self._technician_attested,
                 source="diagnose_stream",
             ),
+            **prompt_stamp("diagnose_system"),
         }
         started = time.perf_counter()
         with observation(

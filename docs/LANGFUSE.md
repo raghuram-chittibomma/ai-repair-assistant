@@ -105,7 +105,7 @@ ask | diagnose
 | Root (`ask` / `diagnose`) | question/message, model, appliance, abstain, citation labels, duration, `audience` / `audience_verified=false` / `technician_attested` (R2) |
 | `retrieval` | query, source counts (vector/code/connector/reference/revision), merged candidates, **selected** chunks (score, apply_reason, preview), **rejected** (applicability), **ranked_before_diversity**, **diversity_dropped** |
 | `evidence` | full `evidence_text` prompt block (truncated at `REPAIR_TRACE_MAX_CHARS`, default 12000) |
-| `llm` | `messages` array (system + user) in; `content` (full model output) out |
+| `llm` | `messages` array (system + user) in; `content` (full model output) out; `prompt_name` / `prompt_file_sha256` / `prompt_sha256` (ADR-0030) |
 | `safety_assess` | action, rule_id, reason, prompt_directive |
 | `safety_gate` | raw preview, blocked, notice, gated text preview |
 
@@ -131,6 +131,14 @@ Ask mode has no session grouping (one trace per question).
 
 Benches (`bench-qa`, `bench-candidates`, …) do **not** require Langfuse. If keys
 are set during a bench run, traces will also be sent (OpenAI cost unchanged).
+
+### Prompt versions (review R24)
+
+System prompts stay in git (`src/repair_assistant/prompts/*.txt`). When keys are
+set, the first generation of each named prompt upserts that file into Langfuse
+Prompts (`production` label) so traces can be filtered by version. The app never
+reads prompt text back from Langfuse. A prompt edit is gated by a manual
+`bench-qa --write`, not by CI.
 
 ## Data governance (review R44)
 

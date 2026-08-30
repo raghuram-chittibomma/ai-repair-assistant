@@ -23,10 +23,11 @@ from repair_assistant.observability.langfuse_tracing import (
     child_observation,
     generation,
     observation,
+    sync_prompt_file,
     update_span,
     usage_from_openai,
 )
-from repair_assistant.prompts import ask_system
+from repair_assistant.prompts import ask_system, prompt_stamp, runtime_prompt_digest
 from repair_assistant.qa.acks import ACK_IN_ASK_MODE, is_ack_only_message
 from repair_assistant.qa.context import (
     AnswerResult,
@@ -159,6 +160,7 @@ class OpenAIClient:
     timeout: float | None = None
     max_attempts: int | None = None
     max_tokens: int | None = None
+    prompt_name: str | None = None
 
     def _timeout_seconds(self) -> float:
         if self.timeout is not None:
@@ -175,6 +177,13 @@ class OpenAIClient:
 
     def _max_tokens(self) -> int:
         return self.max_tokens if self.max_tokens is not None else llm_max_tokens()
+
+    def _prompt_metadata(self, system: str) -> dict[str, str]:
+        meta = {"prompt_sha256": runtime_prompt_digest(system)}
+        if self.prompt_name:
+            meta.update(prompt_stamp(self.prompt_name))
+            sync_prompt_file(self.prompt_name)
+        return meta
 
     def _create(self, messages: list[dict[str, str]], *, stream: bool):
         """Call the provider, retrying transient failures with backoff."""
@@ -219,6 +228,7 @@ class OpenAIClient:
             "llm",
             model=self.model,
             input={"messages": messages},
+            metadata=self._prompt_metadata(system),
         ) as span:
             response = self._create(messages, stream=False)
             text = (response.choices[0].message.content or "").strip()
@@ -241,6 +251,7 @@ class OpenAIClient:
             "llm",
             model=self.model,
             input={"messages": messages, "stream": True},
+            metadata=self._prompt_metadata(system),
         ) as span:
             response = self._create(messages, stream=True)
             parts: list[str] = []
@@ -472,6 +483,7 @@ def ask(
         **record_audience_claim(
             audience, attested=technician_attested, source="ask"
         ),
+        **prompt_stamp("ask_system"),
     }
     started = time.perf_counter()
     with observation("ask", input={"question": question}, metadata=meta) as span:
@@ -675,7 +687,9 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
     if prep.early is not None:
         return prep.early
 
-    llm = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+    llm = llm or OpenAIClient(
+        api_key=openai_api_key(), model=llm_model(), prompt_name="ask_system"
+    )
     try:
         raw = llm.complete(prep.system, prep.user_prompt)
     except (LLMError, LLMTimeoutError) as exc:
@@ -772,7 +786,9 @@ def stream_from_prep(
         yield _answer_result_to_done(prep.early)
         return
 
-    client = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+    client = llm or OpenAIClient(
+        api_key=openai_api_key(), model=llm_model(), prompt_name="ask_system"
+    )
     stream_tokens = may_stream(prep.assessment)
     try:
         raw = "".join(client.stream(prep.system, prep.user_prompt)).strip()
@@ -879,6 +895,7 @@ def ask_stream(
         **record_audience_claim(
             audience, attested=technician_attested, source="ask_stream"
         ),
+        **prompt_stamp("ask_system"),
     }
     started = time.perf_counter()
 

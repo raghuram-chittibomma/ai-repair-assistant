@@ -81,4 +81,6 @@ flowchart TD
 - **Fingerprinting:** Normalized question + failure code avoids duplicate drafts.
 - **Ready set:** Questions already covered by golden fixtures are skipped.
 
+Prompt file hashes are stamped on generation spans; Langfuse stores a snapshot when keys are set ([ADR-0030](../adr/0030-prompt-version-stamps.md)). The app does not read prompt text from Langfuse.
+
 **Modules:** `observability/langfuse_tracing.py`, `observability/retrieval_trace.py`, `eval/mine_traces.py`, `eval/promote.py`

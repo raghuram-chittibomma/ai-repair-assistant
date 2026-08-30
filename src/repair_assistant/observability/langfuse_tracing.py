@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import threading
@@ -15,6 +16,8 @@ from repair_assistant.observability.eval_context import merge_eval_metadata
 from repair_assistant.observability.redact import redact_for_trace
 
 _DEFAULT_TRACE_MAX = 12_000
+_log = logging.getLogger("repair_assistant.observability")
+_synced_prompts: set[str] = set()
 
 # Mutable span stack per thread — avoids ContextVar token reset errors when SSE
 # generators yield/resume across asyncio context copies.
@@ -305,6 +308,37 @@ def child_observation(
         yield span
 
 
+def sync_prompt_file(name: str) -> None:
+    """Best-effort snapshot of a git prompt file into Langfuse (ADR-0030).
+
+    Files remain the source of truth. Failures never break ask/diagnose.
+    """
+    if not tracing_enabled() or name in _synced_prompts:
+        return
+    from repair_assistant.prompts import load_prompt
+
+    text = load_prompt(name)
+    try:
+        client = _client()
+        getter = getattr(client, "get_prompt", None)
+        current = None
+        if callable(getter):
+            try:
+                current = getter(name)
+            except Exception:  # noqa: BLE001 — missing prompt is the create path
+                current = None
+        existing = getattr(current, "prompt", None) if current is not None else None
+        if existing == text:
+            _synced_prompts.add(name)
+            return
+        creator = getattr(client, "create_prompt", None)
+        if callable(creator):
+            creator(name=name, prompt=text, type="text", labels=["production"])
+        _synced_prompts.add(name)
+    except Exception:  # noqa: BLE001 — tracing must not fail the product path
+        _log.warning("Langfuse prompt sync failed for %s", name, exc_info=True)
+
+
 @contextmanager
 def generation(
     name: str,
@@ -380,6 +414,7 @@ __all__ = [
     "prepare_trace_value",
     "trace_max_chars",
     "truncate_for_trace",
+    "sync_prompt_file",
     "tracing_enabled",
     "update_span",
     "usage_from_openai",

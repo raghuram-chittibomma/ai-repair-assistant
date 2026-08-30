@@ -10,9 +10,12 @@ synthetic pgvector in CI, **R16** embedding-model guard, **R35** release the
 pool connection before generation, **R15** trigram GIN, **R40** manifest cache
 with mtime + reload. S4 uses the current 18 fixtures as the decision set
 (held-out test waived). **R29** MRR / nDCG / retrieve latency land on that set.
-S7 agent-doable items landed: **R33**, **R34**, **R43**, ADR-0025 detectors,
-**R19**, **R25** transcript window, **R42** parts-list linkage, **R2** audience
-attestation, **R44** trace governance. **R41** feedback UI is deferred.
+S6 landed (non-ranking): **R23** structured claims, **R27** claim groundedness,
+**R24** prompt version stamps. S7 agent-doable items landed: **R33**, **R34**,
+**R43**, ADR-0025 detectors, **R19**, **R25** transcript window, **R42**
+parts-list linkage, **R2** audience attestation, **R44** trace governance.
+**R41** feedback UI is deferred. Ranking items **R11** / **R18** / **R20** /
+**R22** wait after the S5 reject.
 
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)
@@ -266,7 +269,8 @@ literals stay. A larger CrossEncoder is a new experiment, not this slice.
 `R23` structured claim→evidence output ([ADR-0028](adr/0028-structured-claim-evidence.md)) ·
 `R27` claim groundedness ([ADR-0029](adr/0029-claim-groundedness.md)) · `R11`
 applicability pre-filter with `R20`'s remaining four axes · `R18` query rewriting,
-which permits removing `R22`'s coercion · `R24` prompt versioning · `R25`
+which permits removing `R22`'s coercion · `R24` prompt version stamps
+([ADR-0030](adr/0030-prompt-version-stamps.md)) · `R25`
 transcript windowing.
 
 ### S7 — honesty, product signal, and the deferral record

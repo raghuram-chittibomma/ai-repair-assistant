@@ -380,7 +380,9 @@ def diagnose_turn_stream(
     overfetch: int = 40,
 ) -> Iterator[dict[str, Any]]:
     """Yield SSE events for one turn: status, token deltas, then done."""
-    client = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+    client = llm or OpenAIClient(
+        api_key=openai_api_key(), model=llm_model(), prompt_name="diagnose_system"
+    )
 
     state = _apply_delta(state, make_assess_node()(state))
     with child_observation(
@@ -576,7 +578,9 @@ def build_diagnostic_graph(
     retrieval_limit: int = 8,
     overfetch: int = 40,
 ):
-    llm = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+    llm = llm or OpenAIClient(
+        api_key=openai_api_key(), model=llm_model(), prompt_name="diagnose_system"
+    )
     graph = StateGraph(DiagnosticGraphState)
     graph.add_node("assess", make_assess_node())
     graph.add_node("blocked", make_blocked_node())

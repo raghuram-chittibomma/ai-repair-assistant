@@ -5,6 +5,9 @@ from repair_assistant.prompts import (
     diagnose_system,
     judge_system,
     load_prompt,
+    prompt_digest,
+    prompt_stamp,
+    runtime_prompt_digest,
     safety_escalate,
     safety_technician,
     safety_warn,
@@ -42,3 +45,14 @@ def test_load_prompt_files() -> None:
     assert "disconnect-power" in safety_warn()
     assert "qualified appliance service personnel" in safety_technician()
     assert load_prompt("ask_system") == ask_system()
+
+
+def test_prompt_digest_is_stable_and_named() -> None:
+    digest = prompt_digest("ask_system")
+    assert len(digest) == 12
+    assert digest == prompt_digest("ask_system")
+    assert prompt_digest("diagnose_system") != digest
+    stamp = prompt_stamp("ask_system")
+    assert stamp["prompt_name"] == "ask_system"
+    assert stamp["prompt_file_sha256"] == digest
+    assert runtime_prompt_digest(ask_system()) == digest

@@ -109,7 +109,9 @@ def judge_answer(
     """Grade prose expect/fails_if. No-op PASS when there are no prose criteria."""
     if not needs_llm_judge(scenario):
         return JudgeVerdict(passed=True, reason="no prose criteria")
-    client: JudgeClient = llm or OpenAIClient(api_key=openai_api_key(), model=llm_model())
+    client: JudgeClient = llm or OpenAIClient(
+        api_key=openai_api_key(), model=llm_model(), prompt_name="judge_system"
+    )
     raw = client.complete(
         judge_system(),
         build_judge_user_prompt(

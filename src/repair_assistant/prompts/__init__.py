@@ -6,6 +6,7 @@ only reusable system / safety directive text lives in these files.
 
 from __future__ import annotations
 
+import hashlib
 from functools import lru_cache
 from importlib.resources import files
 
@@ -15,6 +16,20 @@ def load_prompt(name: str) -> str:
     """Return prompt body for ``name`` (without ``.txt``), stripped of edges."""
     resource = files("repair_assistant.prompts").joinpath(f"{name}.txt")
     return resource.read_text(encoding="utf-8").strip()
+
+
+def prompt_digest(name: str) -> str:
+    """Short SHA-256 of the committed prompt file (ADR-0030)."""
+    return hashlib.sha256(load_prompt(name).encode("utf-8")).hexdigest()[:12]
+
+
+def prompt_stamp(name: str) -> dict[str, str]:
+    return {"prompt_name": name, "prompt_file_sha256": prompt_digest(name)}
+
+
+def runtime_prompt_digest(system: str) -> str:
+    """Hash of the system string actually sent (file + safety directives)."""
+    return hashlib.sha256((system or "").encode("utf-8")).hexdigest()[:12]
 
 
 def ask_system() -> str:
