@@ -209,6 +209,23 @@ Items 1–7 stand. Additionally:
 9. **Owner-literature restriction does not apply** to identifier /
    technician-depth / bibliographic questions.
 
+## Amendment 2026-08-30 — owner-filter re-run; rerank reject
+
+Same 18 fixtures after the owner-literature skip and the ADR-0027 bake-off.
+
+| Strategy | Hard | mean MRR | mean nDCG@K | mean Precision@K | Latency mean / p95 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `vector_apply_boost` | 14/14 | 0.83 | 0.87 | 0.48 | 118 / 182 ms |
+| `union_literal_apply` | 14/14 | 0.83 | 0.87 | 0.48 | 152 / 253 ms |
+| `production_search` | **13/14** | **0.83** | **0.87** | 0.53 | 164 / 778 ms |
+| `hybrid_rrf_apply` | 14/14 | 0.77 | 0.83 | 0.49 | 447 / 691 ms |
+| `vector_apply_rerank` | 10/14 | 0.57 | 0.62 | 0.37 | 35929 / 241819 ms |
+| `vector_apply` | 8/14 | 0.45 | 0.50 | 0.30 | 115 / 149 ms |
+
+`production_search` now ties the baseline on MRR/nDCG. The remaining hard fail
+is `synth-owners-manual-supersession` (`must_not_cite` still in top-K).
+Rerank is rejected ([ADR-0027](0027-cross-encoder-rerank.md)).
+
 ## Consequences
 
 - Release gate: **14 hard fixtures** spanning applicability, precedence,
@@ -219,3 +236,5 @@ Items 1–7 stand. Additionally:
   Compare it to `vector_apply_boost` on MRR/nDCG, not only hard pass/fail.
 - Chunking (ADR-0007) was not reopened; residual product-class gaps that look
   boundary-shaped should get a targeted micro-bake, not a full D4 redo.
+- Cross-encoder rerank was measured and rejected
+  ([ADR-0027](0027-cross-encoder-rerank.md)): 10/14 hard, MRR 0.57, ~36 s mean.

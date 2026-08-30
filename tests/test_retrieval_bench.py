@@ -217,6 +217,18 @@ def test_query_literals_skips_pure_words_and_numbers() -> None:
     assert query_literals("check pin 3 and pin 12") == []
 
 
+def test_fixture_strategies_include_rerank_bakeoff() -> None:
+    import yaml
+
+    from repair_assistant.corpus import manifest as manifest_mod
+
+    path = manifest_mod.load().root / "evals" / "retrieval" / "fixtures.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    ids = [s["id"] for s in data["strategies"]]
+    assert "vector_apply_rerank" in ids
+    assert "vector_apply_boost" in ids
+
+
 def test_synthetic_pack_loads_and_stays_namespaced() -> None:
     from repair_assistant.corpus import manifest as manifest_mod
     from repair_assistant.retrieval.synthetic import (

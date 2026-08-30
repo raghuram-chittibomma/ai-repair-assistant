@@ -23,6 +23,10 @@ strategies:
     description: Vector + applicability drop (no authority boosts)
   - id: vector_apply_boost
     description: ADR-0010 interim — vector + apply + light boosts
+  - id: vector_apply_rerank
+    description: >-
+      ADR-0027 bake-off — vector + apply + cross-encoder, no authority boosts.
+      Not used by production search().
   - id: lexical_apply
     description: Postgres full-text + applicability drop
   - id: hybrid_rrf_apply

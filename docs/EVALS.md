@@ -51,6 +51,7 @@ python -m repair_assistant.corpus.cli bench-parse --write
 python -m repair_assistant.corpus.cli bench-safety
 
 # Needs LAN Postgres (DATABASE_URL in .env.local)
+# First run of vector_apply_rerank (ADR-0027) downloads CrossEncoder weights.
 python -m repair_assistant.corpus.cli bench-retrieve --write
 
 # Cross-layer: re-parse/ingest one doc → production search → ask
@@ -126,6 +127,9 @@ math. Fixtures with only `must_not_cite` leave Hit/Recall/Precision as `n/a`.
 noise or missed docs — not as a substitute for hard corpus cases. On the
 current 18-fixture decision set, `vector_apply_boost` is the measured baseline
 (tied with `union_literal_apply` on MRR/nDCG, faster). See [ADR-0020](adr/0020-hybrid-retrieval-retest.md).
+`vector_apply_rerank` is an ADR-0027 bake-off control (cross-encoder, no
+boosts). Measured and rejected: 10/14 hard, MRR 0.57 vs baseline 0.83. Not
+the production path.
 
 ### Retrieval fixture families
 

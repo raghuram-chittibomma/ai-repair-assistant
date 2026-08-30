@@ -11,6 +11,7 @@ from repair_assistant.ingest.embeddings import Embedder
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.retrieval.rank import RankedHit, filter_and_rank
+from repair_assistant.retrieval.rerank import rerank_hits
 from repair_assistant.retrieval.search import code_fetch, merge_hits, search, vector_fetch
 
 
@@ -306,6 +307,18 @@ def run_strategy(
             vector_fetch(db, vectors, limit=overfetch, include_synthetic=True),
         )
         return _hits_from_ranked(_apply_only(raw, manifest, appliance, limit=k))
+
+    if strategy_id == "vector_apply_rerank":
+        # ADR-0027: applicability only, then cross-encoder. No authority boosts.
+        vectors = embedder.embed([query])[0]
+        raw = merge_hits(
+            code_fetch(db, codes),
+            vector_fetch(db, vectors, limit=overfetch, include_synthetic=True),
+        )
+        applied = _hits_from_ranked(
+            _apply_only(raw, manifest, appliance, limit=overfetch)
+        )
+        return rerank_hits(query, applied, limit=k)
 
     if strategy_id == "vector_apply_boost":
         vectors = embedder.embed([query])[0]

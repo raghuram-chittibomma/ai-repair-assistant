@@ -254,11 +254,12 @@ Begin removing `R13`'s literals here.
 
 The expected output is a dev/test gap. That gap is the finding.
 
-### S5 — the reranker bake-off (`ADR-first`)
+### S5 — the reranker bake-off (`ADR-first`) — done, rejected
 
-`R14` measured on S4's held-out set, against `vector_apply_boost`, reporting IR
-gain *and* added latency on the workstation. If it wins, `R13` and `R21`'s
-literals and a large part of `R48`'s rule stack are deleted rather than tuned.
+`R14` measured as `vector_apply_rerank` ([ADR-0027](adr/0027-cross-encoder-rerank.md))
+against `vector_apply_boost` on the 18-fixture decision set: **10/14** hard,
+MRR **0.57** vs **0.83**, ~36 s mean vs ~118 ms. Not adopted. R13 / R21
+literals stay. A larger CrossEncoder is a new experiment, not this slice.
 
 ### S6 — groundedness and retrieval architecture (`ADR-first`)
 
