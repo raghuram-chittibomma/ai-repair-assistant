@@ -263,7 +263,8 @@ literals stay. A larger CrossEncoder is a new experiment, not this slice.
 
 ### S6 — groundedness and retrieval architecture (`ADR-first`)
 
-`R23` structured output, then `R27` groundedness on top of it · `R11`
+`R23` structured claim→evidence output ([ADR-0028](adr/0028-structured-claim-evidence.md)) ·
+`R27` claim groundedness ([ADR-0029](adr/0029-claim-groundedness.md)) · `R11`
 applicability pre-filter with `R20`'s remaining four axes · `R18` query rewriting,
 which permits removing `R22`'s coercion · `R24` prompt versioning · `R25`
 transcript windowing.

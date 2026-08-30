@@ -72,6 +72,7 @@ def build_judge_user_prompt(
     answer: str,
     citations: list[str],
     abstained: bool,
+    evidence_text: str = "",
 ) -> str:
     criteria = prose_criteria(scenario)
     lines = [
@@ -83,8 +84,10 @@ def build_judge_user_prompt(
         "Answer:",
         answer or "(empty)",
         "",
-        "Criteria:",
     ]
+    if evidence_text.strip():
+        lines.extend(["Evidence:", evidence_text.strip(), ""])
+    lines.append("Criteria:")
     if "expect" in criteria:
         lines.append(f"- expect: {criteria['expect']}")
     if "fails_if" in criteria:
@@ -101,6 +104,7 @@ def judge_answer(
     citations: list[str],
     abstained: bool,
     llm: JudgeClient | None = None,
+    evidence_text: str = "",
 ) -> JudgeVerdict:
     """Grade prose expect/fails_if. No-op PASS when there are no prose criteria."""
     if not needs_llm_judge(scenario):
@@ -113,6 +117,7 @@ def judge_answer(
             answer=answer,
             citations=citations,
             abstained=abstained,
+            evidence_text=evidence_text,
         ),
     )
     return _parse_verdict(raw)
@@ -127,13 +132,22 @@ def grade_with_optional_judge(
     use_judge: bool,
     llm: JudgeClient | None = None,
     deterministic_grade: Callable[..., tuple[bool, str]],
+    evidence_text: str = "",
+    claims: list | None = None,
+    evidence_blocks: dict[int, str] | None = None,
 ) -> tuple[bool, str]:
     """Run deterministic grading, then optional LLM judge for prose criteria."""
+    extra: dict[str, Any] = {}
+    if claims is not None:
+        extra["claims"] = claims
+    if evidence_blocks is not None:
+        extra["evidence_blocks"] = evidence_blocks
     passed, detail = deterministic_grade(
         scenario,
         answer=answer,
         citations=citations,
         abstained=abstained,
+        **extra,
     )
     if not passed or not use_judge or not needs_llm_judge(scenario):
         return passed, detail
@@ -143,6 +157,7 @@ def grade_with_optional_judge(
         citations=citations,
         abstained=abstained,
         llm=llm,
+        evidence_text=evidence_text,
     )
     if verdict.passed:
         return True, f"ok; judge: {verdict.reason}"

@@ -12,6 +12,7 @@ import yaml
 from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.eval.grading import grade_answer
+from repair_assistant.eval.groundedness import format_evidence_for_judge
 from repair_assistant.eval.llm_judge import JudgeClient, grade_with_optional_judge
 from repair_assistant.eval.qa_bench import (
     QAScenarioResult,
@@ -171,6 +172,9 @@ def run_candidates_bench(
                 use_judge=use_judge,
                 llm=judge_llm,
                 deterministic_grade=grade_answer,
+                evidence_text=format_evidence_for_judge(outcome.evidence_blocks),
+                claims=list(outcome.claims or []),
+                evidence_blocks=dict(outcome.evidence_blocks or {}),
             )
             if scenario.get("requires_judge") and not use_judge:
                 detail = f"{detail}; det-only (needs --judge for prose)"

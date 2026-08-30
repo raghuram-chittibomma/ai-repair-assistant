@@ -5,6 +5,12 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from repair_assistant.eval.groundedness import (
+    groundedness_failure_detail,
+    score_claims,
+)
+from repair_assistant.qa.structured import Claim, claims_from_dicts
+
 # Machine-checkable keys that grade_answer enforces without --judge.
 # Prose `expect` / `fails_if` are separate and need the LLM judge.
 DETERMINISTIC_KEYS: tuple[str, ...] = (
@@ -65,6 +71,8 @@ def grade_diagnose_turns(
                 answer=answer,
                 citations=list(getattr(target, "citations", None) or []),
                 abstained=bool(getattr(target, "abstained", False)),
+                claims=list(getattr(target, "claims", None) or []),
+                evidence_blocks=dict(getattr(target, "evidence_blocks", None) or {}),
             )
             if not passed:
                 failures.append(f"turn {n}: {detail}")
@@ -82,6 +90,8 @@ def grade_diagnose_turns(
         answer=answer,
         citations=list(getattr(target, "citations", None) or []),
         abstained=bool(getattr(target, "abstained", False)),
+        claims=list(getattr(target, "claims", None) or []),
+        evidence_blocks=dict(getattr(target, "evidence_blocks", None) or {}),
     )
 
 
@@ -151,12 +161,26 @@ def matches_citation(keys: list[str], needle: str) -> bool:
     return False
 
 
+def _as_claims(claims: list | None) -> list[Claim]:
+    if not claims:
+        return []
+    out: list[Claim] = []
+    for item in claims:
+        if isinstance(item, Claim):
+            out.append(item)
+        elif isinstance(item, dict):
+            out.extend(claims_from_dicts([item]))
+    return out
+
+
 def grade_answer(
     scenario: dict[str, Any],
     *,
     answer: str,
     citations: list[str],
     abstained: bool,
+    claims: list | None = None,
+    evidence_blocks: dict[int, str] | None = None,
 ) -> tuple[bool, str]:
     """Return (passed, detail) for one scenario result."""
     failures: list[str] = []
@@ -195,6 +219,13 @@ def grade_answer(
         for phrase in scenario.get("fails_if_contains") or []:
             if phrase.lower() in answer_text:
                 failures.append(f"fails_if matched {phrase!r}")
+
+    parsed_claims = _as_claims(claims)
+    if parsed_claims and not abstained:
+        report = score_claims(parsed_claims, evidence_blocks or {})
+        hard = groundedness_failure_detail(report)
+        if hard:
+            failures.append(hard)
 
     if failures:
         return False, "; ".join(failures)

@@ -15,11 +15,13 @@ from repair_assistant.corpus import manifest as manifest_mod
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.diagnostic.session import DiagnosticSession
 from repair_assistant.eval.grading import grade_answer, grade_diagnose_turns
+from repair_assistant.eval.groundedness import format_evidence_for_judge, score_claims
 from repair_assistant.eval.llm_judge import JudgeClient, grade_with_optional_judge, needs_llm_judge
 from repair_assistant.eval.repro import scorecard_repro_lines
 from repair_assistant.ingest.store import Database
 from repair_assistant.qa.context import Citation
 from repair_assistant.qa.generate import ask
+from repair_assistant.qa.structured import Claim, claims_from_dicts
 
 
 @dataclass
@@ -30,6 +32,8 @@ class TurnRecord:
     abstained: bool
     citations: list[str]
     retrieval_count: int
+    claims: list = field(default_factory=list)
+    evidence_blocks: dict[int, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -41,8 +45,13 @@ class QAScenarioResult:
     abstained: bool = False
     answer: str = ""
     citations: list[str] = field(default_factory=list)
+    claims: list = field(default_factory=list)
+    evidence_blocks: dict[int, str] = field(default_factory=dict)
     turns: list[TurnRecord] = field(default_factory=list)
     duration_ms: int = 0
+    claims_checked: int = 0
+    claims_unsupported: int = 0
+    groundedness_rate: float | None = None
 
 
 def load_smoke_scenarios(path: Path | None = None) -> dict[str, Any]:
@@ -64,12 +73,27 @@ def _cite_keys(citations: list[Citation]) -> list[str]:
     return keys
 
 
+def _stamp_groundedness(result: QAScenarioResult, claims: list, blocks: dict[int, str]) -> None:
+    parsed: list[Claim] = []
+    for item in claims or []:
+        if isinstance(item, Claim):
+            parsed.append(item)
+        elif isinstance(item, dict):
+            parsed.extend(claims_from_dicts([item]))
+    report = score_claims(parsed, blocks)
+    result.claims_checked = report.checked
+    result.claims_unsupported = report.unsupported
+    result.groundedness_rate = report.rate
+
+
 def grade_scenario(scenario: dict[str, Any], result: QAScenarioResult) -> tuple[bool, str]:
     return grade_answer(
         scenario,
         answer=result.answer,
         citations=result.citations,
         abstained=result.abstained,
+        claims=list(getattr(result, "claims", None) or []),
+        evidence_blocks=dict(getattr(result, "evidence_blocks", None) or {}),
     )
 
 
@@ -105,8 +129,11 @@ def _run_ask(
         abstained=outcome.abstained,
         answer=outcome.answer,
         citations=cite_keys,
+        claims=list(outcome.claims or []),
+        evidence_blocks=dict(outcome.evidence_blocks or {}),
         duration_ms=elapsed,
     )
+    _stamp_groundedness(result, result.claims, result.evidence_blocks)
     passed, detail = grade_with_optional_judge(
         scenario,
         answer=result.answer,
@@ -115,6 +142,9 @@ def _run_ask(
         use_judge=use_judge,
         llm=judge_llm,
         deterministic_grade=grade_answer,
+        evidence_text=format_evidence_for_judge(outcome.evidence_blocks),
+        claims=list(outcome.claims or []),
+        evidence_blocks=dict(outcome.evidence_blocks or {}),
     )
     result.passed = passed
     result.detail = detail
@@ -142,6 +172,8 @@ def _run_diagnose(
                 abstained=last.abstained,
                 citations=_cite_keys(last.citations),
                 retrieval_count=last.retrieval_count,
+                claims=list(getattr(last, "claims", None) or []),
+                evidence_blocks=dict(getattr(last, "evidence_blocks", None) or {}),
             )
         )
 
@@ -175,6 +207,11 @@ def _run_diagnose(
         turns=turns,
         duration_ms=elapsed,
     )
+    _stamp_groundedness(
+        result,
+        list(getattr(target, "claims", None) or []),
+        dict(getattr(target, "evidence_blocks", None) or {}),
+    )
 
     def _det(
         scen: dict[str, Any],
@@ -182,6 +219,7 @@ def _run_diagnose(
         answer: str,
         citations: list[str],
         abstained: bool,
+        **_extra: Any,
     ) -> tuple[bool, str]:
         del answer, citations, abstained
         return grade_diagnose_turns(scen, turns)
@@ -194,6 +232,9 @@ def _run_diagnose(
         use_judge=use_judge,
         llm=judge_llm,
         deterministic_grade=_det,
+        evidence_text=format_evidence_for_judge(dict(getattr(target, "evidence_blocks", None) or {})),
+        claims=list(getattr(target, "claims", None) or []),
+        evidence_blocks=dict(getattr(target, "evidence_blocks", None) or {}),
     )
     # Prose judge only sees one turn; when turn_grades exist, annotate if judge skipped.
     if (
@@ -266,10 +307,30 @@ def scorecard_markdown(results: list[QAScenarioResult]) -> str:
         f"**{passed}/{len(results)} passed**",
         "",
     ]
-    lines.append("| scenario | command | pass | ms | detail |")
-    lines.append("| --- | --- | --- | ---: | --- |")
+    lines.append("| scenario | command | pass | ms | ungrounded | detail |")
+    lines.append("| --- | --- | --- | ---: | ---: | --- |")
     for r in results:
         mark = "yes" if r.passed else "NO"
-        lines.append(f"| {r.scenario_id} | {r.command} | {mark} | {r.duration_ms} | {r.detail} |")
-    lines.append("")
+        ungrounded = (
+            f"{r.claims_unsupported}/{r.claims_checked}" if r.claims_checked else "n/a"
+        )
+        lines.append(
+            f"| {r.scenario_id} | {r.command} | {mark} | {r.duration_ms} | {ungrounded} | {r.detail} |"
+        )
+    rated = [r for r in results if r.groundedness_rate is not None]
+    if rated:
+        mean = sum(r.groundedness_rate or 0.0 for r in rated) / len(rated)
+        lines.extend(
+            [
+                "",
+                "## Groundedness (review R27)",
+                "",
+                f"Mean unsupported-claim rate: {mean:.2f} "
+                f"(n={len(rated)} scenarios with checkable claims).",
+                "Hard fail is zero token overlap between a claim and its cited block.",
+                "",
+            ]
+        )
+    else:
+        lines.append("")
     return "\n".join(lines)

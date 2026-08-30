@@ -102,6 +102,9 @@ python -m repair_assistant.corpus.cli promote-eval `
 - Exit code **non-zero** = one or more failures; read the printed scorecard.
 - `--write` refreshes the markdown scorecard and (for Q&A / candidates) a
   timestamped JSON run log with answers, citations, latency, and pass/fail.
+  Ask/diagnose bind citations from structured `claims` ([ADR-0028](adr/0028-structured-claim-evidence.md)).
+  Groundedness (R27 / [ADR-0029](adr/0029-claim-groundedness.md)): unsupported-claim
+  rate plus a hard fail on zero-overlap invented claims.
 - Commit scorecards when you want a durable baseline; intermediate run JSONs
   are optional.
 

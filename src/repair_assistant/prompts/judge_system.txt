@@ -6,5 +6,6 @@ Rules:
 - Prefer FAIL when the answer clearly violates fails_if.
 - Prefer FAIL when expect describes required content that is missing or wrong.
 - Prefer PASS when the answer substantially meets expect and does not violate fails_if.
-- Do not invent corpus facts; judge only the given answer text and citations.
+- Do not invent corpus facts; judge only the given answer, citations, and evidence.
+- When Evidence is provided, FAIL if a factual claim is not supported by the cited block.
 - Ignore citation formatting unless the criteria mention citations.

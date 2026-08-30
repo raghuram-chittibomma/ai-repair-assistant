@@ -64,8 +64,13 @@ flowchart TD
 - **Abstain paths:** Unsupported model, no applicable evidence, or procedural answer missing `[n]` citations ([ADR-0012](../adr/0012-grounded-qa.md)).
 - **Owner evidence policy:** Injects a directive when retrieved text looks like service-only literature so the model stays owner-safe.
 - **Streaming:** SSE status / token / done events; disconnect cancels generation.
+  The model returns structured JSON ([ADR-0028](../adr/0028-structured-claim-evidence.md));
+  the client only sees the rendered `answer` after `gate_answer`.
+- **Citations:** from `claims[].evidence_index`, with `[n]` in prose as fallback.
+- **Groundedness:** `bench-qa` scores each claim against its evidence block
+  ([ADR-0029](../adr/0029-claim-groundedness.md)). The judge sees those blocks.
 
-**Modules:** `qa/generate.py`, `qa/context.py`, `api/app.py`
+**Modules:** `qa/generate.py`, `qa/context.py`, `qa/structured.py`, `api/app.py`
 
 ## Diagnose (multi-turn LangGraph)
 

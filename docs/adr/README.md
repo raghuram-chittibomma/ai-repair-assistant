@@ -53,6 +53,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | ADR | Decision | Driver |
 | --- | --- | --- |
 | [0012](0012-grounded-qa.md) | Retrieve (ADR-0010) → numbered evidence → OpenAI chat; citations + abstention | Charter Phase 6 |
+| [0028](0028-structured-claim-evidence.md) | Claim→evidence is a JSON `claims[].evidence_index`, not a regex scrape | Review R23; precondition for R27 |
 
 ## Phase 6 — Diagnostic assistant
 
@@ -72,6 +73,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | ADR | Decision | Driver |
 | --- | --- | --- |
 | [0015](0015-qa-eval-logging.md) | `bench-qa` smoke runner; deterministic grader; JSON run logs | Charter Phase 9 (incremental) |
+| [0029](0029-claim-groundedness.md) | Claim→block lexical groundedness; unsupported-claim rate; judge sees evidence | Review R27 |
 | [0018](0018-langfuse-observability.md) | Self-hosted Langfuse (MIT); opt-in SDK traces; not LangSmith | Charter Phase 9; OSS + D8 |
 | [0019](0019-llm-judge-promote.md) | Opt-in `--judge` for prose expect/fails_if; `promote-eval` drafts | Charter Phase 9 maturity |
 

@@ -224,6 +224,8 @@ def run_chain_bench(
             answer=answer.answer,
             citations=cite_keys,
             abstained=answer.abstained,
+            claims=list(answer.claims or []),
+            evidence_blocks=dict(answer.evidence_blocks or {}),
         )
         results.append(
             ChainStageResult(
