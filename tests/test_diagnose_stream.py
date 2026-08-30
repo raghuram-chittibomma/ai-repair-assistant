@@ -139,6 +139,11 @@ def test_retrieval_query_ack_keeps_symptom_anchor() -> None:
     assert is_ack_only_message("no issues from these checks")
     assert is_ack_only_message("no issues there")
     assert is_ack_only_message("this also looks good")
+    assert is_ack_only_message("those look good")
+    assert is_ack_only_message("checked. those look good")
+    assert is_ack_only_message("checked those look good")
+    assert is_ack_only_message("checked, they look good")
+    assert is_ack_only_message("they look good")
     assert not is_ack_only_message("no error code. whole machine shuts down.")
 
     messages = [
@@ -150,6 +155,29 @@ def test_retrieval_query_ack_keeps_symptom_anchor() -> None:
     assert "doesn't wash properly" in q
     assert "no issues" not in q
     assert "looks good" not in q
+
+
+def test_retrieval_query_mid_cycle_correction_drops_vague_anchor() -> None:
+    messages = [
+        HumanMessage(content="doesn't wash properly"),
+        HumanMessage(content="checked. those look good"),
+        HumanMessage(content="actually wash stops halfway thru"),
+    ]
+    q = _retrieval_query(messages)
+    assert "stops halfway" in q
+    assert "doesn't wash properly" not in q
+    assert "look good" not in q
+
+
+def test_retrieval_query_stopping_halfway_drops_vague_anchor() -> None:
+    messages = [
+        HumanMessage(content="doesn't wash properly"),
+        HumanMessage(content="checked those look good"),
+        HumanMessage(content="actually wash was stopping halfway thru"),
+    ]
+    q = _retrieval_query(messages)
+    assert "stopping halfway" in q
+    assert "doesn't wash properly" not in q
 
 
 def test_session_symptom_anchor_skips_acks() -> None:

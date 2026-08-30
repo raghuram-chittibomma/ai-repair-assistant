@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from repair_assistant.diagnostic.prompts import window_transcript
+from repair_assistant.diagnostic.prompts import (
+    build_diagnostic_user_prompt,
+    window_transcript,
+)
 
 
 def test_window_transcript_keeps_first_and_recent() -> None:
@@ -12,6 +15,18 @@ def test_window_transcript_keeps_first_and_recent() -> None:
     assert "earlier lines omitted" in text
     assert text.endswith("User: turn 19")
     assert "User: turn 2" not in text
+
+
+def test_mid_cycle_followup_prefers_diagnostic_entry() -> None:
+    text = build_diagnostic_user_prompt(
+        appliance_model="WFW5620HW0",
+        appliance_serial=None,
+        evidence_text="[1] Activating Service Diagnostic Mode",
+        transcript="User: actually wash stops halfway thru",
+        mid_cycle_followup=True,
+    )
+    assert "Activating Service Diagnostic Mode" in text
+    assert "before-servicing" in text
 
 
 def test_window_transcript_short_list_unchanged() -> None:

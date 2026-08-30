@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
+
+from repair_assistant.qa.acks import is_ack_only_message
+
+_NUMBERED_CHECK = re.compile(r"^\s*\d+\.\s+(.+)$")
 
 PHASES = frozenset(
     {
@@ -70,6 +75,19 @@ def _clip(text: str) -> str:
 
 def _norm(text: str) -> str:
     return _clip(text).lower()
+
+
+def checks_from_assistant(text: str) -> list[str]:
+    """Numbered checklist lines from the previous assistant turn."""
+    items: list[str] = []
+    for line in (text or "").splitlines():
+        match = _NUMBERED_CHECK.match(line)
+        if not match:
+            continue
+        item = re.sub(r"\s*\[\d+\]\s*$", "", _clip(match.group(1)))
+        if item:
+            items.append(item)
+    return items
 
 
 def _dedupe_strings(existing: list[str], incoming: list[str]) -> list[str]:
@@ -161,6 +179,7 @@ def merge_board(
     symptom_anchor: str,
     user_message: str,
     delta: DiagnosticDelta | None = None,
+    prior_assistant: str = "",
 ) -> DiagnosticBoard:
     board = DiagnosticBoard(
         step=max(0, int(step)),
@@ -198,6 +217,20 @@ def merge_board(
                 board.observations,
                 Observation(text=text, source="assistant", turn=board.step),
             )
+    if is_ack_only_message(user_message):
+        confirmed: list[str] = []
+        if prior.next_check:
+            confirmed.append(prior.next_check)
+        confirmed.extend(checks_from_assistant(prior_assistant))
+        if confirmed:
+            # Model often forgets diagnostic.ruled_out on "that looks good" turns.
+            board.ruled_out = _dedupe_strings(board.ruled_out, confirmed)
+            ruled = {_norm(item) for item in board.ruled_out}
+            board.hypotheses = [
+                item for item in board.hypotheses if _norm(item) not in ruled
+            ]
+            if _norm(board.next_check) in ruled:
+                board.next_check = ""
     if not board.phase:
         board.phase = "symptoms" if board.step <= 1 else "next_step"
     return board
@@ -211,6 +244,7 @@ def merge_from_raw(
     user_message: str,
     raw: str | None = None,
     phase_hint: str | None = None,
+    prior_assistant: str = "",
 ) -> DiagnosticBoard:
     delta = delta_from_raw(raw)
     if phase_hint and phase_hint in PHASES and (delta is None or not delta.phase):
@@ -224,6 +258,7 @@ def merge_from_raw(
         symptom_anchor=symptom_anchor,
         user_message=user_message,
         delta=delta,
+        prior_assistant=prior_assistant,
     )
 
 

@@ -7,15 +7,18 @@ import re
 _ACK_ONLY_RE = re.compile(
     r"""^
     (?:
+        (?:(?:ok|okay|yes|checked|done|yep)[\s.,]+)?
+        (?:
         no\s+(?:issues?|problems?|errors?|faults?)
           (?:\s+(?:here|found|there|with\s+(?:that|those|these)|
               from\s+(?:these|those|the)\s+checks?))?
-      | (?:that|this|it)\s+(?:also\s+)?(?:looks|sounds|seems)\s+good
+      | (?:that|this|it|they|those|these)\s+(?:also\s+)?(?:looks?|sounds|seems)\s+good
       | (?:all|everything)\s+(?:(?:looks|is|seems)\s+)?(?:good|fine|ok|clear|passed?)
       | (?:checks?|tests?)\s+(?:(?:all|look)\s+)?(?:pass(?:ed)?|ok|good|fine|clear)
       | (?:nothing|none)\s+(?:found|wrong|unusual)
       | looks?\s+good
       | (?:all\s+)?(?:clear|good|fine|ok)\.?
+        )
     )
     [\s.!,]*$
     """,

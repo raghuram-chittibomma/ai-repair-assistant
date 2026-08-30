@@ -41,7 +41,9 @@ Durable session storage is [ADR-0025](0025-deferred-scope-multi-user-outcome-cur
    A deterministic merge unions `ruled_out`, drops those items from
    `hypotheses`, appends unique observations, and keeps the latest
    `next_check`. User text is always recorded as an observation even when the
-   model omits `diagnostic` (tests, prose fallback).
+   model omits `diagnostic` (tests, prose fallback). When the user message is
+   acknowledgement-only, merge also adds the prior `next_check` and numbered
+   lines from the previous assistant turn to `ruled_out`.
 4. **The board is injected** into the diagnose user prompt as authoritative
    session state. The model must not invent ruled-out checks that are not on
    the board.
@@ -57,5 +59,6 @@ Durable session storage is [ADR-0025](0025-deferred-scope-multi-user-outcome-cur
 
 - Trajectory fixtures can assert board fields without an OpenAI judge.
 - A model that omits `diagnostic` still accumulates user observations and step.
+  An acknowledgement still marks prior checks ruled out without a model delta.
 - Repair-summary / technician handoff remain future product work on top of
   this board. R32 persistence is still deferred.

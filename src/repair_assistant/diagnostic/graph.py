@@ -44,6 +44,7 @@ from repair_assistant.qa.structured import (
     claims_as_dicts,
     claims_from_dicts,
 )
+from repair_assistant.retrieval.query_expand import is_mid_cycle_stop_query
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.classifier import assess_layered
 from repair_assistant.safety.gate import gate_answer
@@ -72,6 +73,20 @@ def _apply_delta(state: DiagnosticGraphState, delta: dict) -> DiagnosticGraphSta
     return new
 
 
+def _assistant_before_latest_user(messages: list) -> str:
+    last_human: int | None = None
+    for i in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[i], HumanMessage):
+            last_human = i
+            break
+    if last_human is None:
+        return ""
+    for i in range(last_human - 1, -1, -1):
+        if isinstance(messages[i], AIMessage) and messages[i].content:
+            return str(messages[i].content)
+    return ""
+
+
 def _prompt_board_text(state: DiagnosticGraphState) -> str:
     messages = list(state.get("messages") or [])
     board = merge_from_raw(
@@ -79,6 +94,7 @@ def _prompt_board_text(state: DiagnosticGraphState) -> str:
         step=len(_user_texts(messages)),
         symptom_anchor=_session_symptom_anchor(messages),
         user_message=_latest_human(messages),
+        prior_assistant=_assistant_before_latest_user(messages),
     )
     return format_board(board)
 
@@ -98,6 +114,7 @@ def _attach_board(
         user_message=_latest_human(messages),
         raw=raw,
         phase_hint=phase_hint,
+        prior_assistant=_assistant_before_latest_user(messages),
     )
     return {**delta, "diagnostic": board.as_dict()}
 
@@ -200,7 +217,16 @@ def _retrieval_query(messages: list) -> str:
     anchor = _session_symptom_anchor(messages)
     latest = parts[-1].strip() if parts else ""
 
-    if latest and is_ack_only_message(latest) and anchor:
+    if (
+        latest
+        and is_mid_cycle_stop_query(latest)
+        and not is_mid_cycle_stop_query(anchor)
+    ):
+        # A later, more specific stop-mid-cycle symptom must not stay glued to
+        # a vague first turn ("doesn't wash properly") or retrieval stays on
+        # "not cleaning clothes".
+        query = latest
+    elif latest and is_ack_only_message(latest) and anchor:
         query = anchor
     else:
         # Prefer non-ack turns so "no error code. machine shuts down" still joins.
@@ -371,6 +397,7 @@ def make_respond_node(llm: LLMClient):
             transcript=_transcript(state["messages"]),
             symptom_anchor=anchor,
             ack_followup=is_ack_only_message(latest) and bool(anchor),
+            mid_cycle_followup=is_mid_cycle_stop_query(latest),
             board_text=_prompt_board_text(state),
         )
         raw = llm.complete(system, user_prompt)
@@ -547,6 +574,7 @@ def diagnose_turn_stream(
         transcript=_transcript(state["messages"]),
         symptom_anchor=anchor,
         ack_followup=ack_followup,
+        mid_cycle_followup=is_mid_cycle_stop_query(latest),
         board_text=_prompt_board_text(state),
     )
 

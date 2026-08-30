@@ -30,6 +30,56 @@ def test_merge_records_user_observation_without_model_delta() -> None:
     assert "ruled out: (none yet)" in text
 
 
+def test_merge_ack_rules_out_prior_next_check() -> None:
+    prior = merge_board(
+        DiagnosticBoard(),
+        step=1,
+        symptom_anchor="doesn't wash properly",
+        user_message="doesn't wash properly",
+        delta=DiagnosticDelta(
+            phase="next_step",
+            hypotheses=["excess detergent", "drain obstruction"],
+            next_check="Check drain hose and filter; avoid excess detergent",
+        ),
+    )
+    board = merge_board(
+        prior,
+        step=2,
+        symptom_anchor="doesn't wash properly",
+        user_message="checked. those look good",
+    )
+    assert board.ruled_out == [
+        "Check drain hose and filter; avoid excess detergent"
+    ]
+    assert board.next_check == ""
+
+
+def test_merge_ack_rules_out_numbered_checks_from_prior_assistant() -> None:
+    prior = merge_board(
+        DiagnosticBoard(),
+        step=1,
+        symptom_anchor="doesn't wash properly",
+        user_message="doesn't wash properly",
+        delta=DiagnosticDelta(phase="next_step", next_check="correct dispenser usage"),
+    )
+    board = merge_board(
+        prior,
+        step=2,
+        symptom_anchor="doesn't wash properly",
+        user_message="checked those look good",
+        prior_assistant=(
+            "Check these first [1].\n"
+            "1. Load bunching\n"
+            "2. Use of HE detergent\n"
+            "3. Correct wash cycle\n"
+            "4. Correct dispenser usage [1]"
+        ),
+    )
+    assert "Use of HE detergent" in board.ruled_out
+    assert "Load bunching" in board.ruled_out
+    assert "correct dispenser usage" in board.ruled_out
+
+
 def test_merge_unions_ruled_out_and_drops_hypothesis() -> None:
     prior = merge_board(
         DiagnosticBoard(),

@@ -96,10 +96,10 @@ flowchart TD
 | Node | Responsibility |
 | --- | --- |
 | `assess` | Pre-LLM safety; block skips retrieve/LLM |
-| `retrieve` | `search()` with latest text + session error codes |
+| `retrieve` | `search()` on a built query: skip ack-only turns; if the latest turn is a mid-cycle / no-code stop and the session anchor is not, use that turn alone; else recent substantive user turns; prepend session error codes |
 | `respond` | Multi-turn system prompt, citations, post-LLM `gate_answer` |
 
-- **State:** Messages, appliance, evidence, citation pool, abstain / escalate flags ([ADR-0013](../adr/0013-langgraph-diagnostic.md)), plus an inspectable board (`step`, `phase`, `hypotheses`, `ruled_out`, `observations`) that is merged each turn and injected into the prompt ([ADR-0031](../adr/0031-structured-diagnostic-state.md)).
+- **State:** Messages, appliance, evidence, citation pool, abstain / escalate flags ([ADR-0013](../adr/0013-langgraph-diagnostic.md)), plus an inspectable board (`step`, `phase`, `hypotheses`, `ruled_out`, `observations`) that is merged each turn and injected into the prompt ([ADR-0031](../adr/0031-structured-diagnostic-state.md)). On an acknowledgement, merge also records the prior `next_check` and numbered checklist lines as `ruled_out` when the model omits them.
 - **Session:** In-memory `SessionStore` with TTL and max sessions — not durable across API restart ([ADR-0021](../adr/0021-api-hardening-embedder-sessions.md)).
 - **API:** `POST /v1/diagnose`, `/v1/diagnose/stream` with `session_id` ([ADR-0016](../adr/0016-http-api-docker.md)).
 

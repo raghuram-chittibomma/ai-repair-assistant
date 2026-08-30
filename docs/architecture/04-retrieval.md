@@ -63,7 +63,7 @@ flowchart TD
 | `connector_fetch` | Exact connector IDs (e.g. J36) via text patterns |
 | `reference_fetch` / `manual_rev_fetch` | Publication / revision-aware pulls when the plan asks |
 
-**Modules:** `retrieval/planner.py`, `retrieval/intent.py`, `retrieval/query_expand.py`, `retrieval/search.py`
+**Modules:** `retrieval/planner.py`, `retrieval/intent.py`, `retrieval/query_expand.py`, `retrieval/search.py`. Phrase lists live in [`config/retrieval/query_expand.yaml`](../../config/retrieval/query_expand.yaml) — Python only loads and matches. `when_user_says` is everyday wording; `add_to_search` must already appear in the literature. Do not treat the file as a growing slang dictionary.
 
 ## Applicability, boosts, audience preference
 

@@ -42,6 +42,7 @@ def build_diagnostic_user_prompt(
     transcript: str,
     symptom_anchor: str | None = None,
     ack_followup: bool = False,
+    mid_cycle_followup: bool = False,
     board_text: str | None = None,
 ) -> str:
     lines: list[str] = []
@@ -57,7 +58,15 @@ def build_diagnostic_user_prompt(
     if ack_followup:
         lines.append(
             "Latest user message confirms prior checks passed — continue the "
-            "symptom path. Do not abstain for a missing symptom."
+            "symptom path. Do not re-ask those checks. Do not abstain for a "
+            "missing symptom."
+        )
+    if mid_cycle_followup:
+        lines.append(
+            "Latest user message is a mid-cycle or no-code stop. If evidence "
+            "includes Activating Service Diagnostic Mode or how to enter "
+            "diagnostics, use that next. Do not restart the generic "
+            "before-servicing power, water, or drain-hose list."
         )
     lines.append("")
     lines.append("Conversation so far:")

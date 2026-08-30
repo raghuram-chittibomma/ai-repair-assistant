@@ -1,0 +1,101 @@
+# Retrieval query expansion — edit this file, not Python.
+#
+# when_user_says: everyday wording a customer might type.
+# add_to_search: words that already appear in a manual or tech sheet.
+#   Do not invent OEM-sounding phrases. If it is not in the literature, leave it out.
+# seen_in: optional publication numbers, for the next editor.
+#
+# phrase_pairs: optional shortcut. Matches a word from `from` followed by a
+# word from `then` (e.g. "stopping halfway", "stops after").
+#
+# After saving: restart the API, then run
+#   python -m pytest tests/test_query_expand.py
+#
+# Door unlock and door lock must not both fire on the same question, or
+# neither expansion is applied.
+
+version: 1
+
+families:
+  - id: door_unlock
+    polarity: unlock
+    note: Door stuck closed / will not open
+    seen_in: [W11156985]
+    when_user_says:
+      - got locked
+      - stuck locked
+      - locked shut
+      - door locked
+      - door is locked
+      - door was locked
+      - won't open
+      - will not open
+      - can't open
+      - cannot open
+      - won't unlock
+      - will not unlock
+      - can't unlock
+      - cannot unlock
+      - door will not unlock
+    add_to_search:
+      - door will not unlock
+      - door will not open
+      - lock failure
+      - F5E2
+      - Door locks when cycle has started
+
+  - id: door_lock
+    polarity: lock
+    note: Door will not latch / start
+    seen_in: [W11169652]
+    when_user_says:
+      - won't lock
+      - will not lock
+      - doesn't lock
+      - does not lock
+      - not locking
+      - failed to lock
+      - door not lock
+      - door won't lock
+      - door will not lock
+    add_to_search:
+      - Door Won't Lock
+      - door not closed
+      - Ensure that door is completely closed
+
+  - id: mid_cycle_stop
+    mid_cycle: true
+    note: Cycle stops mid-way / no error code — pull diagnostic-entry pages
+    seen_in: [W11169652, W11320651, W11156989]
+    when_user_says:
+      - halfway thru
+      - halfway through
+      - halfway into
+      - mid-cycle
+      - mid cycle
+      - without finishing
+      - in the middle of the wash
+      - in the middle of wash
+      - shuts down
+      - shut down
+      - no error code
+      - without an error code
+      - without error code
+      - no fault code
+    phrase_pairs:
+      - from: [stop, stops, stopped, stopping]
+        then:
+          - after
+          - randomly
+          - mid
+          - halfway
+          - half-way
+          - half way
+          - partway
+          - part-way
+          - midway
+    add_to_search:
+      - Activating Service Diagnostic Mode
+      - Diagnostic Guide
+      - washer stops working
+      - standby

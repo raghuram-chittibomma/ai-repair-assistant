@@ -6,12 +6,29 @@ from pathlib import Path
 
 from repair_assistant.corpus.applicability import Appliance
 from repair_assistant.corpus.manifest import Document, Manifest
-from repair_assistant.retrieval.query_expand import door_lock_polarity, expand_retrieval_query
+from repair_assistant.retrieval.query_expand import (
+    door_lock_polarity,
+    expand_retrieval_query,
+    load_expand_families,
+    query_expand_config_path,
+)
 from repair_assistant.retrieval.rank import filter_and_rank
 
 
 def _doc(doc_id: str, data: dict) -> Document:
     return Document(data=data, path=Path(f"{doc_id}.yaml"))
+
+
+def test_query_expand_loads_from_yaml_config() -> None:
+    path = query_expand_config_path()
+    assert path.name == "query_expand.yaml"
+    assert path.is_file()
+    families = load_expand_families()
+    ids = {family.family_id for family in families}
+    assert {"door_unlock", "door_lock", "mid_cycle_stop"} <= ids
+    mid = next(family for family in families if family.mid_cycle)
+    assert "Activating Service Diagnostic Mode" in mid.expand
+    assert any("halfway thru" in t for t in mid.triggers)
 
 
 def test_door_lock_polarity_stuck_vs_wont_lock() -> None:
@@ -38,6 +55,10 @@ def test_expand_retrieval_query_mid_cycle_stop() -> None:
     )
     assert "Activating Service Diagnostic Mode" in expanded
     assert "Diagnostic Guide" in expanded
+    halfway = expand_retrieval_query("actually wash stops halfway thru")
+    assert "Activating Service Diagnostic Mode" in halfway
+    stopping = expand_retrieval_query("actually wash was stopping halfway thru")
+    assert "Activating Service Diagnostic Mode" in stopping
 
 
 def test_unlock_polarity_prefers_unlock_evidence_over_wont_lock() -> None:

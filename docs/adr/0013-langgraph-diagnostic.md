@@ -21,8 +21,10 @@ eval harness, and product hardening remain later phases.
    turns.
 2. **State:** `DiagnosticGraphState` tracks messages, appliance context,
    retrieval query, evidence text, citation pool, and abstention flags.
-3. **Retrieval:** reuse ADR-0010 `search()`; query = latest user text plus any
-   error codes seen in the session.
+3. **Retrieval:** reuse ADR-0010 `search()`. The diagnose query is built from
+   user turns: acknowledgement-only messages are omitted; a later mid-cycle /
+   no-code stop replaces a vague first-turn anchor so search does not stay on
+   the original symptom chapter; session error codes are prepended.
 4. **Generation:** OpenAI chat with a multi-turn system prompt; same citation
    `[1]` / `[2]` convention and `ABSTAIN:` handling as Phase 5.
 5. **CLI:** `repair-corpus diagnose --model WFW5620HW0` — interactive REPL, or
