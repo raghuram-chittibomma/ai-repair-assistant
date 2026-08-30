@@ -47,6 +47,7 @@ from repair_assistant.qa.env import (
 )
 from repair_assistant.qa.parts import related_parts_note
 from repair_assistant.qa.structured import (
+    DIAGNOSE_RESPONSE_FORMAT,
     OPENAI_RESPONSE_FORMAT,
     bind_generation,
     claims_as_dicts,
@@ -161,6 +162,7 @@ class OpenAIClient:
     max_attempts: int | None = None
     max_tokens: int | None = None
     prompt_name: str | None = None
+    response_format: dict | None = None
 
     def _timeout_seconds(self) -> float:
         if self.timeout is not None:
@@ -177,6 +179,13 @@ class OpenAIClient:
 
     def _max_tokens(self) -> int:
         return self.max_tokens if self.max_tokens is not None else llm_max_tokens()
+
+    def _response_format(self) -> dict:
+        if self.response_format is not None:
+            return self.response_format
+        if self.prompt_name == "diagnose_system":
+            return DIAGNOSE_RESPONSE_FORMAT
+        return OPENAI_RESPONSE_FORMAT
 
     def _prompt_metadata(self, system: str) -> dict[str, str]:
         meta = {"prompt_sha256": runtime_prompt_digest(system)}
@@ -201,7 +210,7 @@ class OpenAIClient:
                 }
                 if stream:
                     kwargs["stream_options"] = {"include_usage": True}
-                kwargs["response_format"] = OPENAI_RESPONSE_FORMAT
+                kwargs["response_format"] = self._response_format()
                 return self._client().chat.completions.create(**kwargs)
             except Exception as exc:  # noqa: BLE001 — classified immediately below
                 mapped = classify_llm_error(exc, timeout_seconds=self._timeout_seconds())

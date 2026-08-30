@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -19,8 +19,10 @@ from repair_assistant.retrieval.search import Hit, SearchResult
 class FakeLLM:
     responses: list[str]
     calls: int = 0
+    users: list[str] = field(default_factory=list)
 
     def complete(self, system: str, user: str) -> str:
+        self.users.append(user)
         out = self.responses[min(self.calls, len(self.responses) - 1)]
         self.calls += 1
         return out
@@ -98,6 +100,12 @@ def test_diagnostic_session_multi_turn_accumulates(mock_search: MagicMock) -> No
     assert second.turn == 2
     assert llm.calls == 2
     assert "harness" in second.assistant_message.lower()
+    assert first.diagnostic["step"] == 1
+    assert second.diagnostic["step"] == 2
+    assert first.diagnostic["symptom_anchor"]
+    assert any("F5E2" in (obs.get("text") or "") for obs in first.diagnostic["observations"])
+    assert "Session diagnostic board" in llm.users[0]
+    assert "ruled out: (none yet)" in llm.users[0]
 
 
 @patch("repair_assistant.diagnostic.graph.search")

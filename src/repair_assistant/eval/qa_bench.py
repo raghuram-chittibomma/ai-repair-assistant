@@ -34,6 +34,7 @@ class TurnRecord:
     retrieval_count: int
     claims: list = field(default_factory=list)
     evidence_blocks: dict[int, str] = field(default_factory=dict)
+    diagnostic: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -174,6 +175,7 @@ def _run_diagnose(
                 retrieval_count=last.retrieval_count,
                 claims=list(getattr(last, "claims", None) or []),
                 evidence_blocks=dict(getattr(last, "evidence_blocks", None) or {}),
+                diagnostic=dict(getattr(last, "diagnostic", None) or {}),
             )
         )
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 from dataclasses import dataclass, field
@@ -46,6 +47,32 @@ OPENAI_RESPONSE_FORMAT: dict = {
     "json_schema": GROUNDED_ANSWER_SCHEMA,
 }
 
+_DIAGNOSTIC_OBJECT_SCHEMA: dict = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "phase": {"type": "string"},
+        "hypotheses": {"type": "array", "items": {"type": "string"}},
+        "ruled_out": {"type": "array", "items": {"type": "string"}},
+        "observations": {"type": "array", "items": {"type": "string"}},
+        "next_check": {"type": "string"},
+    },
+    "required": ["phase", "hypotheses", "ruled_out", "observations", "next_check"],
+}
+
+GROUNDED_DIAGNOSE_SCHEMA: dict = copy.deepcopy(GROUNDED_ANSWER_SCHEMA)
+GROUNDED_DIAGNOSE_SCHEMA["name"] = "grounded_diagnose"
+GROUNDED_DIAGNOSE_SCHEMA["schema"]["properties"]["diagnostic"] = _DIAGNOSTIC_OBJECT_SCHEMA
+GROUNDED_DIAGNOSE_SCHEMA["schema"]["required"] = [
+    *GROUNDED_DIAGNOSE_SCHEMA["schema"]["required"],
+    "diagnostic",
+]
+
+DIAGNOSE_RESPONSE_FORMAT: dict = {
+    "type": "json_schema",
+    "json_schema": GROUNDED_DIAGNOSE_SCHEMA,
+}
+
 
 @dataclass(frozen=True)
 class Claim:
@@ -59,6 +86,7 @@ class StructuredAnswer:
     abstain_reason: str = ""
     answer: str = ""
     claims: list[Claim] = field(default_factory=list)
+    diagnostic: dict | None = None
 
 
 @dataclass
@@ -128,11 +156,15 @@ def _from_dict(data: dict) -> StructuredAnswer:
     reason = str(data.get("abstain_reason") or "").strip()
     if not claims and answer and not abstained:
         claims = claims_from_prose(answer)
+    diagnostic = data.get("diagnostic")
+    if not isinstance(diagnostic, dict):
+        diagnostic = None
     return StructuredAnswer(
         abstained=abstained,
         abstain_reason=reason,
         answer=answer,
         claims=claims,
+        diagnostic=diagnostic,
     )
 
 

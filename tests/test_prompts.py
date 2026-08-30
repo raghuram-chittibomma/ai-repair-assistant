@@ -31,7 +31,8 @@ def test_load_prompt_files() -> None:
     assert "Do not invent" in diag
     assert "Multi-turn path" in diag
     assert "present ALL" in diag
-    assert "Never claim checks were ruled out" in diag or "Never claim checks" in diag
+    assert "Never invent cleared checks" in diag or "Never claim checks" in diag
+    assert "diagnostic" in diag
     assert "Clarifying vs abstaining" in diag
     assert "Do NOT use the ABSTAIN: prefix" in diag
     assert "close cleanly" in diag

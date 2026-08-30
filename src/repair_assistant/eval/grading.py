@@ -22,6 +22,9 @@ DETERMINISTIC_KEYS: tuple[str, ...] = (
     "expect_cites_any",
     "fails_if_contains",
     "expect_abstain",
+    "expect_phase",
+    "expect_ruled_out_any",
+    "expect_hypotheses_any",
 )
 
 
@@ -73,6 +76,7 @@ def grade_diagnose_turns(
                 abstained=bool(getattr(target, "abstained", False)),
                 claims=list(getattr(target, "claims", None) or []),
                 evidence_blocks=dict(getattr(target, "evidence_blocks", None) or {}),
+                diagnostic=getattr(target, "diagnostic", None),
             )
             if not passed:
                 failures.append(f"turn {n}: {detail}")
@@ -92,6 +96,7 @@ def grade_diagnose_turns(
         abstained=bool(getattr(target, "abstained", False)),
         claims=list(getattr(target, "claims", None) or []),
         evidence_blocks=dict(getattr(target, "evidence_blocks", None) or {}),
+        diagnostic=getattr(target, "diagnostic", None),
     )
 
 
@@ -181,10 +186,12 @@ def grade_answer(
     abstained: bool,
     claims: list | None = None,
     evidence_blocks: dict[int, str] | None = None,
+    diagnostic: dict | None = None,
 ) -> tuple[bool, str]:
     """Return (passed, detail) for one scenario result."""
     failures: list[str] = []
     answer_text = answer.lower()
+    board = diagnostic if isinstance(diagnostic, dict) else {}
 
     if scenario.get("expect_abstain") and not abstained:
         failures.append("expected abstention")
@@ -226,6 +233,24 @@ def grade_answer(
         hard = groundedness_failure_detail(report)
         if hard:
             failures.append(hard)
+
+    want_phase = scenario.get("expect_phase")
+    if want_phase and str(board.get("phase") or "") != str(want_phase):
+        failures.append(
+            f"expect_phase {want_phase!r}; got {board.get('phase')!r}"
+        )
+    ruled_hay = " ".join(str(x) for x in (board.get("ruled_out") or [])).lower()
+    any_ruled = scenario.get("expect_ruled_out_any") or []
+    if any_ruled and not any(phrase.lower() in ruled_hay for phrase in any_ruled):
+        failures.append(
+            f"expect_ruled_out_any missing one of {any_ruled}; got {board.get('ruled_out')}"
+        )
+    hypo_hay = " ".join(str(x) for x in (board.get("hypotheses") or [])).lower()
+    any_hypo = scenario.get("expect_hypotheses_any") or []
+    if any_hypo and not any(phrase.lower() in hypo_hay for phrase in any_hypo):
+        failures.append(
+            f"expect_hypotheses_any missing one of {any_hypo}; got {board.get('hypotheses')}"
+        )
 
     if failures:
         return False, "; ".join(failures)

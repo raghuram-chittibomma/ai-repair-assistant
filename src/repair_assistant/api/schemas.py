@@ -81,6 +81,16 @@ class DiagnoseRequest(BaseModel):
     overfetch: int = Field(default=40, ge=1, le=200)
 
 
+class DiagnoseBoardOut(BaseModel):
+    step: int = 0
+    phase: str = "symptoms"
+    symptom_anchor: str = ""
+    hypotheses: list[str] = Field(default_factory=list)
+    ruled_out: list[str] = Field(default_factory=list)
+    observations: list[dict] = Field(default_factory=list)
+    next_check: str = ""
+
+
 class DiagnoseResponse(BaseModel):
     session_id: str
     turn: int
@@ -93,6 +103,7 @@ class DiagnoseResponse(BaseModel):
     safety_action: str = "allow"
     safety_notice: str = ""
     escalated: bool = False
+    diagnostic: DiagnoseBoardOut | None = None
 
 
 class HealthResponse(BaseModel):

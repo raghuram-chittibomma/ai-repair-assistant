@@ -42,6 +42,7 @@ def build_diagnostic_user_prompt(
     transcript: str,
     symptom_anchor: str | None = None,
     ack_followup: bool = False,
+    board_text: str | None = None,
 ) -> str:
     lines: list[str] = []
     if appliance_model:
@@ -51,6 +52,8 @@ def build_diagnostic_user_prompt(
         lines.append(line)
     if symptom_anchor:
         lines.append(f"Session symptom anchor: {symptom_anchor}")
+    if board_text:
+        lines.append(board_text)
     if ack_followup:
         lines.append(
             "Latest user message confirms prior checks passed — continue the "

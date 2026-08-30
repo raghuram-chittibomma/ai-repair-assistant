@@ -60,6 +60,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | ADR | Decision | Driver |
 | --- | --- | --- |
 | [0013](0013-langgraph-diagnostic.md) | LangGraph retrieve→respond per turn; CLI REPL; smoke scenarios | Charter Phase 7 |
+| [0031](0031-structured-diagnostic-state.md) | Session board: step, phase, hypotheses, ruled-out, observations | Review R31 |
 
 ## Phase 7 — Safety and escalation
 

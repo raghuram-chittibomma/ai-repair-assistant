@@ -945,6 +945,17 @@ def diagnose_cmd(
             for cite in result.citations:
                 click.echo(f"  [{cite.index}] {cite.label}")
                 click.secho(f"      {cite.doc_id} / {cite.chunk_id}", fg="bright_black")
+        board = getattr(result, "diagnostic", None) or {}
+        if board.get("step") or board.get("ruled_out") or board.get("hypotheses"):
+            click.secho(
+                f"Board: step {board.get('step')}  phase {board.get('phase')}",
+                fg="bright_black",
+            )
+            if board.get("ruled_out"):
+                click.secho(
+                    "  ruled out: " + "; ".join(board["ruled_out"]),
+                    fg="bright_black",
+                )
 
     with Database(url) as db:
         session = DiagnosticSession(

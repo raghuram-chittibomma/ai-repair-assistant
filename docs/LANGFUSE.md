@@ -102,7 +102,7 @@ ask | diagnose
 
 | Span | Fields |
 | --- | --- |
-| Root (`ask` / `diagnose`) | question/message, model, appliance, abstain, citation labels, duration, `audience` / `audience_verified=false` / `technician_attested` (R2) |
+| Root (`ask` / `diagnose`) | question/message, model, appliance, abstain, citation labels, duration, `audience` / `audience_verified=false` / `technician_attested` (R2); diagnose also stamps `diagnostic_phase` / `diagnostic_step` (R31) |
 | `retrieval` | query, source counts (vector/code/connector/reference/revision), merged candidates, **selected** chunks (score, apply_reason, preview), **rejected** (applicability), **ranked_before_diversity**, **diversity_dropped** |
 | `evidence` | full `evidence_text` prompt block (truncated at `REPAIR_TRACE_MAX_CHARS`, default 12000) |
 | `llm` | `messages` array (system + user) in; `content` (full model output) out; `prompt_name` / `prompt_file_sha256` / `prompt_sha256` (ADR-0030) |

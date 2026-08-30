@@ -17,6 +17,7 @@ from repair_assistant.corpus.support import (
     no_evidence_message,
     unsupported_appliance_message,
 )
+from repair_assistant.diagnostic.board import format_board, merge_from_raw
 from repair_assistant.diagnostic.prompts import (
     build_diagnostic_user_prompt,
     window_transcript,
@@ -71,6 +72,45 @@ def _apply_delta(state: DiagnosticGraphState, delta: dict) -> DiagnosticGraphSta
     return new
 
 
+def _prompt_board_text(state: DiagnosticGraphState) -> str:
+    messages = list(state.get("messages") or [])
+    board = merge_from_raw(
+        state.get("diagnostic"),
+        step=len(_user_texts(messages)),
+        symptom_anchor=_session_symptom_anchor(messages),
+        user_message=_latest_human(messages),
+    )
+    return format_board(board)
+
+
+def _attach_board(
+    state: DiagnosticGraphState,
+    delta: dict,
+    *,
+    raw: str | None = None,
+    phase_hint: str | None = None,
+) -> dict:
+    messages = [*state.get("messages", []), *delta.get("messages", [])]
+    board = merge_from_raw(
+        state.get("diagnostic"),
+        step=len(_user_texts(messages)),
+        symptom_anchor=_session_symptom_anchor(messages),
+        user_message=_latest_human(messages),
+        raw=raw,
+        phase_hint=phase_hint,
+    )
+    return {**delta, "diagnostic": board.as_dict()}
+
+
+def _stamp_board(
+    state: DiagnosticGraphState,
+    *,
+    raw: str | None = None,
+    phase_hint: str | None = None,
+) -> DiagnosticGraphState:
+    return _apply_delta(state, _attach_board(state, {}, raw=raw, phase_hint=phase_hint))
+
+
 def _done_payload(
     state: DiagnosticGraphState,
     assistant: str,
@@ -99,6 +139,7 @@ def _done_payload(
         "safety_action": state.get("safety_action", SafetyAction.ALLOW.value),
         "safety_notice": state.get("safety_notice") or "",
         "escalated": bool(state.get("escalated")),
+        "diagnostic": dict(state.get("diagnostic") or {}),
         "_state": state,
     }
 
@@ -287,7 +328,7 @@ def make_respond_node(llm: LLMClient):
     def respond(state: DiagnosticGraphState) -> dict:
         orphan = _maybe_orphan_ack_reply(state)
         if orphan is not None:
-            return orphan
+            return _attach_board(state, orphan)
 
         if state.get("abstained") and not state.get("evidence_text"):
             appliance = None
@@ -297,11 +338,15 @@ def make_respond_node(llm: LLMClient):
                     serial=state.get("appliance_serial"),
                 )
             content = no_evidence_message(appliance)
-            return {
-                "messages": [AIMessage(content=content)],
-                "abstained": True,
-                "abstain_reason": "No matching manufacturer evidence for this question.",
-            }
+            return _attach_board(
+                state,
+                {
+                    "messages": [AIMessage(content=content)],
+                    "abstained": True,
+                    "abstain_reason": "No matching manufacturer evidence for this question.",
+                },
+                phase_hint="close",
+            )
 
         assessment = SafetyAssessment(
             action=SafetyAction(state.get("safety_action") or SafetyAction.ALLOW.value),
@@ -326,6 +371,7 @@ def make_respond_node(llm: LLMClient):
             transcript=_transcript(state["messages"]),
             symptom_anchor=anchor,
             ack_followup=is_ack_only_message(latest) and bool(anchor),
+            board_text=_prompt_board_text(state),
         )
         raw = llm.complete(system, user_prompt)
         available = list(state.get("citations_available") or [])
@@ -344,28 +390,37 @@ def make_respond_node(llm: LLMClient):
                 )
                 bound = bind_generation(raw, available)
             if bound.abstained:
-                return {
-                    "messages": [AIMessage(content=bound.display)],
-                    "abstained": True,
-                    "abstain_reason": bound.abstain_reason,
-                    "claims": claims_as_dicts(bound.claims),
-                }
+                return _attach_board(
+                    state,
+                    {
+                        "messages": [AIMessage(content=bound.display)],
+                        "abstained": True,
+                        "abstain_reason": bound.abstain_reason,
+                        "claims": claims_as_dicts(bound.claims),
+                    },
+                    raw=raw,
+                    phase_hint="close",
+                )
 
         gated = gate_answer(
             assessment,
             bound.display,
             evidence_text=state.get("evidence_text", ""),
         )
-        return {
-            "messages": [AIMessage(content=gated.text)],
-            "abstained": gated.blocked,
-            "abstain_reason": gated.notice if gated.blocked else "",
-            "safety_action": gated.action.value,
-            "safety_notice": gated.notice,
-            "escalated": gated.escalated,
-            "prompt_directive": assessment.prompt_directive,
-            "claims": claims_as_dicts(bound.claims),
-        }
+        return _attach_board(
+            state,
+            {
+                "messages": [AIMessage(content=gated.text)],
+                "abstained": gated.blocked,
+                "abstain_reason": gated.notice if gated.blocked else "",
+                "safety_action": gated.action.value,
+                "safety_notice": gated.notice,
+                "escalated": gated.escalated,
+                "prompt_directive": assessment.prompt_directive,
+                "claims": claims_as_dicts(bound.claims),
+            },
+            raw=raw,
+        )
 
     return respond
 
@@ -400,6 +455,7 @@ def diagnose_turn_stream(
         )
     if state.get("safety_action") == SafetyAction.BLOCK.value:
         state = _apply_delta(state, make_blocked_node()(state))
+        state = _stamp_board(state, phase_hint="escalate")
         yield _done_payload(state, _latest_ai(state["messages"]))
         return
 
@@ -418,6 +474,7 @@ def diagnose_turn_stream(
                     "abstain_reason": "This model is not covered by our documentation set.",
                 },
             )
+            state = _stamp_board(state, phase_hint="close")
             yield _done_payload(state, msg, abstain_code=ABSTAIN_UNSUPPORTED_MODEL)
             return
 
@@ -432,6 +489,7 @@ def diagnose_turn_stream(
         state = _apply_delta(state, orphan)
         msg = orphan["messages"][0].content
         yield {"type": "token", "text": msg}
+        state = _stamp_board(state)
         yield _done_payload(state, str(msg))
         return
 
@@ -451,6 +509,7 @@ def diagnose_turn_stream(
                 "abstain_reason": "No matching manufacturer evidence for this question.",
             },
         )
+        state = _stamp_board(state, phase_hint="close")
         yield _done_payload(state, msg, abstain_code=ABSTAIN_NO_EVIDENCE)
         return
 
@@ -487,6 +546,7 @@ def diagnose_turn_stream(
         transcript=_transcript(state["messages"]),
         symptom_anchor=anchor,
         ack_followup=ack_followup,
+        board_text=_prompt_board_text(state),
     )
 
     # ADR-0028: buffer the structured completion, gate the rendered answer,
@@ -516,6 +576,7 @@ def diagnose_turn_stream(
                 "claims": claims_as_dicts(bound.claims),
             },
         )
+        state = _stamp_board(state, raw=raw, phase_hint="close")
         yield _done_payload(state, bound.display)
         return
 
@@ -535,6 +596,7 @@ def diagnose_turn_stream(
             "claims": claims_as_dicts(bound.claims),
         },
     )
+    state = _stamp_board(state, raw=raw)
     yield _done_payload(state, gated.text)
 
 
@@ -552,7 +614,8 @@ def retrieve_diagnose_state(
     """
     state = _apply_delta(state, make_assess_node()(state))
     if state.get("safety_action") == SafetyAction.BLOCK.value:
-        return _apply_delta(state, make_blocked_node()(state)), False
+        blocked = _apply_delta(state, make_blocked_node()(state))
+        return _stamp_board(blocked, phase_hint="escalate"), False
     retrieve = make_retrieve_node(
         db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch
     )

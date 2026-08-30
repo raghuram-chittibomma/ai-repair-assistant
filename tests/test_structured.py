@@ -64,6 +64,20 @@ def test_parse_legacy_abstain_and_prose() -> None:
     assert prose.citations[0].index == 1
 
 
+def test_parse_keeps_optional_diagnostic() -> None:
+    raw = """
+    {"abstained": false, "abstain_reason": "",
+     "answer": "Check the latch [1].",
+     "claims": [{"text": "Check the latch", "evidence_index": 1}],
+     "diagnostic": {"phase": "next_step", "hypotheses": ["latch"],
+      "ruled_out": [], "observations": [], "next_check": "TEST #4"}}
+    """
+    parsed = parse_model_output(raw)
+    assert parsed.diagnostic is not None
+    assert parsed.diagnostic["phase"] == "next_step"
+    assert parsed.diagnostic["next_check"] == "TEST #4"
+
+
 def test_invalid_evidence_index_is_dropped() -> None:
     raw = '{"abstained": false, "abstain_reason": "", "answer": "x", "claims": [{"text": "x", "evidence_index": 99}]}'
     bound = bind_generation(raw, [_cite(1)])

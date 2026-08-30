@@ -531,6 +531,7 @@ def create_app(
             safety_action=turn.safety_action,
             safety_notice=turn.safety_notice,
             escalated=turn.escalated,
+            diagnostic=turn.diagnostic if isinstance(turn.diagnostic, dict) else None,
         )
 
     @app.post("/v1/diagnose/stream", dependencies=[Depends(require_api_key)])

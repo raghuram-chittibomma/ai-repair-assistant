@@ -36,7 +36,9 @@ machine-checkable rule after merge (unit-tested). Overlay entries may set
 `--judge` to grade those after the deterministic gate (ADR-0019). Diagnose
 scenarios use `command: diagnose`, `turns:`, and optional `turn_grades:` (per-turn
 det keys); without `turn_grades`, top-level keys apply to `expect_turn` (or the
-last turn). All eval benches stay **manual** (not CI-scheduled).
+last turn). Diagnose `turn_grades` may also assert board fields (`expect_phase`,
+`expect_ruled_out_any`, `expect_hypotheses_any` — [ADR-0031](adr/0031-structured-diagnostic-state.md)).
+All eval benches stay **manual** (not CI-scheduled).
 
 ---
 

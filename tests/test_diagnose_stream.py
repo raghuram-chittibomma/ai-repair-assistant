@@ -94,6 +94,8 @@ def test_diagnose_turn_stream_emits_status_tokens_done():
     assert types[-1] == "done"
     assert events[-1]["assistant_message"] == "Check door lock wiring [1]."
     assert events[-1]["abstained"] is False
+    assert events[-1]["diagnostic"]["step"] == 1
+    assert events[-1]["diagnostic"]["symptom_anchor"]
     assert "_state" in events[-1]
 
 

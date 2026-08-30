@@ -16,6 +16,7 @@ from repair_assistant.corpus.support import (
     corpus_supports_appliance,
     unsupported_appliance_message,
 )
+from repair_assistant.diagnostic.board import merge_from_raw
 from repair_assistant.diagnostic.graph import (
     citations_for_turn,
     diagnose_turn_stream,
@@ -150,6 +151,14 @@ class DiagnosticSession:
                         HumanMessage(content=user_message),
                         AIMessage(content=msg),
                     ]
+                    board = merge_from_raw(
+                        self._state.get("diagnostic"),
+                        step=self._turn,
+                        symptom_anchor=user_message,
+                        user_message=user_message,
+                        phase_hint="close",
+                    )
+                    self._state["diagnostic"] = board.as_dict()
                     turn = TurnResult(
                         user_message=user_message,
                         assistant_message=msg,
@@ -157,6 +166,7 @@ class DiagnosticSession:
                         abstain_reason="This model is not covered by our documentation set.",
                         abstain_code=ABSTAIN_UNSUPPORTED_MODEL,
                         turn=self._turn,
+                        diagnostic=board.as_dict(),
                     )
                     update_span(
                         span,
@@ -213,6 +223,7 @@ class DiagnosticSession:
                 escalated=bool(pending.get("escalated")),
                 claims=claims_from_dicts(pending.get("claims")),
                 evidence_blocks=dict(pending.get("evidence_blocks") or {}),
+                diagnostic=dict(pending.get("diagnostic") or {}),
             )
             update_span(
                 span,
@@ -223,6 +234,8 @@ class DiagnosticSession:
                     "retrieval_count": turn.retrieval_count,
                     "safety_action": turn.safety_action,
                     "escalated": turn.escalated,
+                    "diagnostic_phase": (turn.diagnostic or {}).get("phase"),
+                    "diagnostic_step": (turn.diagnostic or {}).get("step"),
                 },
                 metadata={
                     **meta,
@@ -283,6 +296,8 @@ class DiagnosticSession:
                             "retrieval_count": event.get("retrieval_count"),
                             "safety_action": event.get("safety_action"),
                             "escalated": event.get("escalated"),
+                            "diagnostic_phase": (event.get("diagnostic") or {}).get("phase"),
+                            "diagnostic_step": (event.get("diagnostic") or {}).get("step"),
                         },
                         metadata={
                             **meta,

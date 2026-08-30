@@ -32,6 +32,7 @@ class DiagnosticGraphState(TypedDict):
     escalated: bool
     claims: NotRequired[list[dict]]
     evidence_blocks: NotRequired[dict[int, str]]
+    diagnostic: NotRequired[dict]
 
 
 @dataclass
@@ -51,3 +52,4 @@ class TurnResult:
     escalated: bool = False
     claims: list = field(default_factory=list)
     evidence_blocks: dict[int, str] = field(default_factory=dict)
+    diagnostic: dict = field(default_factory=dict)
