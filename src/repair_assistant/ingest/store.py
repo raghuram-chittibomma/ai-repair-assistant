@@ -78,7 +78,7 @@ class Database:
             """
             SELECT chunk_id, text FROM chunks
             WHERE doc_id = %s AND embedding IS NULL
-              AND (language IS NULL OR language ILIKE 'en%')
+              AND (language IS NULL OR language ILIKE 'en%%')
             """,
             (doc_id,),
         )
