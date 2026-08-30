@@ -19,7 +19,7 @@ not on PATH.
 | Unit / grader | `pytest` | none | `tests/` | pass/fail |
 | Parsing | `bench-parse --write` | local PDFs for fixtures | `evals/parsing/fixtures.yaml` | `evals/parsing/results/scorecard.md` |
 | Chain smoke | `bench-chain --write` | DB + embedder (+ OpenAI unless `--skip-ask`) | `evals/chain/fixtures.yaml` | `evals/chain/results/scorecard.md` |
-| Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K) |
+| Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K / MRR / nDCG@K / latency) |
 | Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` (CI gate) + `evals/safety/adversarial.yaml` (R4 rates, not a gate) | stdout + CI gate |
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
@@ -114,7 +114,10 @@ scorecard also reports:
 | **Hit@K** | All `must_cite` labels present (and `must_cite_any` satisfied) in top‑K |
 | **Recall@K** | Fraction of required targets found (`must_cite` each count; `must_cite_any` is one group) |
 | **Precision@K** | Fraction of unique retrieved docs that match a relevant label |
+| **MRR** | Reciprocal rank of the first relevant hit (0 if none in top‑K) |
+| **nDCG@K** | Binary nDCG over the same targets as Recall@K |
 | **Forbidden@K** | Count of `must_not_cite` labels that appeared in top‑K |
+| **Latency** | Wall time of `run_strategy` per fixture; scorecard reports mean / p50 / p95 |
 
 Optional fixture field `relevant:` overrides the relevant label set for IR
 math. Fixtures with only `must_not_cite` leave Hit/Recall/Precision as `n/a`.

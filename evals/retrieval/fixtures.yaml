@@ -3,8 +3,11 @@
 # Requires a live Postgres with ingested embeddings (repair-corpus ingest --all).
 #
 # Pass/fail uses must_cite / must_cite_any / must_not_cite.
-# Diagnostic IR metrics (Hit@K, Recall@K, Precision@K) use the same labels
-# (or an optional explicit `relevant:` list). See docs/EVALS.md.
+# Diagnostic IR metrics (Hit@K, Recall@K, Precision@K, MRR, nDCG@K) use the
+# same labels (or an optional explicit `relevant:` list). See docs/EVALS.md.
+#
+# S4 decision set: these 18 fixtures are `split: dev` by default. A separate
+# held-out test set was waived; drafts live in evals/retrieval/drafts/.
 #
 # Synthetic docs (doc_id / publication SYNTH-*) live under
 # evals/retrieval/synthetic/ and are eval-only. They are never under

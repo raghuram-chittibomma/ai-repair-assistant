@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -26,13 +28,16 @@ class IRMetrics:
 
     Labels come from fixture ``must_cite`` / ``must_cite_any`` (relevant) and
     ``must_not_cite`` (forbidden). Pass/fail remains the release gate; these
-    numbers diagnose recall misses and noise.
+    numbers diagnose recall misses, rank, and noise.
     """
 
     k: int
     hit_at_k: bool | None
     recall_at_k: float | None
     precision_at_k: float | None
+    mrr: float | None
+    ndcg_at_k: float | None
+    first_relevant_rank: int | None
     relevant_found: int
     relevant_total: int
     forbidden_in_top_k: int
@@ -48,6 +53,7 @@ class FixtureResult:
     detail: str = ""
     cited: list[str] = field(default_factory=list)
     metrics: IRMetrics | None = None
+    latency_ms: float | None = None
 
 
 def load_fixtures(path: Path | None = None) -> dict[str, Any]:
@@ -83,6 +89,75 @@ def relevant_labels(fixture: dict) -> set[str]:
 
 def forbidden_labels(fixture: dict) -> set[str]:
     return {str(x) for x in (fixture.get("must_not_cite") or [])}
+
+
+def _target_ranks(fixture: dict, hits: list[dict], *, k: int) -> list[int | None]:
+    """1-based rank of each recall target, or None if missing from top-K.
+
+    Each ``must_cite`` label is one target. ``must_cite_any`` is one target
+    (best rank among the group). An explicit ``relevant`` list is one target
+    per label when the must_* fields are absent.
+    """
+    top = hits[:k]
+    ranks: list[int | None] = []
+    must_cite = [str(x) for x in (fixture.get("must_cite") or [])]
+    must_any = [str(x) for x in (fixture.get("must_cite_any") or [])]
+    for label in must_cite:
+        ranks.append(
+            next(
+                (
+                    i
+                    for i, row in enumerate(top, start=1)
+                    if _matches_label(_cite_keys(row), label)
+                ),
+                None,
+            )
+        )
+    if must_any:
+        ranks.append(
+            next(
+                (
+                    i
+                    for i, row in enumerate(top, start=1)
+                    if any(_matches_label(_cite_keys(row), label) for label in must_any)
+                ),
+                None,
+            )
+        )
+    elif not must_cite:
+        for label in relevant_labels(fixture):
+            ranks.append(
+                next(
+                    (
+                        i
+                        for i, row in enumerate(top, start=1)
+                        if _matches_label(_cite_keys(row), label)
+                    ),
+                    None,
+                )
+            )
+    return ranks
+
+
+def _mrr(ranks: list[int | None]) -> float | None:
+    if not ranks:
+        return None
+    found = [rank for rank in ranks if rank is not None]
+    if not found:
+        return 0.0
+    return 1.0 / min(found)
+
+
+def _ndcg(ranks: list[int | None], *, k: int) -> float | None:
+    if not ranks:
+        return None
+    found = [rank for rank in ranks if rank is not None]
+    dcg = sum(1.0 / math.log2(rank + 1) for rank in found)
+    ideal_n = min(len(ranks), k)
+    idcg = sum(1.0 / math.log2(i + 1) for i in range(1, ideal_n + 1))
+    if idcg == 0:
+        return None
+    return dcg / idcg
 
 
 def compute_ir_metrics(fixture: dict, hits: list[dict], *, k: int) -> IRMetrics:
@@ -144,11 +219,17 @@ def compute_ir_metrics(fixture: dict, hits: list[dict], *, k: int) -> IRMetrics:
 
     forbidden_count = sum(1 for label in forbidden if _matches_label(cited, label))
 
+    ranks = _target_ranks(fixture, hits, k=k)
+    found_ranks = [rank for rank in ranks if rank is not None]
+
     return IRMetrics(
         k=k,
         hit_at_k=hit,
         recall_at_k=recall,
         precision_at_k=precision,
+        mrr=_mrr(ranks),
+        ndcg_at_k=_ndcg(ranks, k=k),
+        first_relevant_rank=min(found_ranks) if found_ranks else None,
         relevant_found=targets_hit,
         relevant_total=targets_total,
         forbidden_in_top_k=forbidden_count,
@@ -198,6 +279,7 @@ def run_bakeoff(
         ensure_synthetic_ingested(db, embedder, root=corpus.root)
         for sid in strategy_ids:
             for fixture in data["fixtures"]:
+                started = time.perf_counter()
                 hits = run_strategy(
                     sid,
                     db,
@@ -207,6 +289,7 @@ def run_bakeoff(
                     overfetch=overfetch,
                     embedder=embedder,
                 )
+                latency_ms = (time.perf_counter() - started) * 1000
                 ok, detail, cited = grade_hits(fixture, hits)
                 metrics = compute_ir_metrics(fixture, hits, k=k)
                 results.append(
@@ -218,6 +301,7 @@ def run_bakeoff(
                         detail=detail,
                         cited=cited,
                         metrics=metrics,
+                        latency_ms=latency_ms,
                     )
                 )
     return results
@@ -235,6 +319,12 @@ def _fmt_hit(value: bool | None) -> str:
     return "yes" if value else "no"
 
 
+def _fmt_ms(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:.0f}"
+
+
 def scorecard_markdown(results: list[FixtureResult]) -> str:
     strategies = sorted({r.strategy for r in results})
     fixtures = []
@@ -249,9 +339,10 @@ def scorecard_markdown(results: list[FixtureResult]) -> str:
         "",
         "Generated by `repair-corpus bench-retrieve`. Charter deviation D4.",
         "",
-        "Pass/fail is the release gate. IR metrics (Hit@K, Recall@K, Precision@K)",
-        "are diagnostic - derived from fixture `must_cite` / `must_cite_any` /",
-        "`must_not_cite` (optional explicit `relevant`).",
+        "Pass/fail is the release gate. IR metrics (Hit@K, Recall@K, Precision@K,",
+        "MRR, nDCG@K) are diagnostic - derived from fixture `must_cite` /",
+        "`must_cite_any` / `must_not_cite` (optional explicit `relevant`).",
+        "Latency is wall time of `run_strategy` only.",
         "",
         "| Fixture | Hard | " + " | ".join(strategies) + " |",
         "| --- | --- | " + " | ".join(["---"] * len(strategies)) + " |",
@@ -275,8 +366,8 @@ def scorecard_markdown(results: list[FixtureResult]) -> str:
             "",
             "## IR metrics (diagnostic)",
             "",
-            "| Strategy | Fixture | Hit@K | Recall@K | Precision@K | Forbidden@K |",
-            "| --- | --- | --- | ---: | ---: | ---: |",
+            "| Strategy | Fixture | Hit@K | Recall@K | Precision@K | MRR | nDCG@K | Forbidden@K |",
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
         ]
     )
     for sid in strategies:
@@ -284,11 +375,12 @@ def scorecard_markdown(results: list[FixtureResult]) -> str:
             match = next(r for r in results if r.fixture_id == fid and r.strategy == sid)
             m = match.metrics
             if m is None:
-                lines.append(f"| `{sid}` | `{fid}` | n/a | n/a | n/a | n/a |")
+                lines.append(f"| `{sid}` | `{fid}` | n/a | n/a | n/a | n/a | n/a | n/a |")
                 continue
             lines.append(
                 f"| `{sid}` | `{fid}` | {_fmt_hit(m.hit_at_k)} | "
                 f"{_fmt_pct(m.recall_at_k)} | {_fmt_pct(m.precision_at_k)} | "
+                f"{_fmt_pct(m.mrr)} | {_fmt_pct(m.ndcg_at_k)} | "
                 f"{m.forbidden_in_top_k} |"
             )
 
@@ -306,6 +398,18 @@ def scorecard_markdown(results: list[FixtureResult]) -> str:
         ]
         mean_r = sum(with_recall) / len(with_recall) if with_recall else None
         mean_p = sum(with_prec) / len(with_prec) if with_prec else None
+        with_mrr = [
+            r.metrics.mrr
+            for r in results
+            if r.strategy == sid and r.metrics and r.metrics.mrr is not None
+        ]
+        with_ndcg = [
+            r.metrics.ndcg_at_k
+            for r in results
+            if r.strategy == sid and r.metrics and r.metrics.ndcg_at_k is not None
+        ]
+        mean_mrr = sum(with_mrr) / len(with_mrr) if with_mrr else None
+        mean_ndcg = sum(with_ndcg) / len(with_ndcg) if with_ndcg else None
         hits = [
             r
             for r in results
@@ -319,8 +423,28 @@ def scorecard_markdown(results: list[FixtureResult]) -> str:
         lines.append(
             f"- **{sid}**: Hit@K {_fmt_pct(hit_rate)}, "
             f"mean Recall@K {_fmt_pct(mean_r)}, "
-            f"mean Precision@K {_fmt_pct(mean_p)} "
-            f"(n={len(with_recall)} recall / {len(with_prec)} precision)"
+            f"mean Precision@K {_fmt_pct(mean_p)}, "
+            f"mean MRR {_fmt_pct(mean_mrr)}, "
+            f"mean nDCG@K {_fmt_pct(mean_ndcg)} "
+            f"(n={len(with_recall)} labeled)"
+        )
+
+    lines.extend(["", "## Latency (run_strategy, ms)", ""])
+    for sid in strategies:
+        samples = sorted(
+            r.latency_ms
+            for r in results
+            if r.strategy == sid and r.latency_ms is not None
+        )
+        if not samples:
+            lines.append(f"- **{sid}**: n/a")
+            continue
+        mean = sum(samples) / len(samples)
+        p50 = samples[len(samples) // 2]
+        p95 = samples[max(0, math.ceil(0.95 * len(samples)) - 1)]
+        lines.append(
+            f"- **{sid}**: mean {_fmt_ms(mean)}, p50 {_fmt_ms(p50)}, "
+            f"p95 {_fmt_ms(p95)} (n={len(samples)})"
         )
 
     lines.extend(["", "## Failures", ""])

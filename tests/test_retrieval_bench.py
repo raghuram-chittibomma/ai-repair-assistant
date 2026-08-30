@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import math
+
+import pytest
+
 from repair_assistant.retrieval.bench import compute_ir_metrics, grade_hits
 from repair_assistant.retrieval.strategies import _rrf, _union_pool, query_literals
 
@@ -53,6 +57,37 @@ def test_ir_recall_precision_hit_at_k() -> None:
     assert miss.hit_at_k is False
     assert miss.recall_at_k == 0.0
     assert miss.precision_at_k == 0.0
+    assert miss.mrr == 0.0
+    assert miss.ndcg_at_k == 0.0
+    assert miss.first_relevant_rank is None
+
+
+def test_ir_mrr_and_ndcg_use_first_relevant_rank() -> None:
+    fixture = {"must_cite": ["W11375982"]}
+    at_rank_1 = compute_ir_metrics(
+        fixture,
+        [
+            {"doc_id": "tsp-w11375982", "publication_number": "W11375982"},
+            {"doc_id": "other", "publication_number": "X"},
+        ],
+        k=8,
+    )
+    assert at_rank_1.mrr == 1.0
+    assert at_rank_1.ndcg_at_k == 1.0
+    assert at_rank_1.first_relevant_rank == 1
+
+    at_rank_2 = compute_ir_metrics(
+        fixture,
+        [
+            {"doc_id": "other", "publication_number": "X"},
+            {"doc_id": "tsp-w11375982", "publication_number": "W11375982"},
+        ],
+        k=8,
+    )
+    assert at_rank_2.mrr == 0.5
+    assert at_rank_2.first_relevant_rank == 2
+    # Binary nDCG@K: 1/log2(3) over ideal 1/log2(2).
+    assert at_rank_2.ndcg_at_k == pytest.approx(1 / math.log2(3))
 
 
 def test_grade_must_cite_is_revision_aware() -> None:
@@ -107,6 +142,8 @@ def test_ir_forbidden_only_fixture() -> None:
     assert m.hit_at_k is None
     assert m.recall_at_k is None
     assert m.precision_at_k is None
+    assert m.mrr is None
+    assert m.ndcg_at_k is None
     assert m.forbidden_in_top_k == 0
 
     contaminated = compute_ir_metrics(

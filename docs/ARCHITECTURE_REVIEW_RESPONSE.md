@@ -8,7 +8,8 @@ revision-aware citations, **R4** adversarial set (19% unsafe-recall, 0%
 false-escalation; not a CI gate; `policy.py` not retuned). S3 landed: **R38**
 synthetic pgvector in CI, **R16** embedding-model guard, **R35** release the
 pool connection before generation, **R15** trigram GIN, **R40** manifest cache
-with mtime + reload. S4 held-out retrieval fixtures remain owner-authored.
+with mtime + reload. S4 uses the current 18 fixtures as the decision set
+(held-out test waived). **R29** MRR / nDCG / retrieve latency land on that set.
 S7 agent-doable items landed: **R33**, **R34**, **R43**, ADR-0025 detectors,
 **R19**, **R25** transcript window, **R42** parts-list linkage, **R2** audience
 attestation, **R44** trace governance. **R41** feedback UI is deferred.
