@@ -89,7 +89,7 @@ flowchart TD
 
 - **Applicability:** Manifest model wildcards and serial ranges — e.g. 24-in TSP must not win for WFW5620HW0 ([ADR-0010](../adr/0010-retrieval-applicability.md), [ADR-0004](../adr/0004-applicability-and-precedence.md)).
 - **Boosts (small):** Correcting / superseding edges, service-pointer tiers, error-code token overlap — reorder close candidates only.
-- **Owner preference:** When audience is owner and any owner-facing hits remain, restrict to those; otherwise keep service literature so diagnose can still ground ([ADR-0020](../adr/0020-hybrid-retrieval-retest.md) era ranking in `rank.py`).
+- **Owner preference:** When audience is owner and any owner-facing hits remain, restrict to those — except identifier / technician-depth questions, which keep tech sheets and parts lists. If no owner-facing hit exists, keep service literature ([ADR-0020](../adr/0020-hybrid-retrieval-retest.md)).
 - **Without `--model`:** Pure vector neighbours (dev/debug) — production ask/diagnose always pass appliance context.
 
 **Modules:** `retrieval/rank.py`, `corpus/applicability.py`

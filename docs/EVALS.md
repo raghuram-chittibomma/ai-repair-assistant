@@ -123,7 +123,9 @@ Optional fixture field `relevant:` overrides the relevant label set for IR
 math. Fixtures with only `must_not_cite` leave Hit/Recall/Precision as `n/a`.
 
 **Release gate** = pass/fail. Use IR numbers to compare strategies and spot
-noise or missed docs — not as a substitute for hard corpus cases.
+noise or missed docs — not as a substitute for hard corpus cases. On the
+current 18-fixture decision set, `vector_apply_boost` is the measured baseline
+(tied with `union_literal_apply` on MRR/nDCG, faster). See [ADR-0020](adr/0020-hybrid-retrieval-retest.md).
 
 ### Retrieval fixture families
 

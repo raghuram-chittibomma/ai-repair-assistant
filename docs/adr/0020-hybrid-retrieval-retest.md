@@ -173,13 +173,49 @@ Items 1–5 in [Decision](#decision) stand. Additionally:
 7. **Named-publication and technician-depth ranking** are part of the ADR-0010
    boost surface, not a strategy change.
 
+## Amendment 2026-08-30 — rank-sensitive metrics; production path
+
+`bench-retrieve` now reports MRR, nDCG@K, and `run_strategy` latency (review
+R29). The owner waived a separate held-out test set; these numbers are on the
+current 18 fixtures (15 labeled).
+
+| Strategy | Hard | mean MRR | mean nDCG@K | mean Precision@K | Latency mean / p95 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `vector_apply_boost` | 14/14 | 0.83 | 0.87 | 0.48 | 119 / 186 ms |
+| `union_literal_apply` | 14/14 | 0.83 | 0.87 | 0.48 | 172 / 298 ms |
+| `hybrid_rrf_apply` | 14/14 | 0.77 | 0.83 | 0.49 | 413 / 456 ms |
+| `union_lexical_apply` | 14/14 | 0.65 | 0.74 | 0.39 | 628 / 748 ms |
+| `production_search` | 10/14 | 0.58 | 0.60 | 0.44 | 209 / 1241 ms |
+| `vector_apply` | 8/14 | 0.45 | 0.50 | 0.30 | 109 / 139 ms |
+
+### Amendment findings
+
+1. **Decision unchanged.** `vector_apply_boost` remains the bake-off baseline.
+   `union_literal_apply` ties it on MRR/nDCG and is slower. Hybrid still loses
+   on rank and latency.
+2. **Pass/fail is still saturated** among those three 14/14 strategies. Rank
+   metrics are the discriminator, not another hard-fixture count.
+3. **`production_search` (ask/diagnose) was 10/14** because
+   `prefer_owner_literature` defaulted the planner audience to owner and then
+   dropped tech sheets and parts lists whenever any owner-facing hit existed.
+   Identifier and technician-depth queries now skip that hard filter.
+
+### Decision restated again
+
+Items 1–7 stand. Additionally:
+
+8. **Do not switch production ranking to hybrid or union-lexical** on this
+   evidence. Keep `vector_apply_boost` as the measured core.
+9. **Owner-literature restriction does not apply** to identifier /
+   technician-depth / bibliographic questions.
+
 ## Consequences
 
 - Release gate: **14 hard fixtures** spanning applicability, precedence,
   rare literals, term mismatch, near-dup identity, revision, bibliographic
   lookup, multi-brand, and synthetic supersession.
 - Full-text hybrid remains a bake-off control, not production.
-- The bake-off still understates production: `run_strategy` omits
-  `connector_fetch`, `reference_fetch`, and `manual_rev_fetch`.
+- `production_search` grades the live `search()` path (side doors + planner).
+  Compare it to `vector_apply_boost` on MRR/nDCG, not only hard pass/fail.
 - Chunking (ADR-0007) was not reopened; residual product-class gaps that look
   boundary-shaped should get a targeted micro-bake, not a full D4 redo.

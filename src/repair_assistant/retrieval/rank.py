@@ -8,6 +8,7 @@ from typing import Any
 
 from repair_assistant.corpus.applicability import Appliance, document_applies
 from repair_assistant.corpus.manifest import Document, Manifest
+from repair_assistant.parsing.error_codes import extract_connector_ids, extract_error_codes
 
 _BIBLIOGRAPHIC = re.compile(
     r"\b(service manual|which manual|what manual|manual covers|covers a\b)\b",
@@ -53,6 +54,7 @@ _DIAG_PAUSE_ENUM = re.compile(
 _OWNER_DOC_TYPES = frozenset(
     {
         "owners_manual",
+        "use_and_care",
         "quick_start_guide",
         "knowledge_article",
         "warranty",
@@ -61,6 +63,7 @@ _OWNER_DOC_TYPES = frozenset(
         "dimension_guide",
     }
 )
+_PART_OR_TEST = re.compile(r"\bpart\s*(?:number|#|no\.?)\b|\bW\d{8}\b|\bTEST\s*#", re.I)
 
 
 def is_bibliographic_query(query: str) -> bool:
@@ -98,6 +101,22 @@ def queried_publications(query: str) -> set[str]:
 def is_technician_depth_query(query: str) -> bool:
     """Technician / diagnostic intent — prefer service literature over consumer KB."""
     return bool(_TECHNICIAN_DEPTH.search(query))
+
+
+def needs_service_literature(query: str) -> bool:
+    """True when an owner-only hard filter would hide the only answering docs.
+
+    Identifier and technician-depth questions live in tech sheets, parts lists,
+    and service manuals — not in use-and-care. ``prefer_owner_literature`` must
+    not drop those (2026-08-30 production_search 10/14 gap).
+    """
+    if not query:
+        return False
+    if is_technician_depth_query(query) or is_bibliographic_query(query):
+        return True
+    if extract_error_codes(query) or extract_connector_ids(query):
+        return True
+    return bool(_PART_OR_TEST.search(query))
 
 
 @dataclass
@@ -358,7 +377,9 @@ def filter_and_rank(
     if audit is not None:
         audit.ranked_sorted = list(ranked)
     diverse = _diverse_top(ranked, limit, audit=audit)
-    return prefer_owner_literature(diverse, manifest, audience=audience)
+    return prefer_owner_literature(
+        diverse, manifest, audience=audience, query=query
+    )
 
 
 def prefer_owner_literature(
@@ -366,14 +387,18 @@ def prefer_owner_literature(
     manifest: Manifest,
     *,
     audience: str | None,
+    query: str = "",
 ) -> list[RankedHit]:
     """For owner audience, restrict to owner-facing docs when any are available.
 
     Technician (and unset) audiences keep the full ranked list — no hard filter.
-    If no applicable owner-facing hit exists, leave service literature in place
-    ("where feasible").
+    Identifier / technician-depth questions also keep the full list: the answer
+    is usually in a tech sheet or parts list. If no applicable owner-facing hit
+    exists, leave service literature in place ("where feasible").
     """
     if (audience or "").lower() != "owner" or not ranked:
+        return ranked
+    if needs_service_literature(query):
         return ranked
     by_id = _doc_by_id(manifest)
     owner_hits = [
