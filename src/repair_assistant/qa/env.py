@@ -8,6 +8,8 @@ from repair_assistant.ingest.env import load_dotenv_files
 
 #: Dated snapshot, not the floating `gpt-4o-mini` alias (review R37).
 DEFAULT_LLM_MODEL = "gpt-4o-mini-2024-07-18"
+#: Separate dated snapshot so the prose judge is not the generator (review R30).
+DEFAULT_JUDGE_LLM_MODEL = "gpt-4.1-mini-2025-04-14"
 DEFAULT_LLM_TIMEOUT_SECONDS = 120.0
 #: Total attempts, not retries: 3 means one call plus two retries.
 DEFAULT_LLM_MAX_ATTEMPTS = 3
@@ -29,6 +31,12 @@ def openai_api_key() -> str:
 def llm_model() -> str:
     load_dotenv_files()
     return os.environ.get("LLM_MODEL", DEFAULT_LLM_MODEL).strip()
+
+
+def judge_llm_model() -> str:
+    """Model for `--judge` / calibration. Defaults off the generator (ADR-0033)."""
+    load_dotenv_files()
+    return os.environ.get("JUDGE_LLM_MODEL", DEFAULT_JUDGE_LLM_MODEL).strip()
 
 
 def llm_timeout_seconds() -> float:

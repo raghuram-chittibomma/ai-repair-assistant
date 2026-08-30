@@ -42,7 +42,8 @@ def test_load_prompt_files() -> None:
     assert "claims" in diag
     # No scripted ack example that the model can parrot on turn 1.
     assert "Good — that rules out" not in diag
-    assert '"passed"' in judge_system()
+    assert "abstain" in judge_system()
+    assert "verdict" in judge_system()
     assert "live-voltage" in safety_escalate()
     assert "disconnect-power" in safety_warn()
     assert "qualified appliance service personnel" in safety_technician()

@@ -25,7 +25,7 @@ not on PATH.
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
 | Promote failure | `promote-eval --run … --scenario ID` | prior run JSON | — | YAML draft (optional `--write` into grading overlay) |
 | Mine Langfuse traces | `mine-traces --since 7d [--write]` | Langfuse + DB + OpenAI (replay) | live traces | `evals/qa/drafts/mine-report-*.md` analysis only (ADR-0023) |
-| Judge calibrate | `bench-judge-calibrate --write` | `OPENAI_API_KEY` (no DB) | `evals/qa/judge-calibration.yaml` | `evals/qa/results/judge-calibration-scorecard.md` |
+| Judge calibrate | `bench-judge-calibrate --write` | `OPENAI_API_KEY` (uses `JUDGE_LLM_MODEL`, not the generator — [ADR-0033](adr/0033-judge-diversity.md)) | `evals/qa/judge-calibration.yaml` | `evals/qa/results/judge-calibration-scorecard.md` |
 | Prune run logs | `prune-eval-runs --keep N` | none | `evals/qa/results/runs/` | dry-run list (use `--execute` to delete) |
 
 Hard corpus scenarios live in `evals/scenarios/candidates.yaml` (`status: ready`).
@@ -108,6 +108,8 @@ python -m repair_assistant.corpus.cli promote-eval `
   Groundedness (R27 / [ADR-0029](adr/0029-claim-groundedness.md)): unsupported-claim
   rate plus a hard fail on zero-overlap invented claims.
   Prompt edits are still a manual `bench-qa` gate ([ADR-0030](adr/0030-prompt-version-stamps.md)).
+  `--judge` uses `JUDGE_LLM_MODEL` (default off the generator) and may abstain
+  without failing a det-pass ([ADR-0033](adr/0033-judge-diversity.md)).
 - Commit scorecards when you want a durable baseline; intermediate run JSONs
   are optional.
 

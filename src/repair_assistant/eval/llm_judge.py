@@ -14,8 +14,27 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from repair_assistant.prompts import judge_system
-from repair_assistant.qa.env import llm_model, openai_api_key
+from repair_assistant.qa.env import judge_llm_model, openai_api_key
 from repair_assistant.qa.generate import OpenAIClient
+
+JUDGE_VERDICT_SCHEMA: dict = {
+    "name": "judge_verdict",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "verdict": {"type": "string", "enum": ["pass", "fail", "abstain"]},
+            "reason": {"type": "string"},
+        },
+        "required": ["verdict", "reason"],
+    },
+}
+
+JUDGE_RESPONSE_FORMAT: dict = {
+    "type": "json_schema",
+    "json_schema": JUDGE_VERDICT_SCHEMA,
+}
 
 
 class JudgeClient(Protocol):
@@ -27,6 +46,7 @@ class JudgeVerdict:
     passed: bool
     reason: str
     raw: str = ""
+    abstained: bool = False
 
 
 def prose_criteria(scenario: dict[str, Any]) -> dict[str, str]:
@@ -61,9 +81,31 @@ def _parse_verdict(text: str) -> JudgeVerdict:
             reason=f"judge returned non-JSON: {text[:200]}",
             raw=text,
         )
-    passed = bool(data.get("passed"))
-    reason = str(data.get("reason") or ("ok" if passed else "failed")).strip()
-    return JudgeVerdict(passed=passed, reason=reason, raw=text)
+    reason = str(data.get("reason") or "").strip()
+    verdict = str(data.get("verdict") or "").strip().lower()
+    if verdict == "abstain" or data.get("abstained") is True:
+        return JudgeVerdict(
+            passed=False,
+            reason=reason or "judge abstained",
+            raw=text,
+            abstained=True,
+        )
+    if verdict == "pass":
+        return JudgeVerdict(passed=True, reason=reason or "ok", raw=text)
+    if verdict == "fail":
+        return JudgeVerdict(passed=False, reason=reason or "failed", raw=text)
+    if "passed" in data:
+        passed = bool(data.get("passed"))
+        return JudgeVerdict(
+            passed=passed,
+            reason=reason or ("ok" if passed else "failed"),
+            raw=text,
+        )
+    return JudgeVerdict(
+        passed=False,
+        reason=reason or f"judge returned unknown verdict: {text[:200]}",
+        raw=text,
+    )
 
 
 def build_judge_user_prompt(
@@ -78,22 +120,22 @@ def build_judge_user_prompt(
     lines = [
         f"Scenario id: {scenario.get('id', '')}",
         f"Question: {scenario.get('question', '')}",
-        f"Abstained: {abstained}",
+        f"Generation abstained: {abstained}",
         f"Citations: {', '.join(citations) or '(none)'}",
         "",
-        "Answer:",
-        answer or "(empty)",
-        "",
+        "Criteria (evaluate fails_if before expect):",
     ]
-    if evidence_text.strip():
-        lines.extend(["Evidence:", evidence_text.strip(), ""])
-    lines.append("Criteria:")
-    if "expect" in criteria:
-        lines.append(f"- expect: {criteria['expect']}")
     if "fails_if" in criteria:
         lines.append(f"- fails_if: {criteria['fails_if']}")
+    if "expect" in criteria:
+        lines.append(f"- expect: {criteria['expect']}")
     lines.append("")
-    lines.append('Respond with JSON: {"passed": true|false, "reason": "..."}')
+    if evidence_text.strip():
+        lines.extend(["Evidence:", evidence_text.strip(), ""])
+    lines.extend(["Answer:", answer or "(empty)", ""])
+    lines.append(
+        'Respond with JSON: {"verdict": "pass"|"fail"|"abstain", "reason": "..."}'
+    )
     return "\n".join(lines)
 
 
@@ -110,7 +152,10 @@ def judge_answer(
     if not needs_llm_judge(scenario):
         return JudgeVerdict(passed=True, reason="no prose criteria")
     client: JudgeClient = llm or OpenAIClient(
-        api_key=openai_api_key(), model=llm_model(), prompt_name="judge_system"
+        api_key=openai_api_key(),
+        model=judge_llm_model(),
+        prompt_name="judge_system",
+        response_format=JUDGE_RESPONSE_FORMAT,
     )
     raw = client.complete(
         judge_system(),
@@ -161,6 +206,8 @@ def grade_with_optional_judge(
         llm=llm,
         evidence_text=evidence_text,
     )
+    if verdict.abstained:
+        return True, f"ok; judge abstained: {verdict.reason}"
     if verdict.passed:
         return True, f"ok; judge: {verdict.reason}"
     return False, f"judge: {verdict.reason}"

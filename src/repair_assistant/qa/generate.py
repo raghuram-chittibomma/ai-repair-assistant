@@ -185,6 +185,10 @@ class OpenAIClient:
             return self.response_format
         if self.prompt_name == "diagnose_system":
             return DIAGNOSE_RESPONSE_FORMAT
+        if self.prompt_name == "judge_system":
+            from repair_assistant.eval.llm_judge import JUDGE_RESPONSE_FORMAT
+
+            return JUDGE_RESPONSE_FORMAT
         return OPENAI_RESPONSE_FORMAT
 
     def _prompt_metadata(self, system: str) -> dict[str, str]:

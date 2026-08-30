@@ -19,6 +19,7 @@ class CalibrationCaseResult:
     actual_passed: bool
     reason: str
     agreed: bool
+    abstained: bool = False
 
 
 def load_calibration(path: Path | None = None) -> list[dict[str, Any]]:
@@ -68,7 +69,8 @@ def run_calibration(
                 expected_passed=expected,
                 actual_passed=verdict.passed,
                 reason=verdict.reason,
-                agreed=verdict.passed == expected,
+                agreed=(not verdict.abstained) and verdict.passed == expected,
+                abstained=verdict.abstained,
             )
         )
     return results
@@ -85,14 +87,15 @@ def scorecard_markdown(results: list[CalibrationCaseResult]) -> str:
         "",
         f"**{agreed}/{len(results)} agreed** with expected_passed",
         "",
-        "| case | expected | actual | agree | reason |",
-        "| --- | --- | --- | --- | --- |",
+        "| case | expected | actual | abstain | agree | reason |",
+        "| --- | --- | --- | --- | --- | --- |",
     ]
     for r in results:
         mark = "yes" if r.agreed else "NO"
+        abstain = "yes" if r.abstained else ""
         reason = r.reason.replace("|", "\\|")
         lines.append(
-            f"| {r.case_id} | {r.expected_passed} | {r.actual_passed} | {mark} | {reason} |"
+            f"| {r.case_id} | {r.expected_passed} | {r.actual_passed} | {abstain} | {mark} | {reason} |"
         )
     lines.append("")
     return "\n".join(lines)

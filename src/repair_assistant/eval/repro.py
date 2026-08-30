@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 
 from repair_assistant.ingest.env import embedding_model, project_root
-from repair_assistant.qa.env import llm_model
+from repair_assistant.qa.env import judge_llm_model, llm_model
 
 _LOCKFILE_NAME = "uv.lock"
 
@@ -30,5 +30,6 @@ def scorecard_repro_lines() -> list[str]:
     return [
         f"- Lockfile: `{lockfile_stamp()}`",
         f"- LLM_MODEL: `{llm_model()}`",
+        f"- JUDGE_LLM_MODEL: `{judge_llm_model()}`",
         f"- EMBEDDING_MODEL: `{embedding_model()}`",
     ]

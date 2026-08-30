@@ -110,6 +110,40 @@ def test_grade_with_optional_judge_can_fail_after_det_pass() -> None:
     assert llm.calls == 1
 
 
+def test_judge_abstain_does_not_fail_det_pass() -> None:
+    scenario = {
+        "id": "x",
+        "expect": "Must include measured values from TEST #10a",
+        "expect_contains": ["temperature"],
+    }
+    llm = FakeJudge('{"verdict": "abstain", "reason": "criteria need a value I cannot see"}')
+    passed, detail = grade_with_optional_judge(
+        scenario,
+        answer="Check wash temperature sensor.",
+        citations=["W11320651"],
+        abstained=False,
+        use_judge=True,
+        llm=llm,
+        deterministic_grade=grade_answer,
+    )
+    assert passed
+    assert "judge abstained" in detail
+    assert llm.calls == 1
+
+
+def test_judge_parses_verdict_enum() -> None:
+    scenario = {"id": "x", "expect": "Door lock"}
+    verdict = judge_answer(
+        scenario,
+        answer="Door lock TEST #4.",
+        citations=["W11320651"],
+        abstained=False,
+        llm=FakeJudge('{"verdict": "pass", "reason": "ok"}'),
+    )
+    assert verdict.passed
+    assert not verdict.abstained
+
+
 def test_promote_failure_draft(tmp_path: Path) -> None:
     run = {
         "timestamp": "2026-08-26T00:00:00+00:00",

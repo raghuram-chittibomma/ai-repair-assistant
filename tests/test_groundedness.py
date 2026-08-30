@@ -78,3 +78,5 @@ def test_judge_prompt_includes_evidence() -> None:
     )
     assert "Evidence:" in prompt
     assert "F5E2 door lock switch" in prompt
+    assert prompt.index("Criteria") < prompt.index("Answer:")
+    assert "verdict" in prompt

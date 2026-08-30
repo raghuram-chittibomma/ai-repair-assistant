@@ -1185,17 +1185,26 @@ def bench_judge_calibrate_cmd(write: bool) -> None:
         run_calibration,
         scorecard_markdown,
     )
-    from repair_assistant.qa.env import llm_model, openai_api_key
+    from repair_assistant.eval.llm_judge import JUDGE_RESPONSE_FORMAT
+    from repair_assistant.qa.env import judge_llm_model, openai_api_key
     from repair_assistant.qa.generate import OpenAIClient
 
     try:
         key = openai_api_key()
-        model = llm_model()
+        model = judge_llm_model()
     except RuntimeError as exc:
         raise click.ClickException(str(exc)) from exc
 
     cases = load_calibration()
-    results = run_calibration(cases, llm=OpenAIClient(api_key=key, model=model))
+    results = run_calibration(
+        cases,
+        llm=OpenAIClient(
+            api_key=key,
+            model=model,
+            prompt_name="judge_system",
+            response_format=JUDGE_RESPONSE_FORMAT,
+        ),
+    )
     card = scorecard_markdown(results)
     click.echo(card)
 

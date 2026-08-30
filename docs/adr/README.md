@@ -79,6 +79,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0018](0018-langfuse-observability.md) | Self-hosted Langfuse (MIT); opt-in SDK traces; not LangSmith | Charter Phase 9; OSS + D8 |
 | [0030](0030-prompt-version-stamps.md) | Prompt `.txt` files stay SoT; traces stamp hashes; Langfuse gets a snapshot when keys are set | Review R24 |
 | [0019](0019-llm-judge-promote.md) | Opt-in `--judge` for prose expect/fails_if; `promote-eval` drafts | Charter Phase 9 maturity |
+| [0033](0033-judge-diversity.md) | Judge uses a different dated model; verdicts may abstain | Review R30 |
 
 ## Phase 9 — Product surface (API / UI)
 
