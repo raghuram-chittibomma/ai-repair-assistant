@@ -47,3 +47,10 @@ docs/INFRASTRUCTURE.local.md
 .env.*
 !.env.example
 !.env.*.example
+
+# Local parse/ingest run logs. Scorecards stay tracked.
+evals/parsing/results/*.log
+
+# Retrieval fixture drafts — not live gates. QA drafts under evals/qa/drafts/
+# are analysis reports and stay tracked.
+evals/retrieval/drafts/
