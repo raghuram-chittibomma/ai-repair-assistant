@@ -1,0 +1,14 @@
+---
+description: How to change this repo — docs, git, shell, copyright
+alwaysApply: true
+---
+
+# Workflow
+
+- Follow the charter loop: measure, then ADR, then code, then bench. Changing an accepted ADR means writing a new ADR that supersedes it.
+- Do **not** edit `docs/ARCHITECTURE_REVIEW.md` or `docs/EVAL_FRAMEWORK_GAPS.md` (dated snapshots). Update `docs/ARCHITECTURE_REVIEW_RESPONSE.md` or a living ADR when slice status changes.
+- Manufacturer PDFs, `.doc`/`.docx`, and corpus bytes never enter git. Manifest YAML is the committed description. The pre-commit hook blocks document artefacts even with `git add -f`.
+- Leave untracked: `evals/parsing/results/*.log`, `evals/retrieval/drafts/`.
+- Commit and push only when the owner asks. Do not amend unless they ask and the amend rules in the user settings hold.
+- Windows PowerShell: chain with `;`, never `&&`. Repo-root tests: `uv run pytest` (`pythonpath` is already `src` and `.` in `pyproject.toml`).
+- Prefer `uv run` / `uv sync --frozen --extra dev` over ad-hoc venvs.

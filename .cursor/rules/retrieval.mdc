@@ -1,0 +1,14 @@
+---
+description: Retrieval ranking, audience boosts, and query expansion
+globs: src/repair_assistant/retrieval/**/*.py,config/retrieval/**,evals/retrieval/**,tests/test_query_expand.py,docs/adr/0010*.md,docs/adr/0020*.md,docs/adr/0027*.md,docs/architecture/04-retrieval.md
+alwaysApply: false
+---
+
+# Retrieval
+
+- Production path and bake-off baseline: `vector_apply_boost`. Do not add ranking constants fitted only to the 14 hard fixtures. Do not re-introduce a cross-encoder as the default ([ADR-0027](docs/adr/0027-cross-encoder-rerank.md)).
+- Applicability drops wrong-model/serial hits **after** over-fetch, then light boosts. Do not implement R11/R18/R20 as drive-by refactors.
+- Technician **depth boost** comes from `is_technician_depth_query(query)`, not the UI audience dropdown. Audience=`technician` still keeps service literature in the list; `prefer_owner_literature` only hard-filters **owner**.
+- Phrase expansion lives in `config/retrieval/query_expand.yaml`. Python loads and matches; it does not invent OEM wording. `add_to_search` must already appear in the literature.
+- Same embedder as ingest: local `BAAI/bge-base-en-v1.5`. OpenAI is not used for embeddings.
+- Synthetic `synth-*` docs are eval-only. Production `search()` drops them. Do not treat them as real literature in docs or demos.

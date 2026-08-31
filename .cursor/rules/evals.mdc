@@ -1,0 +1,14 @@
+---
+description: Eval fixtures, benches, and trace mining discipline
+globs: evals/**,src/repair_assistant/eval/**/*.py,src/repair_assistant/corpus/cli.py,docs/EVALS.md
+alwaysApply: false
+---
+
+# Evals
+
+- Humans alone edit live smoke/candidates/retrieval fixtures. Never auto-set `status: ready`. `promote-eval` and `mine-traces --write` emit drafts or analysis reports; they do not merge gates ([ADR-0019](docs/adr/0019-llm-judge-promote.md), [ADR-0023](docs/adr/0023-trace-driven-eval-mining.md)).
+- `mine-traces` writes at most `evals/qa/drafts/mine-report-*.md` (or stdout). No draft YAML on disk, no `query_expand.yaml` rows, no live fixture edits.
+- `evals/retrieval/drafts/` is gitignored local scratch. Do not promote it as the S4 held-out set.
+- Retrieval release gate is pass/fail on hard fixtures. IR metrics (Hit@K, MRR, nDCG, latency) compare strategies; they do not replace the corpus cases.
+- Layout pack: `repair-corpus bench-layout` against `corpus/parsed/<doc>/chunks.jsonl` → `evals/parsing/results/layout-pack.md`.
+- Safety: regex remains the CI gate. Optional classifier may only raise severity ([ADR-0032](docs/adr/0032-safety-classifier-union.md)).

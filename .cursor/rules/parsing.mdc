@@ -1,0 +1,15 @@
+---
+description: Hybrid parse and chunker — page classes, headings, layout pack
+globs: src/repair_assistant/parsing/**/*.py,evals/parsing/**,tests/test_parsing*.py,tests/test_layout_pack.py,tests/test_page_classify.py,docs/adr/0022*.md,docs/adr/0024*.md,docs/architecture/03-offline-ingest.md
+alwaysApply: false
+---
+
+# Parsing and chunking
+
+- Page class is **content-based** (`matrix` | `toc` | `schematic` | `figure` | `photo_access` | `table_heavy` | `multi_column` | `default`). Never key classify on PDF page number or a specific `doc_id`.
+- Order: extract tables → drop junk/artwork grids → classify → prose. `matrix`/`toc`/`schematic`/`figure` stay LTR; `multi_column`/`photo_access` may reorder. Table extraction stays pdfplumber ([ADR-0024](docs/adr/0024-hybrid-parse-architecture.md)).
+- Do **not** grow heading regex forever. Do **not** replace pdfplumber tables with a VLM.
+- Section titles are procedure/section banners. Dotted TOC leader lines, bare `WARNING`/`DANGER`, and note sentences are not banners. A new page may reset `section_path` from the running header ([ADR-0022](docs/adr/0022-contextual-chunk-enrichment.md)).
+- Chunk `page` is the **PDF page index**, not the printed folio (printed `1-12` is PDF `16` on W11169652 Rev B).
+- `evals/parsing/layout-pack.yaml` measures ingested chunks. Passing the pack does not mean illustrated mixed pages are good diagnose evidence.
+- Known gap: figure-OCR / fake tables on mixed procedure pages (drain-filter, some control-panel/LCD). Next lever is mixed-page cleanup, not a new extractor bake-off.
