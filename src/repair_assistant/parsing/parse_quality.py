@@ -125,7 +125,7 @@ def audit_page(
         flags.append("reading_order_suspect")
 
     steps = expect_steps
-    if steps is None and layout_kind == "multi_column":
+    if steps is None and layout_kind in {"multi_column", "photo_access"}:
         steps = infer_contiguous_steps(text)
     if steps:
         missing = numbered_steps_present(text, list(steps))
@@ -138,7 +138,7 @@ def audit_page(
     if matrix_missing_data_rows(tables):
         flags.append("matrix_no_data_rows")
 
-    if layout_kind == "multi_column" and prose_source in {"pdfplumber"}:
+    if layout_kind in {"multi_column", "photo_access"} and prose_source in {"pdfplumber"}:
         flags.append("reading_order_suspect")
 
     return PageAudit(

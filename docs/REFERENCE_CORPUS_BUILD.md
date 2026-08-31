@@ -79,6 +79,7 @@ repair-corpus applies --model WFW5620HW0
 repair-corpus bench-parse             # optional: re-score extractors
 repair-corpus parse tech-sheet-w11320651
 repair-corpus parse --all             # chunks under corpus/parsed/ (gitignored)
+repair-corpus bench-layout            # screenshot layout pack vs ingested chunks
 
 repair-corpus db-migrate
 repair-corpus ingest --all            # + local BGE embeddings (free)

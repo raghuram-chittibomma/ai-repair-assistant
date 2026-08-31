@@ -159,6 +159,106 @@ def test_section_inherited_on_prose_under_heading():
     assert any(c.metadata.get("section_path") for c in prose)
 
 
+def test_toc_leader_lines_are_not_test_section_headings() -> None:
+    document = ExtractedDocument(
+        path="synthetic",
+        extractor="test",
+        pages=[
+            ExtractedPage(
+                number=2,
+                text=(
+                    "TABLE OF CONTENTS\n"
+                    "WHIRLPOOL & MAYTAG FRONT-LOAD WASHERS\n"
+                    "SECTION 3 — COMPONENT TESTING (CONTINUED)\n"
+                    "TEST #8: DRAIN/RECIRCULATION PUMP "
+                    "..........................................................................................3-15\n"
+                    "TEST #9: WASH HEATING ELEMENT "
+                    "..................................................................................................3-16\n"
+                ),
+            )
+        ],
+    )
+    chunks = chunk_document(
+        document,
+        strategy="structured",
+        publication_number="W11169652",
+        revision="B",
+    )
+    joined = "\n".join(c.text for c in chunks)
+    assert "Section: TEST #8" not in joined
+    assert "Section: TEST #9" not in joined
+    assert any(
+        "COMPONENT TESTING" in " ".join(c.metadata.get("section_path") or [])
+        or "TABLE OF CONTENTS" in " ".join(c.metadata.get("section_path") or [])
+        or "COMPONENT TESTING" in c.text
+        for c in chunks
+    )
+
+
+def test_junk_artwork_tables_are_dropped() -> None:
+    document = ExtractedDocument(
+        path="synthetic",
+        extractor="test",
+        pages=[
+            ExtractedPage(
+                number=8,
+                text="GENERAL INFORMATION\nControl Panel and Features\nNOTES: Use HE detergent.",
+                tables=[
+                    Table(
+                        headers=[],
+                        rows=[TableRow(cells=["WHAT", "to wash"], page=8)],
+                        page=8,
+                    )
+                ],
+            )
+        ],
+    )
+    chunks = chunk_document(document, strategy="structured", publication_number="W11169652")
+    assert not any(c.kind == "table_row" for c in chunks)
+    assert any("HE detergent" in c.text for c in chunks)
+
+
+def test_note_sentences_are_not_section_headings() -> None:
+    from repair_assistant.parsing.chunker import is_section_heading
+
+    assert not is_section_heading("sensor, otherwise continue to step 8.")
+    assert not is_section_heading("Resistance should be 1.1 - 1.35k Ω.")
+    assert not is_section_heading("IMPORTANT: Drum will spin to 830 RPM.")
+    assert not is_section_heading("diagnostic voltage measurements.")
+    assert not is_section_heading("WARNING")
+    assert is_section_heading("TEST #6: Water Inlet Valves")
+    assert is_section_heading("THERMISTOR")
+
+
+def test_page_banner_resets_inherited_section() -> None:
+    document = ExtractedDocument(
+        path="synthetic",
+        extractor="test",
+        pages=[
+            ExtractedPage(
+                number=7,
+                text="IMPORTANT: Do not use chlorine bleach or powdered detergent.\nHMI notes.",
+            ),
+            ExtractedPage(
+                number=8,
+                text=(
+                    "GENERAL INFORMATION\n"
+                    "Control Panel and Features (Console Models)\n"
+                    "NOTES: Press POWER to wake the console."
+                ),
+            ),
+        ],
+    )
+    chunks = chunk_document(document, strategy="structured", publication_number="W11169652")
+    page8 = [c for c in chunks if c.page == 8]
+    assert page8
+    joined_sections = " ".join(
+        " ".join(c.metadata.get("section_path") or []) for c in page8
+    )
+    assert "chlorine bleach" not in joined_sections
+    assert "GENERAL INFORMATION" in joined_sections
+
+
 def test_structured_chunker_skips_non_english_pages() -> None:
     document = ExtractedDocument(
         path="synthetic",

@@ -492,6 +492,30 @@ def bench_parse(extractors: tuple[str, ...], write: bool) -> None:
         )
 
 
+@main.command("bench-layout")
+@click.option(
+    "--write/--no-write",
+    default=True,
+    help="Write evals/parsing/results/layout-pack.md",
+)
+def bench_layout(write: bool) -> None:
+    """Score corpus/parsed chunks against the layout-pack page checklist."""
+    from repair_assistant.parsing import layout_pack
+
+    results = layout_pack.run_layout_pack()
+    card = layout_pack.scorecard_markdown(results)
+    click.echo(card)
+    if write:
+        corpus = _load()
+        out = corpus.root / "evals" / "parsing" / "results"
+        out.mkdir(parents=True, exist_ok=True)
+        dest = out / "layout-pack.md"
+        dest.write_text(card, encoding="utf-8", newline="\n")
+        click.echo(f"Wrote {dest}")
+    if results and all(r.skipped for r in results):
+        raise click.ClickException(results[0].skip_reason or "layout pack skipped")
+
+
 @main.command("parse")
 @click.argument("doc_id", required=False)
 @click.option("--all", "parse_all", is_flag=True, help="Parse every held document.")

@@ -50,7 +50,7 @@ flowchart LR
   traces --> mine[mine_traces_improve]
 ```
 
-- **Parsing** — hybrid page router, matrix vs multi-column, quality overrides ([ADR-0024](docs/adr/0024-hybrid-parse-architecture.md))
+- **Parsing** — hybrid page router (matrix / TOC / schematic / photo-access / multi-column), quality overrides ([ADR-0024](docs/adr/0024-hybrid-parse-architecture.md))
 - **Chunking** — table-row / matrix / contextual enrichment ([ADR-0007](docs/adr/0007-parser-and-chunker.md), [ADR-0022](docs/adr/0022-contextual-chunk-enrichment.md))
 - **Retrieval** — vector + codes/connectors, applicability, owner-preferring literature when feasible ([ADR-0010](docs/adr/0010-retrieval-applicability.md))
 - **Grounded Q&A / diagnose** — citations, abstain, checklist path discipline ([ADR-0012](docs/adr/0012-grounded-qa.md), [ADR-0013](docs/adr/0013-langgraph-diagnostic.md))

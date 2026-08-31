@@ -18,6 +18,7 @@ not on PATH.
 | --- | --- | --- | --- | --- |
 | Unit / grader | `pytest` | none | `tests/` | pass/fail |
 | Parsing | `bench-parse --write` | local PDFs for fixtures | `evals/parsing/fixtures.yaml` | `evals/parsing/results/scorecard.md` |
+| Layout pack | `bench-layout --write` | `corpus/parsed/<doc>/chunks.jsonl` | `evals/parsing/layout-pack.yaml` | `evals/parsing/results/layout-pack.md` |
 | Chain smoke | `bench-chain --write` | DB + embedder (+ OpenAI unless `--skip-ask`) | `evals/chain/fixtures.yaml` | `evals/chain/results/scorecard.md` |
 | Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K / MRR / nDCG@K / latency) |
 | Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` (CI gate) + `evals/safety/adversarial.yaml` (R4 rates, not a gate). Optional `--classifier` (needs OpenAI; R3 union; not CI) | stdout + CI gate |
@@ -50,6 +51,7 @@ Cheap / offline first, then live OpenAI:
 pytest -q
 
 python -m repair_assistant.corpus.cli bench-parse --write
+python -m repair_assistant.corpus.cli bench-layout --write
 python -m repair_assistant.corpus.cli bench-safety
 
 # Needs LAN Postgres (DATABASE_URL in .env.local)

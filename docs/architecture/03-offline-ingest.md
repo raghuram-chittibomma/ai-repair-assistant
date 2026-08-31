@@ -33,15 +33,17 @@ flowchart LR
 
 Production `repair-corpus parse` uses the **hybrid** extractor — a page-scoped
 router, not one PDF library for everything. Tables stay on pdfplumber; prose
-reading order depends on layout class (matrix vs multi-column vs default).
+reading order depends on layout class.
 
 ```mermaid
 flowchart TD
   pdf[PDF_page]
-  classify[page_classify]
   tables[pdfplumber_tables]
+  dropJunk[drop_junk_tables]
+  classify[page_classify]
   proseRouter{Layout_class}
-  matrixLTR[Matrix_LTR_prose]
+  matrixLTR[Matrix_LTR]
+  ltrProse[TOC_schematic_figure_LTR]
   multiCol[Multi_column_reorder]
   defaultProse[Default_prose]
   matrixFallback[parse_troubleshooting_prose]
@@ -50,14 +52,17 @@ flowchart TD
   canon[CanonicalDocument_tree]
   extracted[ExtractedDocument]
 
-  pdf --> classify
-  classify --> tables
+  pdf --> tables
+  tables --> dropJunk
+  dropJunk --> classify
   classify --> proseRouter
   proseRouter -->|matrix| matrixLTR
-  proseRouter -->|multi_column| multiCol
-  proseRouter -->|default| defaultProse
+  proseRouter -->|toc schematic figure| ltrProse
+  proseRouter -->|multi_column photo_access| multiCol
+  proseRouter -->|default table_heavy| defaultProse
   matrixLTR --> matrixFallback
-  tables --> audit
+  dropJunk --> audit
+  ltrProse --> audit
   multiCol --> audit
   defaultProse --> audit
   matrixFallback --> audit
@@ -67,10 +72,10 @@ flowchart TD
   canon --> extracted
 ```
 
-- **Classify:** `matrix` | `multi_column` | `table_heavy` | `default` — wrong class breaks error tables or TEST # procedures ([ADR-0024](../adr/0024-hybrid-parse-architecture.md)).
-- **Tables:** Always `pdfplumber` `extract_tables()` — owns the `error-codes-bound` hard gate.
-- **Matrix pages:** LTR prose only; vertical rules are table columns, not newspaper columns. Guide #1 / #2 rows rebuilt via `table_context.parse_troubleshooting_prose` when grids are missed.
-- **Multi-column:** Left-then-right / layout path for procedure pages (e.g. TEST # steps).
+- **Classify:** `matrix` | `toc` | `schematic` | `figure` | `photo_access` | `table_heavy` | `multi_column` | `default` — wrong class breaks error tables or TEST # procedures ([ADR-0024](../adr/0024-hybrid-parse-architecture.md)). The layout-pack checklist is `evals/parsing/layout-pack.yaml` (`repair-corpus bench-layout`).
+- **Tables:** `pdfplumber` `extract_tables()`, then drop artwork / warning-box grids — owns the `error-codes-bound` hard gate.
+- **LTR pages:** `matrix`, `toc`, `schematic`, `figure` keep pdfplumber left-to-right text. Matrix vertical rules are table columns, not newspaper columns. Guide #1 / #2 rows rebuilt via `table_context.parse_troubleshooting_prose` when grids are missed.
+- **Multi-column / photo-access:** Left-then-right / layout path for TEST # procedures and component-access pages with photos.
 - **Audit:** Per-page reading-order and table-variance signals; config overrides in `config/parsing/quality_overrides.yaml`.
 - **Output:** Backward-compatible `ExtractedDocument` plus optional `CanonicalDocument` tree with `parse_audit` JSON.
 
@@ -86,6 +91,8 @@ re-parsing the PDF.
 ```mermaid
 flowchart TD
   doc[ExtractedDocument]
+  banner[Reset_section_from_running_header]
+  filter[Drop_junk_tables_skip_figure_prose]
   split{Chunk_strategy}
   errorRow[Error_code_table_row]
   matrixRow[Troubleshooting_matrix_row]
@@ -98,7 +105,9 @@ flowchart TD
   out[chunks_jsonl]
   report[chunk_quality_json]
 
-  doc --> split
+  doc --> banner
+  banner --> filter
+  filter --> split
   split --> errorRow
   split --> matrixRow
   split --> proseChunk
@@ -115,6 +124,8 @@ flowchart TD
 ```
 
 - **Structured splits:** One row per error-code / matrix data row; prose by heading — not fixed-size splits ([ADR-0007](../adr/0007-parser-and-chunker.md)).
+- **Headings:** TOC dotted `TEST #` rows and note sentences are not section banners; each page resets `section_path` from the running header when present ([ADR-0022](../adr/0022-contextual-chunk-enrichment.md)).
+- **Skip / drop:** Schematic and figure prose stay out of the index (keep real pin tables). Artwork and shock-box “tables” are dropped.
 - **Matrix chunks:** Guide #1 (`problem_spanned`) and Guide #2 (`group_symptom`) inherit problem anchors and group notes in metadata + embed text ([ADR-0022](../adr/0022-contextual-chunk-enrichment.md)).
 - **Enrich:** `doc_title`, `section_path`, `Header: value` keyed rows so retrieval sees context, not bare numbers.
 - **Self-improve:** `audit_and_improve` — at most **one** repair pass (`MAX_REPAIR_PASSES = 1`); flag-only findings (e.g. unbound error codes) never auto-merge; persists `chunk_quality.json` beside `chunks.jsonl`.
@@ -124,4 +135,4 @@ flowchart TD
 
 ---
 
-**CLI:** `repair-corpus parse` · `repair-corpus ingest` · [Reference corpus build](../REFERENCE_CORPUS_BUILD.md)
+**CLI:** `repair-corpus parse` · `repair-corpus ingest` · `repair-corpus bench-layout` · [Reference corpus build](../REFERENCE_CORPUS_BUILD.md)

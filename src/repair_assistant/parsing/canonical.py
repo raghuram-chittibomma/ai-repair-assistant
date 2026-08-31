@@ -6,20 +6,12 @@ import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .chunker import is_section_heading
 from .pua import map_pua
 
 if TYPE_CHECKING:
     from repair_assistant.parsing.models import ExtractedDocument, Table, TableRow
     from repair_assistant.parsing.parse_quality import PageAudit
-
-_HEADING_LINE = re.compile(
-    r"^(FOR SERVICE TECHNICIAN|DIAGNOSTIC|TEST #\d|ERROR CODE|IMPORTANT|"
-    r"WARNING|ABBREVIATIONS|TECHNICAL SERVICE POINTER|"
-    r"FAULT/?\s*ERROR CODES?|MANUALLY UNLOCKING|MEASURED VALUES|"
-    r"COMPONENT (?:LOCATION|TESTING)|WIRE HARNESS|"
-    r"SENSOR|THERMISTOR|RESISTANCE)",
-    re.IGNORECASE,
-)
 
 
 @dataclass
@@ -80,12 +72,12 @@ def _split_prose_sections(text: str) -> list[tuple[str, str]]:
 
     for line in text.splitlines():
         stripped = line.strip()
-        if _HEADING_LINE.match(stripped) and current_lines:
+        if is_section_heading(stripped) and current_lines:
             sections.append((current_kind, "\n".join(current_lines).strip()))
             current_lines = [line]
-            current_kind = "heading" if _HEADING_LINE.match(stripped) else "paragraph"
+            current_kind = "heading" if is_section_heading(stripped) else "paragraph"
         else:
-            if stripped and _HEADING_LINE.match(stripped) and not current_lines:
+            if stripped and is_section_heading(stripped) and not current_lines:
                 current_kind = "heading"
             current_lines.append(line)
 

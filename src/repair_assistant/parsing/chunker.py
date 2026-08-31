@@ -13,7 +13,11 @@ import re
 from .error_codes import extract_error_codes
 from .language import is_index_language
 from .models import Chunk, ExtractedDocument, Table
-from .page_classify import looks_like_figure_page
+from .page_classify import (
+    looks_like_figure_page,
+    looks_like_junk_table,
+    looks_like_schematic_page,
+)
 from .pua import map_pua, split_list_items
 from .table_context import (
     ColumnMap,
@@ -28,13 +32,65 @@ from .table_context import (
 )
 
 _HEADING_RE = re.compile(
-    r"^(FOR SERVICE TECHNICIAN|DIAGNOSTIC|TEST #\d|ERROR CODE|IMPORTANT|"
+    r"^(TABLE OF CONTENTS|SECTION\s+\d+\b|"
+    r"FOR SERVICE TECHNICIAN|DIAGNOSTIC|TEST #\d|ERROR CODE|IMPORTANT|"
     r"WARNING|ABBREVIATIONS|TECHNICAL SERVICE POINTER|"
     r"FAULT/?\s*ERROR CODES?|MANUALLY UNLOCKING|MEASURED VALUES|"
     r"COMPONENT (?:LOCATION|TESTING)|WIRE HARNESS|"
     r"SENSOR|THERMISTOR|RESISTANCE)",
     re.IGNORECASE,
 )
+# Contents rows: "TEST #8: … .............. 3-15" — not procedure headings.
+_TOC_LEADER_RE = re.compile(r"\.{4,}\s*\d+(?:-\d+)?\s*$")
+_RUNNING_HEADER_RE = re.compile(
+    r"^(TABLE OF CONTENTS|DIAGNOSTICS\s*&\s*TROUBLESHOOTING|"
+    r"COMPONENT TESTING|COMPONENT ACCESS|CONNECTIVITY|"
+    r"GENERAL INFORMATION|SECTION\s+\d+)\b",
+    re.I,
+)
+_BANNER_HEADING_RE = re.compile(
+    r"^(TABLE OF CONTENTS|SECTION\s+\d+|TEST #\d|"
+    r"DIAGNOSTICS\b|DIAGNOSTIC MODE|ACTIVATING SERVICE DIAGNOSTIC|"
+    r"COMPONENT (?:LOCATION|TESTING)|FAULT)",
+    re.I,
+)
+_NOTE_BODY_RE = re.compile(
+    r"\b(will|should|must|may|turn off|disconnect|prior to|otherwise|"
+    r"the appliance|continue to step)\b",
+    re.I,
+)
+
+
+def is_section_heading(line: str) -> bool:
+    """True for procedure/section banners, not TOC rows or note sentences."""
+    stripped = (line or "").strip()
+    if not stripped or _TOC_LEADER_RE.search(stripped):
+        return False
+    if re.match(r"^FOR SERVICE TECHNICIAN", stripped, re.I):
+        return False
+    if re.fullmatch(r"(WARNING|DANGER|IMPORTANT):?", stripped, re.I):
+        return False
+    if re.match(r"^diagnostic voltage\b", stripped, re.I):
+        return False
+    if not _HEADING_RE.match(stripped):
+        return False
+    if _BANNER_HEADING_RE.match(stripped):
+        return True
+    if _NOTE_BODY_RE.search(stripped):
+        return False
+    if "." in stripped and len(stripped) > 40:
+        return False
+    return len(stripped) <= 90
+
+
+def page_banner_section(text: str | None) -> str | None:
+    """Running header near the top of a page, if present."""
+    for line in (text or "").splitlines()[:8]:
+        stripped = line.strip()
+        match = _RUNNING_HEADER_RE.match(stripped)
+        if match:
+            return match.group(0).strip()
+    return None
 
 
 def chunk_document(
@@ -154,24 +210,31 @@ def _structured_chunks(
         if not is_index_language(page.language):
             continue
 
-        figure_page = looks_like_figure_page(page.text)
-        if figure_page and not page.tables:
+        tables = [t for t in page.tables if not looks_like_junk_table(t)]
+        skip_prose = looks_like_figure_page(page.text) or looks_like_schematic_page(
+            page.text
+        )
+        if skip_prose and not tables:
             # Review R33: do not index diagram OCR. Tables on the same sheet
             # (strip-circuit pin rows) still go in.
             continue
 
+        banner = page_banner_section(page.text)
+        if banner:
+            current_section = banner
+
         # Update section from page text before emitting chunks for this page.
         for line in (page.text or "").splitlines():
             stripped = line.strip()
-            if _HEADING_RE.match(stripped):
+            if is_section_heading(stripped):
                 current_section = stripped
 
         prose_text = map_pua(page.text or "")
-        if page.tables:
-            prose_text = _strip_table_cells_from_prose(prose_text, page.tables)
+        if tables:
+            prose_text = _strip_table_cells_from_prose(prose_text, tables)
 
         matrix_table_chunks = 0
-        for table in page.tables:
+        for table in tables:
             before = len(chunks)
             chunks.extend(
                 _chunks_from_table(
@@ -218,7 +281,7 @@ def _structured_chunks(
                 # Avoid also emitting the same page as a mega-prose chunk.
                 continue
 
-        if figure_page:
+        if skip_prose:
             continue
 
         for piece in _split_prose(prose_text):
@@ -241,11 +304,11 @@ def _structured_chunks(
                 continue
 
             codes = extract_error_codes(piece)
-            kind = "heading" if _HEADING_RE.match(piece.strip().splitlines()[0]) else "prose"
+            kind = "heading" if is_section_heading(piece.strip().splitlines()[0]) else "prose"
             if "•" in piece and len(split_list_items(piece)) > 1:
                 kind = "procedure"
             first_line = piece.strip().splitlines()[0] if piece.strip() else ""
-            if _HEADING_RE.match(first_line):
+            if is_section_heading(first_line):
                 current_section = first_line
                 section_for_chunk = first_line
             else:
@@ -538,7 +601,11 @@ def _naive_fixed_chunks(
     """Control chunker: fixed windows that routinely split codes from remedies."""
     chunks: list[Chunk] = []
     for page in document.pages:
-        if looks_like_figure_page(page.text) and not page.tables:
+        tables = [t for t in page.tables if not looks_like_junk_table(t)]
+        skip_prose = looks_like_figure_page(page.text) or looks_like_schematic_page(
+            page.text
+        )
+        if skip_prose and not tables:
             continue
         text = page.text or ""
         for start in range(0, max(len(text), 1), size):
@@ -570,7 +637,7 @@ def _split_prose(text: str) -> list[str]:
     sections: list[str] = []
     current: list[str] = []
     for line in lines:
-        if _HEADING_RE.match(line.strip()) and current:
+        if is_section_heading(line.strip()) and current:
             sections.append("\n".join(current).strip())
             current = [line]
         else:
@@ -640,4 +707,6 @@ def _make_chunk(
 __all__ = [
     "chunk_document",
     "format_contextual_text",
+    "is_section_heading",
+    "page_banner_section",
 ]

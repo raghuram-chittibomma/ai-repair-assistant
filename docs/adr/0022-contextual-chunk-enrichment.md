@@ -25,6 +25,9 @@ not a blind re-splitter).
    prose). Do not switch the default to fixed-size or naive recursive splits.
 2. **Enrich `chunk.text`** at chunk time with document label, nearest section
    title, and table headers (keyed `Header: value` when counts match).
+   Section titles are procedure/section banners. Dotted table-of-contents
+   rows, bare `WARNING`/`DANGER`, and note sentences are not banners. A new
+   page resets section from the running header when one is present.
 3. Store ancestry in metadata (`doc_title`, `doc_type`, `section_path`,
    `headers`, `body_text`) so repairs stay idempotent.
 4. After enrich, run **`audit_and_improve`**: audit → at most **one** repair

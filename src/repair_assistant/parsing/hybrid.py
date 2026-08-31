@@ -9,7 +9,7 @@ from .column_order import reorder_page_text
 from .extract_common import convert_table, pdf_producer
 from .language import detect_language
 from .models import Block, ExtractedDocument, ExtractedPage, Table
-from .page_classify import classify_page
+from .page_classify import classify_page, looks_like_junk_table
 from .parse_quality import PageAudit, audit_page, quality_override_for
 
 
@@ -41,12 +41,9 @@ def _prose_for_page(
     """Return (text, source_tag).
 
     ``matrix`` pages keep pdfplumber LTR text — vertical rules are table columns.
-    ``multi_column`` procedure pages use left-then-right reorder (or layout ML).
+    ``multi_column`` / ``photo_access`` use left-then-right reorder (or layout ML).
     """
-    if layout_kind == "matrix":
-        return page.extract_text() or "", "pdfplumber"
-
-    if layout_kind == "figure":
+    if layout_kind in {"matrix", "figure", "schematic", "toc"}:
         return page.extract_text() or "", "pdfplumber"
 
     if force_layout:
@@ -54,7 +51,7 @@ def _prose_for_page(
         if layout_text and layout_text.strip():
             return layout_text, "pymupdf4llm"
 
-    if layout_kind == "multi_column":
+    if layout_kind in {"multi_column", "photo_access"}:
         reordered, did_reorder, _ = reorder_page_text(page)
         if did_reorder and reordered.strip():
             return reordered, "column_reorder"
@@ -91,7 +88,9 @@ class HybridExtractor:
 
         with pdfplumber.open(str(path)) as pdf:
             for index, page in enumerate(pdf.pages, start=1):
-                tables = _extract_tables(page, index)
+                tables = [
+                    t for t in _extract_tables(page, index) if not looks_like_junk_table(t)
+                ]
                 layout_kind = classify_page(page, page_no=index, tables=tables)
                 override_kwargs = _audit_kwargs(path, index)
 
@@ -108,7 +107,7 @@ class HybridExtractor:
                     **override_kwargs,
                 )
 
-                if audit.suspect() and layout_kind == "multi_column":
+                if audit.suspect() and layout_kind in {"multi_column", "photo_access"}:
                     retry_text, retry_source = _prose_for_page(
                         path, page, index, layout_kind, force_layout=True
                     )

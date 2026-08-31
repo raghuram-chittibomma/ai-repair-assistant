@@ -1,0 +1,189 @@
+# Layout-pack measurement set (W11169652 Rev B screenshot audit).
+# Expectations only — no PDF bytes. Chunks come from corpus/parsed/<doc_id>/.
+# Page numbers are PDF indexes (what chunks.jsonl stores), not printed folios.
+
+version: 1
+doc_id: service-manual-w11169652-revb
+
+# Content-based layout classes from page_classify.classify_page.
+# table → matrix | table_heavy; two-column procedure → multi_column;
+# schematic / photo_access / toc are the widened set.
+
+pages:
+  - id: toc-section3
+    pdf_page: 4
+    printed: "iii / TOC"
+    class: toc
+    check_class: true
+    asserts:
+      - type: phrase_present
+        phrases: ["TABLE OF CONTENTS", "COMPONENT TESTING"]
+      - type: section_not_like
+        pattern: "TEST #8:.*\\.{4,}"
+
+  - id: control-panel-1-4
+    pdf_page: 8
+    printed: "1-4"
+    class: default
+    asserts:
+      - type: phrase_absent
+        phrases: ["WHAT | to wash", "HOW t | o wash"]
+
+  - id: qsc-2-7
+    pdf_page: 25
+    printed: "2-7"
+    class: table_heavy
+    asserts:
+      - type: phrase_present
+        phrases: ["Lock Door", "TEST #4"]
+
+  - id: lcd-diagnostics-2-10
+    pdf_page: 28
+    printed: "2-10"
+    class: multi_column
+    asserts:
+      - type: phrase_present
+        phrases: ["LCD in Door Diagnostics"]
+      - type: section_not_like
+        pattern: "IMPORTANT: Turn off power"
+
+  - id: component-activation-2-11
+    pdf_page: 29
+    printed: "2-11"
+    class: multi_column
+    asserts:
+      - type: phrase_present
+        phrases: ["Component Activation", "Cold 1 Valve"]
+      - type: section_not_like
+        pattern: "Drum will spin"
+
+  - id: fault-chart-2-14
+    pdf_page: 32
+    printed: "2-14"
+    class: table_heavy
+    asserts:
+      - type: phrase_present
+        phrases: ["F6E1", "TEST #2"]
+      - type: min_table_rows
+        min: 8
+
+  - id: ts-guide-2-16
+    pdf_page: 34
+    printed: "2-16"
+    class: table_heavy
+    asserts:
+      - type: phrase_present
+        phrases: ["Won't Power Up", "TEST #1"]
+      - type: section_not_like
+        pattern: "Three consecutive cycles"
+
+  - id: section3-intro-3-1
+    pdf_page: 39
+    printed: "3-1"
+    class: toc
+    check_class: true
+    asserts:
+      - type: phrase_present
+        phrases: ["TEST #1: ACU Power Check", "Component Testing"]
+
+  - id: safety-3-2
+    pdf_page: 40
+    printed: "3-2"
+    class: default
+    asserts:
+      - type: phrase_present
+        phrases: ["Electrostatic Discharge"]
+      - type: section_not_like
+        pattern: "diagnostic voltage measurements"
+
+  - id: wiring-3-3
+    pdf_page: 41
+    printed: "3-3"
+    class: schematic
+    check_class: true
+    asserts:
+      - type: max_prose_chunks
+        max: 0
+      - type: phrase_absent
+        phrases: ["WLEE ITVRG"]
+
+  - id: acu-pinouts-3-7
+    pdf_page: 45
+    printed: "3-7"
+    class: schematic
+    check_class: true
+    asserts:
+      - type: max_prose_chunks
+        max: 0
+      - type: phrase_absent
+        phrases: ["(cid:"]
+
+  - id: test-6-inlet-3-13
+    pdf_page: 51
+    printed: "3-13"
+    class: multi_column
+    check_class: true
+    asserts:
+      - type: phrase_present
+        phrases: ["TEST #6", "Cold 1 Fill Valve", "J8"]
+      - type: section_not_like
+        pattern: "Resistance should be"
+
+  - id: test-12b-3-21
+    pdf_page: 59
+    printed: "3-21"
+    class: multi_column
+    asserts:
+      - type: phrase_present
+        phrases: ["TEST #12B"]
+      - type: section_not_like
+        pattern: "sensor, otherwise"
+
+  - id: test-15-3-24
+    pdf_page: 62
+    printed: "3-24"
+    class: multi_column
+    asserts:
+      - type: phrase_present
+        phrases: ["TEST #15", "Dry Heating Element"]
+
+  - id: dvt-access-4-7
+    pdf_page: 71
+    printed: "4-7"
+    class: photo_access
+    check_class: true
+    asserts:
+      - type: phrase_present
+        phrases: ["DVT Fan/Vent"]
+      - type: section_not_like
+        pattern: "^WARNING$"
+      - type: phrase_absent
+        phrases: ["Tub H | ose", "DVT E T"]
+
+  - id: connectivity-guide-5-2
+    pdf_page: 90
+    printed: "5-2"
+    class: multi_column
+    asserts:
+      - type: phrase_present
+        phrases: ["Get the App", "INITIAL SET UP"]
+      - type: section_not_like
+        pattern: "Proper installation of the appliance"
+
+  - id: connectivity-ts-5-3
+    pdf_page: 91
+    printed: "5-3"
+    class: table_heavy
+    asserts:
+      - type: phrase_present
+        phrases: ["Smart Grid"]
+      - type: min_table_rows
+        min: 4
+
+  - id: warranty-sources
+    pdf_page: 93
+    printed: "end matter"
+    class: default
+    asserts:
+      - type: phrase_present
+        phrases: ["1-800-253-1301", "IN CANADA"]

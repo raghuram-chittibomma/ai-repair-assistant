@@ -39,17 +39,18 @@ library:
 ```
 PDF page
    │
-   ├─ classify layout (matrix | multi_column | table_heavy | default)
+   ├─ classify layout (matrix | toc | schematic | figure | photo_access |
+   │                   table_heavy | multi_column | default)
    │
-   ├─ tables  → pdfplumber extract_tables()  (always)
+   ├─ tables  → pdfplumber extract_tables(); drop artwork / shock-box junk grids
    │
-   ├─ prose   → matrix: pdfplumber LTR (never column-reorder)
-   │         → multi_column: left-then-right / pymupdf4llm
+   ├─ prose   → matrix | toc | schematic | figure: pdfplumber LTR (no column-reorder)
+   │         → multi_column | photo_access: left-then-right / pymupdf4llm
    │         → else: pdfplumber text
    │
    ├─ parse_quality audit (reading order, table column variance, …)
    │
-   └─ suspect multi_column ? retry layout path once → ExtractedDocument
+   └─ suspect multi_column | photo_access ? retry layout path once → ExtractedDocument
 ```
 
 **Table extraction stays on pdfplumber** inside hybrid — it owns the
@@ -62,7 +63,11 @@ keep LTR ``extract_text``, then the generic matrix prose fallback
 (``table_context.parse_troubleshooting_prose``) rebuilds Guide #1/#2 rows.
 
 **Prose / reading order** for procedure pages (TEST #1) still uses column
-reorder / layout ML when classified ``multi_column``.
+reorder / layout ML when classified ``multi_column`` or ``photo_access``.
+``toc`` / ``schematic`` / ``figure`` stay LTR so dotted contents rows and
+wiring OCR are not treated as newspaper columns. Schematic and figure prose
+are not indexed (R33); real pin tables on those sheets still become
+``table_row`` chunks.
 
 ### 2. Canonical document tree (parser output)
 
@@ -127,8 +132,12 @@ chunker (Docling hybrid chunker is reference only).
 Add `procedure-reading-order` fixture (W11320651 p12): monotonic phrase markers
 and steps 1–13 present — expectations live in the eval fixture **and** optionally
 in `config/parsing/quality_overrides.yaml` for hybrid audit retries. Hard gates
-unchanged: `error-codes-bound`, `pua-list-markers`. Future: 20-page difficult-page
-set + `bench-chain` retrieval check (EVAL_FRAMEWORK_GAPS E12 triggers).
+unchanged: `error-codes-bound`, `pua-list-markers`. Layout variety (TOC, matrices,
+TEST # procedures, schematics, photo-access) is scored by
+[`evals/parsing/layout-pack.yaml`](../../evals/parsing/layout-pack.yaml) via
+`repair-corpus bench-layout` against `corpus/parsed/` chunks — not a second
+extractor bake-off. Illustrated mixed pages can still pass the pack and fail as
+diagnose evidence when figure OCR is the body.
 
 ## Consequences
 
@@ -153,4 +162,4 @@ set + `bench-chain` retrieval check (EVAL_FRAMEWORK_GAPS E12 triggers).
 - [ADR-0007](0007-parser-and-chunker.md) — table-row chunking; pdfplumber table engine
 - [ADR-0022](0022-contextual-chunk-enrichment.md) — contextual chunk text
 - [DOCLING_GRAPHRAG_EVAL.md](../corpus/DOCLING_GRAPHRAG_EVAL.md) — Docling measured parity
-- Implementation: `parsing/hybrid.py`, `column_order.py`, `parse_quality.py`, `canonical.py`
+- Implementation: `parsing/hybrid.py`, `page_classify.py`, `column_order.py`, `parse_quality.py`, `canonical.py`, `chunker.py`
