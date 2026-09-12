@@ -205,7 +205,7 @@ class DiagnosticSession:
                     model=llm_model(),
                     prompt_name="diagnose_system",
                 )
-                pending = respond_diagnose_state(pending, llm)
+                pending = respond_diagnose_state(pending, llm, self._manifest)
             self._state = pending
 
             assistant = ""

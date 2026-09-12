@@ -9,7 +9,8 @@ Owner must ask, with new measured evidence, before changing any of these.
 
 - **Retrieval baseline** is `vector_apply_boost` ([ADR-0020](docs/adr/0020-hybrid-retrieval-retest.md)). Cross-encoder rerank is rejected ([ADR-0027](docs/adr/0027-cross-encoder-rerank.md)).
 - **S4 held-out waived.** The 18 fixtures in `evals/retrieval/fixtures.yaml` (14 hard) are the decision set. Do not author a secret held-out pack.
-- **Do not start ranking work** R11 (applicability pre-filter), R18 (query rewrite), R20 (remaining applicability axes), or R22 (abstain coercion). They wait after the S5 reject.
+- **Do not start ranking work** R11 (applicability pre-filter), R20 (remaining applicability axes), or R22 (abstain coercion). They wait after the S5 reject.
+- **R18 is closed-set diagnose intent, not free query rewrite** ([ADR-0034](docs/adr/0034-diagnose-nlu-split.md)). Do not implement it, do not grow synonym regex, and do not replace diagnose with a rule-only flowchart until the owner asks with measured fixtures.
 - **R41 feedback UI is deferred.** No thumbs, scores, or feedback markup.
 - **Diagnose sessions are in-memory** ([ADR-0021](docs/adr/0021-api-hardening-embedder-sessions.md)). They die on API restart; unknown id → HTTP 410. Do not persist sessions to Postgres unless the owner reopens that ADR.
 - **`config/retrieval/query_expand.yaml` is not a slang dictionary.** `when_user_says` is everyday wording; `add_to_search` must already appear in the literature.

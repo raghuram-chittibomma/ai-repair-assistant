@@ -43,8 +43,10 @@ from repair_assistant.qa.env import (
     llm_model,
     llm_retry_base_seconds,
     llm_timeout_seconds,
+    llm_vision_model,
     openai_api_key,
 )
+from repair_assistant.qa.page_images import PageImage, attach_gated_images
 from repair_assistant.qa.parts import related_parts_note
 from repair_assistant.qa.structured import (
     DIAGNOSE_RESPONSE_FORMAT,
@@ -144,6 +146,86 @@ def _retry_sleep(attempt: int, base: float) -> float:
     return base * (2 ** (attempt - 1)) * (1.0 + random.random() * 0.25)
 
 
+def build_chat_messages(
+    system: str,
+    user: str,
+    images: list[PageImage] | None = None,
+) -> list[dict]:
+    """OpenAI chat messages; page rasters become image_url parts (ADR-0035)."""
+    import base64
+
+    if not images:
+        return [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+    content: list[dict[str, Any]] = [{"type": "text", "text": user}]
+    for image in images:
+        content.append(
+            {
+                "type": "text",
+                "text": f"Figure for evidence [{image.index}] (PDF page {image.page}):",
+            }
+        )
+        encoded = base64.b64encode(image.jpeg_bytes).decode("ascii")
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{encoded}", "detail": "low"},
+            }
+        )
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": content},
+    ]
+
+
+def messages_for_trace(
+    system: str,
+    user: str,
+    images: list[PageImage] | None = None,
+) -> list[dict]:
+    """Trace payload without JPEG / data-URL bytes."""
+    if not images:
+        return [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+    labels = ", ".join(f"[{img.index}] p.{img.page}" for img in images)
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": f"{user}\n\n[{len(images)} page images attached: {labels}]"},
+    ]
+
+
+def invoke_complete(
+    llm: LLMClient,
+    system: str,
+    user: str,
+    images: list[PageImage] | None = None,
+) -> str:
+    if not images:
+        return llm.complete(system, user)
+    try:
+        return llm.complete(system, user, images=images)  # type: ignore[call-arg]
+    except TypeError:
+        return llm.complete(system, user)
+
+
+def invoke_stream(
+    llm: Any,
+    system: str,
+    user: str,
+    images: list[PageImage] | None = None,
+) -> Any:
+    if not images:
+        return llm.stream(system, user)
+    try:
+        return llm.stream(system, user, images=images)
+    except TypeError:
+        return llm.stream(system, user)
+
+
 class LLMClient(Protocol):
     def complete(self, system: str, user: str) -> str: ...
 
@@ -198,7 +280,7 @@ class OpenAIClient:
             sync_prompt_file(self.prompt_name)
         return meta
 
-    def _create(self, messages: list[dict[str, str]], *, stream: bool):
+    def _create(self, messages: list[dict], *, stream: bool, model: str | None = None):
         """Call the provider, retrying transient failures with backoff."""
         attempts = self._attempts()
         base = llm_retry_base_seconds()
@@ -206,7 +288,7 @@ class OpenAIClient:
         for attempt in range(1, attempts + 1):
             try:
                 kwargs: dict[str, Any] = {
-                    "model": self.model,
+                    "model": model or self.model,
                     "messages": messages,
                     "temperature": 0,
                     "max_tokens": self._max_tokens(),
@@ -232,23 +314,34 @@ class OpenAIClient:
                 time.sleep(delay)
         raise last if last else LLMUnavailableError("OpenAI call failed")
 
-    def complete(self, system: str, user: str) -> str:
-        messages = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ]
+    def complete(
+        self,
+        system: str,
+        user: str,
+        *,
+        images: list[PageImage] | None = None,
+    ) -> str:
+        messages = build_chat_messages(system, user, images)
+        model = self._model_for_images(images)
         with generation(
             "llm",
-            model=self.model,
-            input={"messages": messages},
+            model=model,
+            input={"messages": messages_for_trace(system, user, images)},
             metadata=self._prompt_metadata(system),
         ) as span:
-            response = self._create(messages, stream=False)
+            response = self._create(messages, stream=False, model=model)
             text = (response.choices[0].message.content or "").strip()
             update_span(span, output={"content": text}, usage=usage_from_openai(response))
             return text
 
-    def stream(self, system: str, user: str):
+    def _model_for_images(self, images: list[PageImage] | None) -> str:
+        if images:
+            vision = llm_vision_model()
+            if vision:
+                return vision
+        return self.model
+
+    def stream(self, system: str, user: str, *, images: list[PageImage] | None = None):
         """Yield text deltas from OpenAI chat completions.
 
         Retry happens inside `_create`, before any delta is yielded. Once the
@@ -256,17 +349,15 @@ class OpenAIClient:
         given part of an answer, and a second attempt would splice two different
         generations together.
         """
-        messages = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ]
+        messages = build_chat_messages(system, user, images)
+        model = self._model_for_images(images)
         with generation(
             "llm",
-            model=self.model,
-            input={"messages": messages, "stream": True},
+            model=model,
+            input={"messages": messages_for_trace(system, user, images), "stream": True},
             metadata=self._prompt_metadata(system),
         ) as span:
-            response = self._create(messages, stream=True)
+            response = self._create(messages, stream=True, model=model)
             parts: list[str] = []
             usage = None
             try:
@@ -424,8 +515,16 @@ def _trace_evidence(
     query: str,
     manifest: Manifest | None = None,
     appliance: Appliance | None = None,
-) -> tuple[str, list[Citation]]:
+) -> tuple[str, list[Citation], list[PageImage]]:
     evidence_text, available = format_evidence(hits, query=query, manifest=manifest)
+    evidence_text, available, images = attach_gated_images(
+        hits,
+        available,
+        evidence_text,
+        manifest,
+        query=query,
+        enabled=bool(llm_vision_model()),
+    )
     parts = related_parts_note(hits, manifest, appliance)
     if parts:
         evidence_text = f"{evidence_text}\n\n{parts}"
@@ -434,7 +533,7 @@ def _trace_evidence(
         retrieval_count=len(hits),
         labels=[format_label(h) for h in hits],
     )
-    return evidence_text, available
+    return evidence_text, available, images
 
 
 def _trace_evidence_prompt(
@@ -556,6 +655,7 @@ class AskPrep:
     hits: list = field(default_factory=list)
     evidence_text: str = ""
     available: list[Citation] = field(default_factory=list)
+    page_images: list[PageImage] = field(default_factory=list)
     system: str = ""
     user_prompt: str = ""
 
@@ -670,7 +770,7 @@ def prepare_ask(
             _clarification_result(question, fit.clarify_question, assessment=assessment),
         )
 
-    evidence_text, available = _trace_evidence(
+    evidence_text, available, page_images = _trace_evidence(
         result.hits, query=question, manifest=manifest, appliance=appliance
     )
     assessment = apply_owner_evidence_policy(assessment, evidence_text)
@@ -691,6 +791,7 @@ def prepare_ask(
         hits=list(result.hits),
         evidence_text=evidence_text,
         available=available,
+        page_images=page_images,
         system=system,
         user_prompt=user_prompt,
     )
@@ -705,7 +806,7 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
         api_key=openai_api_key(), model=llm_model(), prompt_name="ask_system"
     )
     try:
-        raw = llm.complete(prep.system, prep.user_prompt)
+        raw = invoke_complete(llm, prep.system, prep.user_prompt, prep.page_images)
     except (LLMError, LLMTimeoutError) as exc:
         _log.warning("Generation failed; returning retrieved evidence instead: %s", exc)
         return _degraded_answer(
@@ -805,7 +906,7 @@ def stream_from_prep(
     )
     stream_tokens = may_stream(prep.assessment)
     try:
-        raw = "".join(client.stream(prep.system, prep.user_prompt)).strip()
+        raw = "".join(invoke_stream(client, prep.system, prep.user_prompt, prep.page_images)).strip()
     except (LLMError, LLMTimeoutError) as exc:
         _log.warning("Streamed generation failed; returning evidence: %s", exc)
         degraded = _degraded_answer(

@@ -29,14 +29,17 @@ from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.prompts import diagnose_system
 from repair_assistant.qa.acks import ORPHAN_ACK_IN_DIAGNOSE, is_ack_only_message
 from repair_assistant.qa.context import format_evidence, resolve_citations
-from repair_assistant.qa.env import llm_model, openai_api_key
+from repair_assistant.qa.env import llm_model, llm_vision_model, openai_api_key
 from repair_assistant.qa.generate import (
     LLMClient,
     OpenAIClient,
     _trace_evidence_prompt,
     _trace_gate,
+    invoke_complete,
+    invoke_stream,
     iter_answer_tokens,
 )
+from repair_assistant.qa.page_images import PageImageSpec, attach_gated_images, raster_page_images
 from repair_assistant.qa.parts import related_parts_note
 from repair_assistant.qa.structured import (
     bind_generation,
@@ -293,6 +296,7 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 "retrieval_count": 0,
                 "abstained": False,
                 "abstain_reason": "orphan_ack",
+                "figure_pages": [],
             }
 
         query = _retrieval_query(state["messages"])
@@ -322,8 +326,16 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 "retrieval_count": 0,
                 "abstained": True,
                 "abstain_reason": "No matching manufacturer evidence for this question.",
+                "figure_pages": [],
             }
         evidence_text, citations = format_evidence(result.hits, manifest=manifest)
+        evidence_text, citations, images = attach_gated_images(
+            result.hits,
+            citations,
+            evidence_text,
+            manifest,
+            enabled=bool(llm_vision_model()),
+        )
         parts = related_parts_note(result.hits, manifest, appliance)
         if parts:
             evidence_text = f"{evidence_text}\n\n{parts}"
@@ -335,6 +347,10 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
             "abstained": False,
             "abstain_reason": "",
             "evidence_blocks": {c.index: (c.block_text or c.excerpt or "") for c in citations},
+            "figure_pages": [
+                {"index": img.index, "doc_id": img.doc_id, "page": img.page}
+                for img in images
+            ],
         }
 
     return retrieve
@@ -350,7 +366,26 @@ def _maybe_orphan_ack_reply(state: DiagnosticGraphState) -> dict | None:
     return None
 
 
-def make_respond_node(llm: LLMClient):
+def _page_images_for_state(
+    state: DiagnosticGraphState, manifest: Manifest | None
+) -> list:
+    if manifest is None or not llm_vision_model():
+        return []
+    specs = []
+    for row in state.get("figure_pages") or []:
+        if not isinstance(row, dict) or not row.get("doc_id") or not row.get("page"):
+            continue
+        specs.append(
+            PageImageSpec(
+                index=int(row["index"]),
+                doc_id=str(row["doc_id"]),
+                page=int(row["page"]),
+            )
+        )
+    return raster_page_images(specs, manifest)
+
+
+def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
     def respond(state: DiagnosticGraphState) -> dict:
         orphan = _maybe_orphan_ack_reply(state)
         if orphan is not None:
@@ -400,7 +435,8 @@ def make_respond_node(llm: LLMClient):
             mid_cycle_followup=is_mid_cycle_stop_query(latest),
             board_text=_prompt_board_text(state),
         )
-        raw = llm.complete(system, user_prompt)
+        images = _page_images_for_state(state, manifest)
+        raw = invoke_complete(llm, system, user_prompt, images)
         available = list(state.get("citations_available") or [])
         bound = bind_generation(raw, available)
         if bound.abstained:
@@ -408,12 +444,14 @@ def make_respond_node(llm: LLMClient):
             if is_ack_only_message(latest) and state.get("evidence_text") and _has_prior_assistant(
                 state["messages"]
             ):
-                raw = llm.complete(
+                raw = invoke_complete(
+                    llm,
                     system
                     + "\n\nCRITICAL: The user confirmed prior checks passed. "
                     "Do NOT abstain. Acknowledge briefly and give the next "
                     "checklist category with [n] citations.",
                     user_prompt,
+                    images,
                 )
                 bound = bind_generation(raw, available)
             if bound.abstained:
@@ -580,7 +618,8 @@ def diagnose_turn_stream(
 
     # ADR-0028: buffer the structured completion, gate the rendered answer,
     # then emit prose. JSON tokens never reach the client (R1 / ADR-0026).
-    raw = "".join(client.stream(system, user_prompt)).strip()
+    images = _page_images_for_state(state, manifest)
+    raw = "".join(invoke_stream(client, system, user_prompt, images)).strip()
     available = list(state.get("citations_available") or [])
     bound = bind_generation(raw, available)
 
@@ -591,7 +630,7 @@ def diagnose_turn_stream(
             "Do NOT abstain. Acknowledge briefly and give the next "
             "checklist category with [n] citations."
         )
-        raw = "".join(client.stream(retry_system, user_prompt)).strip()
+        raw = "".join(invoke_stream(client, retry_system, user_prompt, images)).strip()
         bound = bind_generation(raw, available)
 
     stream_tokens = not ack_followup and may_stream(assessment)
@@ -652,9 +691,13 @@ def retrieve_diagnose_state(
     return _apply_delta(state, retrieve(state)), True
 
 
-def respond_diagnose_state(state: DiagnosticGraphState, llm: LLMClient) -> DiagnosticGraphState:
+def respond_diagnose_state(
+    state: DiagnosticGraphState,
+    llm: LLMClient,
+    manifest: Manifest | None = None,
+) -> DiagnosticGraphState:
     """Generate the assistant turn. Must not be called while holding a pool connection."""
-    return _apply_delta(state, make_respond_node(llm)(state))
+    return _apply_delta(state, make_respond_node(llm, manifest)(state))
 
 
 def _route_after_assess(state: DiagnosticGraphState) -> str:
@@ -678,7 +721,7 @@ def build_diagnostic_graph(
     graph.add_node("assess", make_assess_node())  # regex-only unless a classifier is wired
     graph.add_node("blocked", make_blocked_node())
     graph.add_node("retrieve", make_retrieve_node(db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch))
-    graph.add_node("respond", make_respond_node(llm))
+    graph.add_node("respond", make_respond_node(llm, manifest))
     graph.add_edge(START, "assess")
     graph.add_conditional_edges("assess", _route_after_assess, {"blocked": "blocked", "retrieve": "retrieve"})
     graph.add_edge("blocked", END)

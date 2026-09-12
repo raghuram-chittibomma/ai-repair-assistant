@@ -13,6 +13,11 @@ FIGURE_UNREADABLE_NOTE = (
     "Note: this assistant cannot read figures or wiring diagrams. "
     "If a cited procedure refers to a figure, consult that graphic in the source document."
 )
+FIGURE_ATTACHED_NOTE = (
+    "Note: a page image is attached for one or more evidence blocks that "
+    "cite a figure. Use the image for location and orientation only; cite [n]; "
+    "do not invent pin numbers, voltages, or hold times that are not in the text block."
+)
 
 _CITE_REF = re.compile(r"\[(\d+)\]")
 
@@ -147,6 +152,7 @@ def format_evidence(
     query: str = "",
     max_chars: int = 12_000,
     manifest=None,
+    attached_indexes: set[int] | frozenset[int] | None = None,
 ) -> tuple[str, list[Citation]]:
     """Numbered evidence blocks for the LLM prompt."""
     blocks: list[str] = []
@@ -175,7 +181,14 @@ def format_evidence(
     body = wrap_evidence("\n\n".join(blocks))
     cited_hits = hits[: len(citations)]
     notes: list[str] = []
-    if any(evidence_cites_unread_figure(h.text) for h in cited_hits):
+    attached = {int(i) for i in (attached_indexes or ())}
+    if attached:
+        notes.append(FIGURE_ATTACHED_NOTE)
+    unread_missing = any(
+        evidence_cites_unread_figure(hit.text) and cite.index not in attached
+        for cite, hit in zip(citations, cited_hits, strict=False)
+    )
+    if unread_missing:
         notes.append(FIGURE_UNREADABLE_NOTE)
     if manifest is not None:
         stale = newer_revision_note(cited_hits, manifest)

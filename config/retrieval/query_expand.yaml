@@ -3,6 +3,8 @@
 # when_user_says: everyday wording a customer might type.
 # add_to_search: words that already appear in a manual or tech sheet.
 #   Do not invent OEM-sounding phrases. If it is not in the literature, leave it out.
+#   Not a slang dictionary (ADR-0034). Do not add they / stopping / halfway rows
+#   so regex can do diagnose NLU.
 # seen_in: optional publication numbers, for the next editor.
 #
 # phrase_pairs: optional shortcut. Matches a word from `from` followed by a

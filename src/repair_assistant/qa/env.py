@@ -33,6 +33,28 @@ def llm_model() -> str:
     return os.environ.get("LLM_MODEL", DEFAULT_LLM_MODEL).strip()
 
 
+def model_supports_vision(model: str) -> bool:
+    """True for dated OpenAI snapshots that accept image_url parts."""
+    name = (model or "").strip().lower()
+    return any(token in name for token in ("gpt-4o", "gpt-4.1", "gpt-5"))
+
+
+def llm_vision_model() -> str | None:
+    """Dated vision snapshot for gated page rasters (ADR-0035).
+
+    ``LLM_VISION_MODEL`` wins when set. Otherwise reuse ``LLM_MODEL`` only if
+    it is vision-capable. Never invent a floating alias.
+    """
+    load_dotenv_files()
+    explicit = os.environ.get("LLM_VISION_MODEL", "").strip()
+    if explicit:
+        return explicit
+    model = llm_model()
+    if model_supports_vision(model):
+        return model
+    return None
+
+
 def judge_llm_model() -> str:
     """Model for `--judge` / calibration. Defaults off the generator (ADR-0033)."""
     load_dotenv_files()

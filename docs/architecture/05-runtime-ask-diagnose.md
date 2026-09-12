@@ -69,8 +69,12 @@ flowchart TD
 - **Citations:** from `claims[].evidence_index`, with `[n]` in prose as fallback.
 - **Groundedness:** `bench-qa` scores each claim against its evidence block
   ([ADR-0029](../adr/0029-claim-groundedness.md)). The judge sees those blocks.
+- **Page images:** When a hit is a figure / schematic / photo-access page or
+  cites a figure, and a vision-capable dated model is configured, attach up
+  to three PDF page JPEGs at generate time ([ADR-0035](../adr/0035-late-fusion-page-images.md)).
+  Retrieval stays BGE. Missing PDF keeps the unread-figure note.
 
-**Modules:** `qa/generate.py`, `qa/context.py`, `qa/structured.py`, `api/app.py`
+**Modules:** `qa/generate.py`, `qa/context.py`, `qa/page_images.py`, `qa/structured.py`, `api/app.py`
 
 ## Diagnose (multi-turn LangGraph)
 
@@ -97,9 +101,10 @@ flowchart TD
 | --- | --- |
 | `assess` | Pre-LLM safety; block skips retrieve/LLM |
 | `retrieve` | `search()` on a built query: skip ack-only turns; if the latest turn is a mid-cycle / no-code stop and the session anchor is not, use that turn alone; else recent substantive user turns; prepend session error codes |
-| `respond` | Multi-turn system prompt, citations, post-LLM `gate_answer` |
+| `respond` | Multi-turn system prompt, citations, optional gated page images, post-LLM `gate_answer` |
 
 - **State:** Messages, appliance, evidence, citation pool, abstain / escalate flags ([ADR-0013](../adr/0013-langgraph-diagnostic.md)), plus an inspectable board (`step`, `phase`, `hypotheses`, `ruled_out`, `observations`) that is merged each turn and injected into the prompt ([ADR-0031](../adr/0031-structured-diagnostic-state.md)). On an acknowledgement, merge also records the prior `next_check` and numbered checklist lines as `ruled_out` when the model omits them.
+- **NLU vs protocol:** Rules own the board, safety, applicability, and which OEM phrases may be appended. Regex/YAML still build today's retrieve query (`acks.py`, `query_expand.yaml`, `_retrieval_query`). That is the wrong slot for language understanding. Do not grow slang rows or a rule-only flowchart. A later closed-set intent step (labels → family search) is the accepted R18 reading and is **not implemented** ([ADR-0034](../adr/0034-diagnose-nlu-split.md)).
 - **Session:** In-memory `SessionStore` with TTL and max sessions — not durable across API restart ([ADR-0021](../adr/0021-api-hardening-embedder-sessions.md)).
 - **API:** `POST /v1/diagnose`, `/v1/diagnose/stream` with `session_id` ([ADR-0016](../adr/0016-http-api-docker.md)).
 

@@ -15,8 +15,13 @@ S6 landed (non-ranking): **R23** structured claims, **R27** claim groundedness,
 **R31** diagnose board, **R3** safety union, **R30** judge diversity,
 **R43**, ADR-0025 detectors, **R19**, **R25** transcript window, **R42**
 parts-list linkage, **R2** audience attestation, **R44** trace governance.
-**R41** feedback UI is deferred. Ranking items **R11** / **R18** / **R20** /
-**R22** wait after the S5 reject.
+**R41** feedback UI is deferred. Ranking items **R11** / **R20** /
+**R22** wait after the S5 reject. **R18** is recorded as closed-set diagnose
+intent, not free query rewrite or more synonym regex
+([ADR-0034](adr/0034-diagnose-nlu-split.md)); that slice is not started.
+**R33** honesty note remains when the PDF is missing; gated page rasters
+attach at generate time when a vision model is available
+([ADR-0035](adr/0035-late-fusion-page-images.md)).
 
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)
@@ -177,7 +182,7 @@ recorded in the deferral ADR with a reopen trigger.
 | R15 | Accept | S3 | Trigram GIN index for the side-door recall paths |
 | R16 | Accept | S3 | Startup + ingest assertion; `ingest --force` as the documented migration |
 | R17 | Accept | S4 | Deliberately *after* S4 — the threshold is a tuned constant |
-| R18 | Accept (ADR-first) | S6 | Query rewriting; also the honest fix for R22 |
+| R18 | Accept (ADR-first) | S6 | Closed-set diagnose intent ([ADR-0034](adr/0034-diagnose-nlu-split.md)); not free rewrite; not started |
 | R19 | Accept | S7 | Drift check ("a newer publication references this one") + staleness signal. Tooling is R47 |
 | R20 | Accept | S6 | Platform, region, effective date, software version — data is already in the manifest |
 | R21 | Accept | S5 | Same accretion as R13; remove alongside it |
@@ -192,7 +197,7 @@ recorded in the deferral ADR with a reopen trigger.
 | R30 | Reduce | S7 | Judge-model diversity and abstention achievable; agreement statistics blocked |
 | R31 | Accept (ADR-first) | S7 | Structured state unblocks trajectory evals and gap #7 in the eval audit |
 | R32 | Defer | ADR-0025 | Already deferred in ADR-0021; ADR-0025 adds the trigger and a worker-count detector |
-| R33 | Accept | S7 | Promoted from P4. Figure classification + honest note; OCR stays deferred per ADR-0024 |
+| R33 | Accept | S7 | Figure classification + honest note; gated page rasters at generate time ([ADR-0035](adr/0035-late-fusion-page-images.md)); OCR still deferred |
 | R34 | Reframe | S7 | Serving Spanish is a non-goal; stop paying the index cost for content with no product value |
 | R35 | Accept | S3 | Release the connection before generation |
 | R36 | Accept | S1 | Retry with backoff, full error taxonomy, retrieval-only degraded mode, stop echoing `str(exc)` |
@@ -269,14 +274,15 @@ literals stay. A larger CrossEncoder is a new experiment, not this slice.
 
 `R23` structured claim→evidence output ([ADR-0028](adr/0028-structured-claim-evidence.md)) ·
 `R27` claim groundedness ([ADR-0029](adr/0029-claim-groundedness.md)) · `R11`
-applicability pre-filter with `R20`'s remaining four axes · `R18` query rewriting,
-which permits removing `R22`'s coercion · `R24` prompt version stamps
+applicability pre-filter with `R20`'s remaining four axes · `R18` closed-set
+diagnose intent ([ADR-0034](adr/0034-diagnose-nlu-split.md); not started;
+not unconstrained rewrite) · `R24` prompt version stamps
 ([ADR-0030](adr/0030-prompt-version-stamps.md)) · `R25`
 transcript windowing.
 
 ### S7 — honesty, product signal, and the deferral record
 
-`R33` figure honesty · `R34` non-English as a non-goal · `R41` feedback capture ·
+`R33` figure honesty + gated page rasters ([ADR-0035](adr/0035-late-fusion-page-images.md)) · `R34` non-English as a non-goal · `R41` feedback capture ·
 `R43` token usage · `R44` trace governance · `R19` precedence drift check ·
 `R31` structured diagnostic state ([ADR-0031](adr/0031-structured-diagnostic-state.md)) · `R2` audience claim logging · `R3` safety
 defence in depth ([ADR-0032](adr/0032-safety-classifier-union.md)) · `R30` judge diversity

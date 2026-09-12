@@ -32,6 +32,7 @@ class DiagnosticGraphState(TypedDict):
     escalated: bool
     claims: NotRequired[list[dict]]
     evidence_blocks: NotRequired[dict[int, str]]
+    figure_pages: NotRequired[list[dict]]
     diagnostic: NotRequired[dict]
 
 

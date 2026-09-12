@@ -10,5 +10,6 @@ alwaysApply: false
 - `mine-traces` writes at most `evals/qa/drafts/mine-report-*.md` (or stdout). No draft YAML on disk, no `query_expand.yaml` rows, no live fixture edits.
 - `evals/retrieval/drafts/` is gitignored local scratch. Do not promote it as the S4 held-out set.
 - Retrieval release gate is pass/fail on hard fixtures. IR metrics (Hit@K, MRR, nDCG, latency) compare strategies; they do not replace the corpus cases.
+- A later diagnose closed-set intent slice ([ADR-0034](docs/adr/0034-diagnose-nlu-split.md)) must move `mid-cycle-stop-diag-entry` and the poor-wash fixtures before changing `_retrieval_query`.
 - Layout pack: `repair-corpus bench-layout` against `corpus/parsed/<doc>/chunks.jsonl` → `evals/parsing/results/layout-pack.md`.
 - Safety: regex remains the CI gate. Optional classifier may only raise severity ([ADR-0032](docs/adr/0032-safety-classifier-union.md)).

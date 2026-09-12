@@ -1,0 +1,12 @@
+---
+description: Diagnose NLU vs protocol — do not grow regex or a flowchart agent
+globs: src/repair_assistant/diagnostic/**/*.py,src/repair_assistant/qa/acks.py,src/repair_assistant/prompts/diagnose_system.txt,config/retrieval/query_expand.yaml
+alwaysApply: false
+---
+
+# Diagnose loop
+
+- **Rules own protocol and evidence:** board merge, safety, applicability, which OEM phrases may be appended ([ADR-0031](docs/adr/0031-structured-diagnostic-state.md), [ADR-0034](docs/adr/0034-diagnose-nlu-split.md)).
+- **Do not** add `when_user_says` slang so search can understand the user. **Do not** replace diagnose with a rule-only expert-system tree.
+- **Do not** implement unconstrained query rewrite. R18, when opened, is closed-set labels (`ack`, `mid_cycle_stop`, `poor_wash`, …) that pick a retrieve **family**; `add_to_search` stays literature text. Not started — owner must ask, then measure `mid-cycle-stop-diag-entry` and poor-wash fixtures.
+- Today's `_retrieval_query` still uses `acks.py` and YAML matchers. That is acknowledged, not a licence to grow detectors. The LLM writes the next step from retrieved chunks; it does not invent search words.

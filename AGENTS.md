@@ -25,7 +25,8 @@ local BGE embeddings). Manufacturer PDFs stay out of git.
 ## Standing product freeze
 
 Encoded in `.cursor/rules/standing-decisions.mdc`. In short: keep
-`vector_apply_boost`; do not start R11/R18/R20/R22 ranking or R41 feedback UI;
+`vector_apply_boost`; do not start R11/R20/R22 ranking or R41 feedback UI;
+R18 waits as closed-set diagnose intent ([ADR-0034](docs/adr/0034-diagnose-nlu-split.md)), not slang YAML or a rule-only agent;
 do not invent a held-out retrieval set; do not grow `query_expand.yaml` as
 slang; `mine-traces` reports only.
 

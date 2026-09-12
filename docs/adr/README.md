@@ -61,6 +61,8 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0013](0013-langgraph-diagnostic.md) | LangGraph retrieve→respond per turn; CLI REPL; smoke scenarios | Charter Phase 7 |
 | [0031](0031-structured-diagnostic-state.md) | Session board: step, phase, hypotheses, ruled-out, observations | Review R31 |
+| [0034](0034-diagnose-nlu-split.md) | Rules own protocol; LLM owns closed-set labels later — no slang YAML, no rule-only agent, no free query rewrite | Review R18 reading |
+| [0035](0035-late-fusion-page-images.md) | Gated page rasters at generate time; BGE retrieval unchanged; image embeddings deferred | Review R33 follow-on |
 
 ## Phase 7 — Safety and escalation
 
