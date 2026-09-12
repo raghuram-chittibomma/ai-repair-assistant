@@ -120,6 +120,15 @@ def _ingest_one(
                 embedded=embedded,
                 detail="fingerprint unchanged; filled missing embeddings",
             )
+        meta_updated = db.update_chunk_metadata(parsed.doc_id, parsed.chunks)
+        if meta_updated:
+            return DocIngestStats(
+                doc_id=parsed.doc_id,
+                status="upserted",
+                chunks=len(parsed.chunks),
+                embedded=0,
+                detail=f"fingerprint unchanged; updated metadata on {meta_updated} chunks",
+            )
         return DocIngestStats(
             doc_id=parsed.doc_id,
             status="skipped",

@@ -17,10 +17,13 @@ from repair_assistant.qa.generate import build_chat_messages, invoke_complete, m
 from repair_assistant.qa.page_images import (
     PageImage,
     PageImageSpec,
+    citation_public_dict,
     document_pdf_path,
+    figure_page_payloads,
     hit_needs_page_image,
     plan_page_images,
     raster_pdf_page,
+    safe_doc_id,
 )
 from repair_assistant.retrieval.search import Hit
 
@@ -159,3 +162,43 @@ def test_raster_pdf_page_writes_cache(tmp_path: Path) -> None:
 def test_page_image_spec_is_plain() -> None:
     spec = PageImageSpec(index=2, doc_id="doc", page=8)
     assert spec.index == 2
+
+
+def test_figure_page_payloads_dedupes_and_rejects_unsafe_ids() -> None:
+    rows = [
+        {"index": 1, "doc_id": "service-manual-w11169652-revb", "page": 48},
+        {"index": 2, "doc_id": "service-manual-w11169652-revb", "page": 48},
+        {"index": 3, "doc_id": "../secret", "page": 1},
+        {"index": 4, "doc_id": "ok-doc", "page": 0},
+    ]
+    out = figure_page_payloads(rows)
+    assert out == [
+        {
+            "index": 1,
+            "doc_id": "service-manual-w11169652-revb",
+            "page": 48,
+            "url": "/v1/documents/service-manual-w11169652-revb/pages/48/image",
+        }
+    ]
+    assert safe_doc_id("../secret") is None
+    assert safe_doc_id("service-manual-w11169652-revb") == "service-manual-w11169652-revb"
+
+
+def test_citation_public_dict_adds_url_and_bbox() -> None:
+    from repair_assistant.qa.context import Citation
+
+    cite = Citation(
+        index=1,
+        doc_id="tech-sheet-w11320651",
+        chunk_id="p8",
+        label="W11320651 p.8",
+        page=8,
+        excerpt="F5E2",
+        bbox={"x0": 1, "y0": 2, "x1": 3, "y1": 4},
+        page_width=612,
+        page_height=792,
+    )
+    payload = citation_public_dict(cite)
+    assert payload["url"] == "/v1/documents/tech-sheet-w11320651/pages/8/image"
+    assert payload["bbox"]["x0"] == 1
+    assert payload["page_width"] == 612.0

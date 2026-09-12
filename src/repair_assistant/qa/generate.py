@@ -28,7 +28,7 @@ from repair_assistant.observability.langfuse_tracing import (
     usage_from_openai,
 )
 from repair_assistant.prompts import ask_system, prompt_stamp, runtime_prompt_digest
-from repair_assistant.qa.acks import ACK_IN_ASK_MODE, is_ack_only_message
+from repair_assistant.qa.acks import ACK_IN_ASK_MODE, is_progress_followup
 from repair_assistant.qa.context import (
     AnswerResult,
     Citation,
@@ -267,6 +267,10 @@ class OpenAIClient:
             return self.response_format
         if self.prompt_name == "diagnose_system":
             return DIAGNOSE_RESPONSE_FORMAT
+        if self.prompt_name == "diagnose_intent":
+            from repair_assistant.qa.structured import DIAGNOSE_INTENT_RESPONSE_FORMAT
+
+            return DIAGNOSE_INTENT_RESPONSE_FORMAT
         if self.prompt_name == "judge_system":
             from repair_assistant.eval.llm_judge import JUDGE_RESPONSE_FORMAT
 
@@ -711,7 +715,7 @@ def prepare_ask(
             _unsupported_appliance_answer(question, appliance, assessment=assessment),
         )
 
-    if is_ack_only_message(question):
+    if is_progress_followup(question):
         return _early_prep(
             question,
             appliance,
@@ -832,6 +836,7 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
             safety_action=prep.assessment.action.value,
             safety_notice=prep.assessment.reason,
             escalated=False,
+            figure_pages=_figure_specs(prep),
         )
 
     gated = _trace_gate(prep.assessment, bound.display, prep.evidence_text)
@@ -848,6 +853,7 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
         safety_action=gated.action.value,
         safety_notice=gated.notice,
         escalated=gated.escalated,
+        figure_pages=_figure_specs(prep),
     )
 
 
@@ -865,7 +871,16 @@ def iter_answer_tokens(assessment, text: str, *, chunk: int = 24) -> Iterator[st
         yield tail
 
 
+def _figure_specs(prep: AskPrep) -> list[dict]:
+    return [
+        {"index": img.index, "doc_id": img.doc_id, "page": img.page}
+        for img in prep.page_images
+    ]
+
+
 def _answer_result_to_done(result: AnswerResult) -> dict[str, Any]:
+    from repair_assistant.qa.page_images import citation_public_dict, figure_page_payloads
+
     return {
         "type": "done",
         "question": result.question,
@@ -873,21 +888,13 @@ def _answer_result_to_done(result: AnswerResult) -> dict[str, Any]:
         "abstained": result.abstained,
         "abstain_reason": result.abstain_reason,
         "abstain_code": result.abstain_code,
-        "citations": [
-            {
-                "index": c.index,
-                "doc_id": c.doc_id,
-                "chunk_id": c.chunk_id,
-                "label": c.label,
-                "page": c.page,
-            }
-            for c in result.citations
-        ],
+        "citations": [citation_public_dict(c) for c in result.citations],
         "claims": claims_as_dicts(list(result.claims or [])),
         "retrieval_count": result.retrieval_count,
         "safety_action": result.safety_action,
         "safety_notice": result.safety_notice,
         "escalated": result.escalated,
+        "figure_pages": figure_page_payloads(result.figure_pages),
     }
 
 
@@ -935,6 +942,7 @@ def stream_from_prep(
                 safety_action=prep.assessment.action.value,
                 safety_notice=prep.assessment.reason,
                 escalated=False,
+                figure_pages=_figure_specs(prep),
             )
         )
         return
@@ -956,6 +964,7 @@ def stream_from_prep(
             safety_action=gated.action.value,
             safety_notice=gated.notice,
             escalated=gated.escalated,
+            figure_pages=_figure_specs(prep),
         )
     )
 

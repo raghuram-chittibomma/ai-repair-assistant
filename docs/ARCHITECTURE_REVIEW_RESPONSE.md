@@ -18,10 +18,21 @@ parts-list linkage, **R2** audience attestation, **R44** trace governance.
 **R41** feedback UI is deferred. Ranking items **R11** / **R20** /
 **R22** wait after the S5 reject. **R18** is recorded as closed-set diagnose
 intent, not free query rewrite or more synonym regex
-([ADR-0034](adr/0034-diagnose-nlu-split.md)); that slice is not started.
+([ADR-0034](adr/0034-diagnose-nlu-split.md)); retrieve-time labels
+landed in [ADR-0039](adr/0039-diagnose-retrieve-labels.md). Free rewrite
+stays forbidden.
 **R33** honesty note remains when the PDF is missing; gated page rasters
 attach at generate time when a vision model is available
-([ADR-0035](adr/0035-late-fusion-page-images.md)).
+([ADR-0035](adr/0035-late-fusion-page-images.md)). The same rasters are
+shown in `/ui` so the operator can cross-check the drawing
+([ADR-0036](adr/0036-ui-source-page-images.md)). Table-row citations can
+highlight the matched row on that page
+([ADR-0037](adr/0037-table-row-highlight.md)). Prose, procedure, and heading
+cites can highlight a unique one-cluster word-span
+([ADR-0038](adr/0038-paragraph-highlight.md)). Guide #1 title-case anchors
+and same-problem checklist coalesce are
+[ADR-0042](adr/0042-guide1-anchor-and-checklist-coalesce.md) (not a ranking
+change).
 
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)
@@ -182,7 +193,7 @@ recorded in the deferral ADR with a reopen trigger.
 | R15 | Accept | S3 | Trigram GIN index for the side-door recall paths |
 | R16 | Accept | S3 | Startup + ingest assertion; `ingest --force` as the documented migration |
 | R17 | Accept | S4 | Deliberately *after* S4 — the threshold is a tuned constant |
-| R18 | Accept (ADR-first) | S6 | Closed-set diagnose intent ([ADR-0034](adr/0034-diagnose-nlu-split.md)); not free rewrite; not started |
+| R18 | Accept (ADR-first) | S6 | Closed-set diagnose intent ([ADR-0034](adr/0034-diagnose-nlu-split.md)); retrieve-time labels ([ADR-0039](adr/0039-diagnose-retrieve-labels.md)); not free rewrite |
 | R19 | Accept | S7 | Drift check ("a newer publication references this one") + staleness signal. Tooling is R47 |
 | R20 | Accept | S6 | Platform, region, effective date, software version — data is already in the manifest |
 | R21 | Accept | S5 | Same accretion as R13; remove alongside it |
@@ -197,7 +208,7 @@ recorded in the deferral ADR with a reopen trigger.
 | R30 | Reduce | S7 | Judge-model diversity and abstention achievable; agreement statistics blocked |
 | R31 | Accept (ADR-first) | S7 | Structured state unblocks trajectory evals and gap #7 in the eval audit |
 | R32 | Defer | ADR-0025 | Already deferred in ADR-0021; ADR-0025 adds the trigger and a worker-count detector |
-| R33 | Accept | S7 | Figure classification + honest note; gated page rasters at generate time ([ADR-0035](adr/0035-late-fusion-page-images.md)); OCR still deferred |
+| R33 | Accept | S7 | Figure classification + honest note; gated page rasters at generate time ([ADR-0035](adr/0035-late-fusion-page-images.md)); `/ui` shows those pages ([ADR-0036](adr/0036-ui-source-page-images.md)); table-row overlay ([ADR-0037](adr/0037-table-row-highlight.md)); unique prose/procedure/heading word-span overlay ([ADR-0038](adr/0038-paragraph-highlight.md)); Guide #1 title-case + checklist coalesce ([ADR-0042](adr/0042-guide1-anchor-and-checklist-coalesce.md)); OCR still deferred |
 | R34 | Reframe | S7 | Serving Spanish is a non-goal; stop paying the index cost for content with no product value |
 | R35 | Accept | S3 | Release the connection before generation |
 | R36 | Accept | S1 | Retry with backoff, full error taxonomy, retrieval-only degraded mode, stop echoing `str(exc)` |
@@ -275,8 +286,8 @@ literals stay. A larger CrossEncoder is a new experiment, not this slice.
 `R23` structured claim→evidence output ([ADR-0028](adr/0028-structured-claim-evidence.md)) ·
 `R27` claim groundedness ([ADR-0029](adr/0029-claim-groundedness.md)) · `R11`
 applicability pre-filter with `R20`'s remaining four axes · `R18` closed-set
-diagnose intent ([ADR-0034](adr/0034-diagnose-nlu-split.md); not started;
-not unconstrained rewrite) · `R24` prompt version stamps
+diagnose intent ([ADR-0034](adr/0034-diagnose-nlu-split.md);
+[ADR-0039](adr/0039-diagnose-retrieve-labels.md); not unconstrained rewrite) · `R24` prompt version stamps
 ([ADR-0030](adr/0030-prompt-version-stamps.md)) · `R25`
 transcript windowing.
 

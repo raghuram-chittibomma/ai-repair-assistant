@@ -12,13 +12,15 @@ import re
 
 from .error_codes import extract_error_codes
 from .language import is_index_language
-from .models import Chunk, ExtractedDocument, Table
+from .models import Chunk, ExtractedDocument, ExtractedPage, Table, TableRow
 from .page_classify import (
     looks_like_figure_page,
     looks_like_junk_table,
     looks_like_schematic_page,
 )
+from .prose_bbox import attach_prose_layout, attach_table_row_prose_layout
 from .pua import map_pua, split_list_items
+from .table_bbox import layout_metadata
 from .table_context import (
     ColumnMap,
     ContextualTableRow,
@@ -274,6 +276,7 @@ def _structured_chunks(
                     page=page.number,
                     extractor=document.extractor,
                     guide_title=extract_guide_title(prose_text),
+                    extracted_page=page,
                 )
             )
             page_matrix_rows = len(chunks) - before
@@ -332,6 +335,7 @@ def _structured_chunks(
                 meta["doc_title"] = doc_title
             if doc_type:
                 meta["doc_type"] = doc_type
+            attach_prose_layout(meta, page, body)
             chunks.append(
                 _make_chunk(
                     text=text,
@@ -409,6 +413,7 @@ def _chunks_from_table(
             meta["doc_title"] = doc_title
         if doc_type:
             meta["doc_type"] = doc_type
+        meta.update(layout_metadata(row, table))
         chunks.append(
             _make_chunk(
                 text=text,
@@ -449,6 +454,7 @@ def _chunks_from_troubleshooting_table(
                 ctx,
                 col=col,
                 page=table.page,
+                table=table,
                 doc_id=doc_id,
                 publication_number=publication_number,
                 revision=revision,
@@ -475,6 +481,7 @@ def _chunks_from_troubleshooting_prose(
     page: int,
     extractor: str | None,
     guide_title: str = "",
+    extracted_page: ExtractedPage | None = None,
 ) -> list[Chunk]:
     """Fallback when extractors miss table boundaries on troubleshooting pages."""
     headers = ["Problem", "Possible cause", "Checks & tests"]
@@ -498,6 +505,7 @@ def _chunks_from_troubleshooting_prose(
                 doc_type=doc_type,
                 section=section,
                 extractor=extractor,
+                extracted_page=extracted_page,
             )
         )
     return chunks
@@ -516,6 +524,8 @@ def _chunk_from_matrix_row(
     doc_type: str | None,
     section: str | None,
     extractor: str | None,
+    table: Table | None = None,
+    extracted_page: ExtractedPage | None = None,
 ) -> Chunk:
     body = format_matrix_row_body(ctx, col)
     body = map_pua(body)
@@ -550,6 +560,22 @@ def _chunk_from_matrix_row(
         meta["doc_title"] = doc_title
     if doc_type:
         meta["doc_type"] = doc_type
+    if table is not None:
+        meta.update(
+            layout_metadata(TableRow(cells=ctx.cells, page=page, bbox=ctx.bbox), table)
+        )
+    elif extracted_page is not None and not meta.get("bbox"):
+        # No find_tables() grid (ADR-0037). Unique cell spans are the fallback
+        # (ADR-0038 matcher; short Guide #1 cells; does not invent a box).
+        checks = (ctx.cells[col.checks] if col.checks < len(ctx.cells) else "") or ""
+        cause = (ctx.cells[col.cause] if col.cause < len(ctx.cells) else "") or ""
+        attach_table_row_prose_layout(
+            meta,
+            extracted_page,
+            cause=cause.strip(),
+            checks=checks.strip(),
+            body=body,
+        )
     return _make_chunk(
         text=text,
         page=page,

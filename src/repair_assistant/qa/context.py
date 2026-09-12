@@ -22,6 +22,23 @@ FIGURE_ATTACHED_NOTE = (
 _CITE_REF = re.compile(r"\[(\d+)\]")
 
 
+def layout_from_hit(hit: Hit) -> tuple[dict | None, float | None, float | None]:
+    """Table-row bbox from chunk metadata; omit unless complete and sane."""
+    meta = getattr(hit, "metadata", None) or {}
+    raw = meta.get("bbox") if isinstance(meta, dict) else None
+    if not isinstance(raw, dict):
+        return None, None, None
+    try:
+        box = {key: float(raw[key]) for key in ("x0", "y0", "x1", "y1")}
+        width = float(meta["page_width"])
+        height = float(meta["page_height"])
+    except (KeyError, TypeError, ValueError):
+        return None, None, None
+    if box["x1"] <= box["x0"] or box["y1"] <= box["y0"] or width <= 0 or height <= 0:
+        return None, None, None
+    return box, width, height
+
+
 @dataclass(frozen=True)
 class Citation:
     index: int
@@ -31,6 +48,9 @@ class Citation:
     page: int | None
     excerpt: str
     block_text: str = ""
+    bbox: dict | None = None
+    page_width: float | None = None
+    page_height: float | None = None
 
 
 @dataclass
@@ -47,6 +67,7 @@ class AnswerResult:
     safety_action: str = "allow"
     safety_notice: str = ""
     escalated: bool = False
+    figure_pages: list[dict] = field(default_factory=list)
 
 
 def evidence_blocks_from_citations(citations: list[Citation]) -> dict[int, str]:
@@ -165,6 +186,7 @@ def format_evidence(
             break
         blocks.append(block)
         used += len(block)
+        bbox, page_width, page_height = layout_from_hit(hit)
         citations.append(
             Citation(
                 index=i,
@@ -174,6 +196,9 @@ def format_evidence(
                 page=hit.page,
                 excerpt=text[:280],
                 block_text=text,
+                bbox=bbox,
+                page_width=page_width,
+                page_height=page_height,
             )
         )
     if not blocks:

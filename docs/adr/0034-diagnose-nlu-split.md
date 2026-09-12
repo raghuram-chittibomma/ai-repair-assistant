@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted — review R18 reading. Does **not** implement R18. Does not change
-the production retrieve query builder in [ADR-0013](0013-langgraph-diagnostic.md).
+Accepted — review R18 reading. Application code is
+[ADR-0039](0039-diagnose-retrieve-labels.md). Free query rewrite stays
+rejected. Does not change the ask retrieve path.
 
 ## Context
 
@@ -59,18 +60,19 @@ mappings; it **is** those mappings for every symptom.
 5. **Rules keep** protocol and evidence: board merge, safety, applicability,
    which OEM phrases may be appended. [ADR-0031](0031-structured-diagnostic-state.md)
    still forbids a second planner LLM for the *board*.
-6. **No application code in this ADR.** Measure a later slice against
-   `mid-cycle-stop-diag-entry` and the poor-wash fixtures before changing
-   `_retrieval_query`.
+6. **Application code is [ADR-0039](0039-diagnose-retrieve-labels.md).**
+   Measure against `mid-cycle-stop-diag-entry` and
+   `f5e2-door-lock-still-unresolved`.
 
 **Charter:** evidence-driven architecture; no stack deviation. OpenAI stays
 LLM-only. No new required cloud dependency.
 
 ## Consequences
 
-- Current diagnose still uses `acks.py` and YAML matchers to build the
-  search query. That is acknowledged as the wrong NLU slot, not a licence
-  to add more synonym rows.
-- A later closed-set call is a retrieve-time label, not a board planner, and
-  needs its own bench before it ships.
+- Regex / `acks.py` remain the offline fallback when classify is unavailable.
+  That is not a licence to add more synonym rows as the product strategy.
+- Door unlock/lock polarity on the ask path is compositional
+  ([ADR-0040](0040-door-polarity-grammar.md)), not another `when_user_says`
+  contraction list.
+- The retrieve-time label is not a board planner ([ADR-0031](0031-structured-diagnostic-state.md)).
 - Ranking work R11 / R20 / R22 remains frozen.

@@ -9,6 +9,7 @@ from repair_assistant.qa.context import (
     citations_from_answer,
     format_evidence,
     format_label,
+    layout_from_hit,
     resolve_citations,
 )
 from repair_assistant.retrieval.search import Hit
@@ -114,3 +115,35 @@ def test_resolve_citations_falls_back_to_label_theme() -> None:
     # Explicit [n] still wins over theme matching
     with_marker = resolve_citations(f"{answer} [1]", available)
     assert [c.index for c in with_marker] == [1]
+
+
+def test_layout_from_hit_requires_complete_bbox() -> None:
+    ok = _hit(
+        metadata={
+            "bbox": {"x0": 10, "y0": 20, "x1": 200, "y1": 40},
+            "page_width": 612,
+            "page_height": 792,
+        }
+    )
+    box, width, height = layout_from_hit(ok)
+    assert box == {"x0": 10.0, "y0": 20.0, "x1": 200.0, "y1": 40.0}
+    assert width == 612.0
+    assert height == 792.0
+    empty, _, _ = layout_from_hit(_hit(metadata={"bbox": {"x0": 1, "y0": 1, "x1": 0, "y1": 2}}))
+    assert empty is None
+
+
+def test_format_evidence_copies_table_row_bbox() -> None:
+    _, citations = format_evidence(
+        [
+            _hit(
+                metadata={
+                    "bbox": {"x0": 8, "y0": 90, "x1": 400, "y1": 110},
+                    "page_width": 612,
+                    "page_height": 792,
+                }
+            )
+        ]
+    )
+    assert citations[0].bbox["y0"] == 90
+    assert citations[0].page_width == 612

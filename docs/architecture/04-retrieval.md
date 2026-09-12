@@ -13,6 +13,7 @@ flowchart TD
   apply[Applicability_filter]
   boost[Authority_boosts]
   diversify[Diversity_and_owner_prefer]
+  siblings[Same_problem_siblings]
   out[Ranked_hits]
 
   q --> plan
@@ -20,7 +21,8 @@ flowchart TD
   fetch --> apply
   apply --> boost
   boost --> diversify
-  diversify --> out
+  diversify --> siblings
+  siblings --> out
 ```
 
 - **Same embedder as ingest:** Query vectors use local `BAAI/bge-base-en-v1.5` ([ADR-0009](../adr/0009-local-open-embeddings.md), [ADR-0010](../adr/0010-retrieval-applicability.md)).
@@ -63,7 +65,7 @@ flowchart TD
 | `connector_fetch` | Exact connector IDs (e.g. J36) via text patterns |
 | `reference_fetch` / `manual_rev_fetch` | Publication / revision-aware pulls when the plan asks |
 
-**Modules:** `retrieval/planner.py`, `retrieval/intent.py`, `retrieval/query_expand.py`, `retrieval/search.py`. Phrase lists live in [`config/retrieval/query_expand.yaml`](../../config/retrieval/query_expand.yaml) — Python only loads and matches. `when_user_says` is everyday wording; `add_to_search` must already appear in the literature. Do not treat the file as a growing slang dictionary. Diagnose must not add unconstrained query rewrite; closed-set labels are the R18 reading and are not started ([ADR-0034](../adr/0034-diagnose-nlu-split.md)).
+**Modules:** `retrieval/planner.py`, `retrieval/intent.py`, `retrieval/query_expand.py`, `retrieval/polarity.py`, `retrieval/search.py`, `retrieval/siblings.py`. Door unlock/lock polarity is compositional (negation × lemma) after contraction fold ([ADR-0040](../adr/0040-door-polarity-grammar.md)). Unlock `add_to_search` is stuck-closed OEM only — no F5E2 / lock failure ([ADR-0041](../adr/0041-unlock-family-no-fault-code.md)). After rank, same-page `problem_title` siblings expand and coalesce into one evidence hit so `[n]` is the full on-page checklist — formatting, not a new boost ([ADR-0042](../adr/0042-guide1-anchor-and-checklist-coalesce.md)). Leftover idioms (`got locked`) live in [`config/retrieval/query_expand.yaml`](../../config/retrieval/query_expand.yaml). Do not grow contraction rows in `when_user_says`. Diagnose must not add unconstrained query rewrite ([ADR-0034](../adr/0034-diagnose-nlu-split.md), [ADR-0039](../adr/0039-diagnose-retrieve-labels.md)).
 
 ## Applicability, boosts, audience preference
 

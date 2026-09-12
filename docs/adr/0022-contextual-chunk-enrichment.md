@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted. The ALL-CAPS-only Guide #1 clause in decision 6 is superseded
+by [ADR-0042](0042-guide1-anchor-and-checklist-coalesce.md).
 
 ## Context
 

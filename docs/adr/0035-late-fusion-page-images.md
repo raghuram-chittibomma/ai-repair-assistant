@@ -3,6 +3,8 @@
 ## Status
 
 Accepted — review R33 follow-on. Does **not** supersede [ADR-0009](0009-local-open-embeddings.md).
+Decision 5 (UI thumbnails out of scope) is superseded by
+[ADR-0036](0036-ui-source-page-images.md).
 
 ## Context
 
@@ -32,8 +34,9 @@ figure, schematic, photo-access page, or cites an unread figure.
 4. **Claims stay text-bound** ([ADR-0029](0029-claim-groundedness.md)).
    Images are for location / orientation / which part in the photo. Do not
    invent pin numbers, voltages, or hold times from the picture alone.
-5. **Ask and diagnose** both attach gated images. UI thumbnails are out of
-   scope.
+5. **Ask and diagnose** both attach gated images. UI display of those
+   rasters is [ADR-0036](0036-ui-source-page-images.md) (this ADR originally
+   left thumbnails out of scope).
 
 ## Reopen (not this ADR)
 

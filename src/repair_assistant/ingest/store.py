@@ -64,6 +64,32 @@ class Database:
             return None
         return DocumentRow(doc_id=row[0], content_fingerprint=row[1], chunk_count=row[2])
 
+    def update_chunk_metadata(self, doc_id: str, chunks: Sequence[ParsedChunk]) -> int:
+        """Replace metadata when content_hash matches (bbox-only re-parse)."""
+        updated = 0
+        for chunk in chunks:
+            row = self.fetchone(
+                """
+                SELECT metadata FROM chunks
+                WHERE doc_id = %s AND chunk_id = %s AND content_hash = %s
+                """,
+                (doc_id, chunk.chunk_id, chunk.content_hash),
+            )
+            if row is None:
+                continue
+            existing = row[0] if isinstance(row[0], dict) else {}
+            if existing == chunk.metadata:
+                continue
+            self.execute(
+                """
+                UPDATE chunks SET metadata = %s::jsonb
+                WHERE doc_id = %s AND chunk_id = %s AND content_hash = %s
+                """,
+                (json.dumps(chunk.metadata), doc_id, chunk.chunk_id, chunk.content_hash),
+            )
+            updated += 1
+        return updated
+
     def existing_chunk_hashes(self, doc_id: str) -> dict[str, str]:
         """Map chunk_id → content_hash for a document."""
         rows = self.fetchall(

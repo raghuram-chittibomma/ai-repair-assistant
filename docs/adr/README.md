@@ -31,6 +31,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0007](0007-parser-and-chunker.md) | pdfplumber table engine + structured table-row chunking; pypdf fixed-size is the failing control | Tech-sheet error table and F6E1 binding measured in bake-off |
 | [0024](0024-hybrid-parse-architecture.md) | Hybrid page router (pdfplumber tables + layout prose); canonical tree; parse quality audit | Multi-column procedures; parser ≠ chunker |
 | [0022](0022-contextual-chunk-enrichment.md) | Contextual text enrichment + bounded chunk quality self-check | Opaque numeric rows; headers were metadata-only |
+| [0042](0042-guide1-anchor-and-checklist-coalesce.md) | Guide #1 anchors are title-case or ALL-CAPS; same-problem rows coalesce into one `[n]` | Title-case SM table; drip-fed reset row |
 
 ## Phase 3 — Ingestion
 
@@ -47,6 +48,9 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0011](0011-retrieval-bakeoff.md) | Bake-off confirms ADR-0010; lexical/hybrid not adopted yet | D4 experiments; F5E2 KB gap |
 | [0020](0020-hybrid-retrieval-retest.md) | Hybrid re-tested; default kept at **14/14** hard (product-class gate + synthetics) | Full-text arm still costs precision; boosts more load-bearing |
 | [0027](0027-cross-encoder-rerank.md) | **Rejected** — `bge-reranker-base` loses to `vector_apply_boost` (10/14, MRR 0.57, ~36 s mean) | Review R14 / S5 |
+| [0040](0040-door-polarity-grammar.md) | Door unlock/lock polarity is negation × lemma, not `when_user_says` contractions | `doesn't open` cited Door Won't Lock |
+| [0041](0041-unlock-family-no-fault-code.md) | Unlock retrieve is stuck-closed OEM; F5E2 is user-typed, not a polarity hint | Unlock expand fetched TEST #4 |
+| [0042](0042-guide1-anchor-and-checklist-coalesce.md) | Same-page `problem_title` siblings expand and coalesce into one citation (not a ranking constant) | Mid-table hit hid first remedies |
 
 ## Phase 5 — Grounded Q&A
 
@@ -61,7 +65,8 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0013](0013-langgraph-diagnostic.md) | LangGraph retrieve→respond per turn; CLI REPL; smoke scenarios | Charter Phase 7 |
 | [0031](0031-structured-diagnostic-state.md) | Session board: step, phase, hypotheses, ruled-out, observations | Review R31 |
-| [0034](0034-diagnose-nlu-split.md) | Rules own protocol; LLM owns closed-set labels later — no slang YAML, no rule-only agent, no free query rewrite | Review R18 reading |
+| [0034](0034-diagnose-nlu-split.md) | Rules own protocol; LLM owns closed-set labels — no slang YAML, no rule-only agent, no free query rewrite | Review R18 reading |
+| [0039](0039-diagnose-retrieve-labels.md) | Turn 2+ classify → rule-built query + same-doc stickiness | ADR-0034 opened with fixtures |
 | [0035](0035-late-fusion-page-images.md) | Gated page rasters at generate time; BGE retrieval unchanged; image embeddings deferred | Review R33 follow-on |
 
 ## Phase 7 — Safety and escalation
@@ -89,6 +94,9 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0016](0016-http-api-docker.md) | FastAPI `/v1/*`; optional API key; Dockerfile + Compose `api` service | Charter Phase 10 |
 | [0017](0017-web-ui-deploy-eval.md) | `/ui` web chat; `deploy-api.ps1`; `bench-candidates` + grading overlay | LAN product use |
+| [0036](0036-ui-source-page-images.md) | Chat UI shows the same gated page JPEG the model saw | Operator cross-check after ADR-0035 |
+| [0037](0037-table-row-highlight.md) | Click `[n]` to the page JPEG; overlay table-row bbox when matched | Dense tech-sheet rows |
+| [0038](0038-paragraph-highlight.md) | Overlay unique one-cluster prose / procedure / heading word-span | Procedure pages after ADR-0037 |
 
 ## Phase 10 — Product hardening
 

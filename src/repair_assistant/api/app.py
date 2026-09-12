@@ -28,6 +28,7 @@ from repair_assistant.api.schemas import (
     DiagnoseRequest,
     DiagnoseResponse,
     HealthResponse,
+    PageImageOut,
     ReadyResponse,
     SearchHitOut,
     SearchRequest,
@@ -64,6 +65,12 @@ from repair_assistant.qa.generate import (
     ask_stream,
     complete_ask,
     prepare_ask,
+)
+from repair_assistant.qa.page_images import (
+    citation_public_dict,
+    ensure_page_raster,
+    figure_page_payloads,
+    safe_doc_id,
 )
 from repair_assistant.retrieval.search import search
 from repair_assistant.safety.audience_claim import record_audience_claim
@@ -105,14 +112,12 @@ def _stream_error_event(exc: BaseException, *, generic: bool = False) -> dict[st
         return {"type": "error", "detail": "The request could not be completed."}
     return {"type": "error", "detail": _client_detail(exc, "The request failed.")}
 
+def _figure_pages_out(rows) -> list[PageImageOut]:
+    return [PageImageOut(**row) for row in figure_page_payloads(rows or [])]
+
+
 def _citation_out(cite) -> CitationOut:
-    return CitationOut(
-        index=cite.index,
-        doc_id=cite.doc_id,
-        chunk_id=cite.chunk_id,
-        label=cite.label,
-        page=cite.page,
-    )
+    return CitationOut(**citation_public_dict(cite))
 
 
 _manifest_cache = None
@@ -456,6 +461,7 @@ def create_app(
             safety_action=result.safety_action,
             safety_notice=result.safety_notice,
             escalated=result.escalated,
+            figure_pages=_figure_pages_out(result.figure_pages),
         )
 
     @app.post("/v1/ask/stream", dependencies=[Depends(require_api_key)])
@@ -534,6 +540,7 @@ def create_app(
             safety_notice=turn.safety_notice,
             escalated=turn.escalated,
             diagnostic=turn.diagnostic if isinstance(turn.diagnostic, dict) else None,
+            figure_pages=_figure_pages_out(turn.figure_pages),
         )
 
     @app.post("/v1/diagnose/stream", dependencies=[Depends(require_api_key)])
@@ -589,6 +596,26 @@ def create_app(
         invalidate_manifest_cache()
         loaded = _manifest()
         return {"reloaded": True, "documents": len(loaded.documents)}
+
+    @app.get(
+        "/v1/documents/{doc_id}/pages/{page}/image",
+        dependencies=[Depends(require_api_key)],
+    )
+    def page_image_route(doc_id: str, page: int) -> FileResponse:
+        """Serve a cached PDF page JPEG for UI cross-check (ADR-0036)."""
+        clean = safe_doc_id(doc_id)
+        if clean is None or page < 1:
+            raise HTTPException(status_code=404, detail="Unknown document page")
+        path = ensure_page_raster(_manifest(), clean, page)
+        if path is None:
+            raise HTTPException(status_code=404, detail="Page image is not available")
+        return FileResponse(
+            path,
+            media_type="image/jpeg",
+            filename=f"{clean}-p{page}.jpg",
+            content_disposition_type="inline",
+            headers={"Cache-Control": "private, max-age=86400"},
+        )
 
     @app.delete("/v1/diagnose/{session_id}", dependencies=[Depends(require_api_key)])
     def diagnose_delete(session_id: str) -> dict[str, bool]:

@@ -57,6 +57,8 @@ def test_prompt_digest_is_stable_and_named() -> None:
     assert len(digest) == 12
     assert digest == prompt_digest("ask_system")
     assert prompt_digest("diagnose_system") != digest
+    assert prompt_digest("diagnose_intent") != digest
+    assert prompt_digest("diagnose_intent") != prompt_digest("diagnose_system")
     stamp = prompt_stamp("ask_system")
     assert stamp["prompt_name"] == "ask_system"
     assert stamp["prompt_file_sha256"] == digest

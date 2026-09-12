@@ -42,6 +42,7 @@ class Hit:
     revision: str | None
     score: float
     apply_reason: str = ""
+    metadata: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -498,12 +499,42 @@ def search(
         ) as span:
             update_span(span, output=trace_out)
 
+    attach_hit_layout_metadata(db, hits)
+    from repair_assistant.retrieval.siblings import expand_problem_siblings
+
+    hits = expand_problem_siblings(db, hits)
     return SearchResult(
         query=query,
         hits=hits,
         fetched=len(raw),
         filtered_out=filtered_out,
     )
+
+
+def attach_hit_layout_metadata(db: Database, hits: list[Hit]) -> None:
+    """Copy chunk.metadata (bbox) onto hits. Failures must not hide results."""
+    if not hits:
+        return
+    try:
+        rows = db.fetchall(
+            """
+            SELECT doc_id, chunk_id, metadata FROM chunks
+            WHERE doc_id = ANY(%s::text[]) AND chunk_id = ANY(%s::text[])
+            """,
+            ([h.doc_id for h in hits], [h.chunk_id for h in hits]),
+        )
+    except Exception:
+        return
+    wanted = {(h.doc_id, h.chunk_id) for h in hits}
+    by_key: dict[tuple[str, str], dict] = {}
+    for doc_id, chunk_id, metadata in rows:
+        if (doc_id, chunk_id) not in wanted or not isinstance(metadata, dict):
+            continue
+        by_key[(doc_id, chunk_id)] = metadata
+    for hit in hits:
+        meta = by_key.get((hit.doc_id, hit.chunk_id))
+        if meta:
+            hit.metadata = meta
 
 
 __all__ = [
@@ -517,5 +548,6 @@ __all__ = [
     "manual_rev_fetch",
     "reference_fetch",
     "search",
+    "attach_hit_layout_metadata",
     "vector_fetch",
 ]

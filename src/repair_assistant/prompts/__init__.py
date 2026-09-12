@@ -40,6 +40,10 @@ def diagnose_system() -> str:
     return load_prompt("diagnose_system")
 
 
+def diagnose_intent() -> str:
+    return load_prompt("diagnose_intent")
+
+
 def judge_system() -> str:
     return load_prompt("judge_system")
 

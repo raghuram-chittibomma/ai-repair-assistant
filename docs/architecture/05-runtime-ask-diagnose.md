@@ -72,7 +72,19 @@ flowchart TD
 - **Page images:** When a hit is a figure / schematic / photo-access page or
   cites a figure, and a vision-capable dated model is configured, attach up
   to three PDF page JPEGs at generate time ([ADR-0035](../adr/0035-late-fusion-page-images.md)).
-  Retrieval stays BGE. Missing PDF keeps the unread-figure note.
+  Retrieval stays BGE. Missing PDF keeps the unread-figure note. The same
+  rasters are returned as `figure_pages` and served at
+  `GET /v1/documents/{doc_id}/pages/{page}/image` so `/ui` can show the
+  source page for cross-check ([ADR-0036](../adr/0036-ui-source-page-images.md)).
+  Citations include that URL; `table_row` cites may also include a pdfplumber
+  bbox so `/ui` can highlight the row ([ADR-0037](../adr/0037-table-row-highlight.md)).
+  Prose-fallback matrix rows (no `find_tables()` grid) may union unique
+  cause/check word-spans; a coalesced checklist copies page size from any
+  sibling so the overlay still draws
+  ([ADR-0038](../adr/0038-paragraph-highlight.md),
+  [ADR-0042](../adr/0042-guide1-anchor-and-checklist-coalesce.md)).
+  `prose` / `procedure` / `heading` cites get a box only when the body is a
+  unique one-cluster word-span ([ADR-0038](../adr/0038-paragraph-highlight.md)).
 
 **Modules:** `qa/generate.py`, `qa/context.py`, `qa/page_images.py`, `qa/structured.py`, `api/app.py`
 
@@ -100,11 +112,11 @@ flowchart TD
 | Node | Responsibility |
 | --- | --- |
 | `assess` | Pre-LLM safety; block skips retrieve/LLM |
-| `retrieve` | `search()` on a built query: skip ack-only turns; if the latest turn is a mid-cycle / no-code stop and the session anchor is not, use that turn alone; else recent substantive user turns; prepend session error codes |
+| `retrieve` | Turn 1: symptom query. Turn 2+: closed-set label then a rule-built query ([ADR-0039](../adr/0039-diagnose-retrieve-labels.md)); prefer last cited doc; demote ruled-out overlap on other pubs. Regex `_retrieval_query` is the fallback |
 | `respond` | Multi-turn system prompt, citations, optional gated page images, post-LLM `gate_answer` |
 
-- **State:** Messages, appliance, evidence, citation pool, abstain / escalate flags ([ADR-0013](../adr/0013-langgraph-diagnostic.md)), plus an inspectable board (`step`, `phase`, `hypotheses`, `ruled_out`, `observations`) that is merged each turn and injected into the prompt ([ADR-0031](../adr/0031-structured-diagnostic-state.md)). On an acknowledgement, merge also records the prior `next_check` and numbered checklist lines as `ruled_out` when the model omits them.
-- **NLU vs protocol:** Rules own the board, safety, applicability, and which OEM phrases may be appended. Regex/YAML still build today's retrieve query (`acks.py`, `query_expand.yaml`, `_retrieval_query`). That is the wrong slot for language understanding. Do not grow slang rows or a rule-only flowchart. A later closed-set intent step (labels → family search) is the accepted R18 reading and is **not implemented** ([ADR-0034](../adr/0034-diagnose-nlu-split.md)).
+- **State:** Messages, appliance, evidence, citation pool, abstain / escalate flags ([ADR-0013](../adr/0013-langgraph-diagnostic.md)), plus an inspectable board (`step`, `phase`, `hypotheses`, `ruled_out`, `observations`) that is merged each turn and injected into the prompt ([ADR-0031](../adr/0031-structured-diagnostic-state.md)). On an acknowledgement, merge also records the prior `next_check` and numbered checklist items (one per line or inline `1. … 2. …`) as `ruled_out` when the model omits them. Do not restart a cleared category from its first remedy.
+- **NLU vs protocol:** Rules own the board, safety, applicability, and which OEM phrases may be appended. Turn 2+ diagnose retrieve uses a closed-set label then those rules ([ADR-0039](../adr/0039-diagnose-retrieve-labels.md)). Do not grow slang rows, a rule-only flowchart, or free query rewrite ([ADR-0034](../adr/0034-diagnose-nlu-split.md)). Regex / `acks.py` stay as fallback.
 - **Session:** In-memory `SessionStore` with TTL and max sessions — not durable across API restart ([ADR-0021](../adr/0021-api-hardening-embedder-sessions.md)).
 - **API:** `POST /v1/diagnose`, `/v1/diagnose/stream` with `session_id` ([ADR-0016](../adr/0016-http-api-docker.md)).
 

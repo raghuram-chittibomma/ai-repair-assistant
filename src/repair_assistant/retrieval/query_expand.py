@@ -10,6 +10,8 @@ from pathlib import Path
 
 import yaml
 
+from repair_assistant.retrieval.polarity import compositional_door_polarity
+
 _APOS = str.maketrans({"\u2018": "'", "\u2019": "'", "`": "'"})
 
 
@@ -128,9 +130,18 @@ def load_expand_families(path: Path | None = None) -> tuple[ExpandFamily, ...]:
 
 
 def door_lock_polarity(query: str) -> str | None:
-    """Return ``unlock``, ``lock``, or None when polarity is clear."""
+    """Return ``unlock``, ``lock``, or None when polarity is clear.
+
+    Compositional negation (ADR-0040) plus leftover YAML idioms. Both
+    polarities at once still returns None so ask can clarify.
+    """
     unlock = False
     lock = False
+    composed = compositional_door_polarity(query)
+    if composed == "unlock":
+        unlock = True
+    elif composed == "lock":
+        lock = True
     for family in load_expand_families():
         if family.polarity == "unlock" and _family_matches(family, query):
             unlock = True

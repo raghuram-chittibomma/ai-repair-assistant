@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,7 @@ _log = logging.getLogger("repair_assistant.qa")
 
 MAX_PAGE_IMAGES = 3
 RASTER_DPI = 150
+_DOC_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 @dataclass(frozen=True)
@@ -45,6 +47,88 @@ def hit_needs_page_image(text: str | None) -> bool:
         or looks_like_photo_access_page(text)
         or evidence_cites_unread_figure(text)
     )
+
+
+def page_image_url(doc_id: str, page: int) -> str:
+    return f"/v1/documents/{doc_id}/pages/{int(page)}/image"
+
+
+def safe_doc_id(doc_id: str) -> str | None:
+    text = (doc_id or "").strip()
+    if not text or ".." in text or not _DOC_ID_RE.fullmatch(text):
+        return None
+    return text
+
+
+def citation_public_dict(cite) -> dict:
+    """API / SSE citation: page URL plus optional table-row or prose overlay."""
+    doc_id = str(getattr(cite, "doc_id", "") or "")
+    page = getattr(cite, "page", None)
+    payload = {
+        "index": int(getattr(cite, "index", 0) or 0),
+        "doc_id": doc_id,
+        "chunk_id": str(getattr(cite, "chunk_id", "") or ""),
+        "label": str(getattr(cite, "label", "") or ""),
+        "page": page,
+    }
+    clean = safe_doc_id(doc_id)
+    if clean and page is not None and int(page) >= 1:
+        payload["url"] = page_image_url(clean, int(page))
+    bbox = getattr(cite, "bbox", None)
+    width = getattr(cite, "page_width", None)
+    height = getattr(cite, "page_height", None)
+    if isinstance(bbox, dict) and width and height:
+        payload["bbox"] = bbox
+        payload["page_width"] = float(width)
+        payload["page_height"] = float(height)
+    return payload
+
+
+def figure_page_payloads(rows: list) -> list[dict]:
+    """JSON for ask/diagnose: citation index, page, and UI image URL."""
+    out: list[dict] = []
+    seen: set[tuple[str, int]] = set()
+    for row in rows or []:
+        if isinstance(row, dict):
+            doc_id = str(row.get("doc_id") or "")
+            page = row.get("page")
+            index = int(row.get("index") or 0)
+        else:
+            doc_id = str(getattr(row, "doc_id", "") or "")
+            page = getattr(row, "page", None)
+            index = int(getattr(row, "index", 0) or 0)
+        if page is None or int(page) < 1 or not safe_doc_id(doc_id):
+            continue
+        key = (doc_id, int(page))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                "index": index,
+                "doc_id": doc_id,
+                "page": int(page),
+                "url": page_image_url(doc_id, int(page)),
+            }
+        )
+    return out
+
+
+def ensure_page_raster(manifest: Manifest, doc_id: str, page: int) -> Path | None:
+    """Return the cached JPEG path, rendering from the local PDF if needed."""
+    clean = safe_doc_id(doc_id)
+    if clean is None or int(page) < 1:
+        return None
+    cache = raster_cache_path(manifest, clean, int(page))
+    if cache.is_file() and cache.stat().st_size > 0:
+        return cache
+    pdf = document_pdf_path(manifest, clean)
+    if pdf is None:
+        return None
+    jpeg = raster_pdf_page(pdf, int(page), cache)
+    if not jpeg:
+        return None
+    return cache if cache.is_file() else None
 
 
 def document_pdf_path(manifest: Manifest, doc_id: str) -> Path | None:

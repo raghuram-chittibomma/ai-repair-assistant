@@ -144,7 +144,20 @@ def test_retrieval_query_ack_keeps_symptom_anchor() -> None:
     assert is_ack_only_message("checked those look good")
     assert is_ack_only_message("checked, they look good")
     assert is_ack_only_message("they look good")
+    assert is_ack_only_message("checked all. no issues there")
+    assert is_ack_only_message("checked all no issues there")
     assert not is_ack_only_message("no error code. whole machine shuts down.")
+    from repair_assistant.qa.acks import is_unresolved_followup
+
+    assert is_unresolved_followup("checked but still facing the issue")
+    assert is_unresolved_followup("checked, still facing same issue")
+    assert is_unresolved_followup("still facing the issue")
+    assert is_unresolved_followup("tried but did not solve the problem")
+    assert is_unresolved_followup("tried but it didn't work")
+    assert is_unresolved_followup("that didn't work")
+    assert not is_unresolved_followup("still not draining")
+    assert not is_unresolved_followup("no error code. whole machine shuts down.")
+    assert not is_unresolved_followup("tried a new hose but still not draining")
 
     messages = [
         HumanMessage(content="doesn't wash properly"),
@@ -155,6 +168,37 @@ def test_retrieval_query_ack_keeps_symptom_anchor() -> None:
     assert "doesn't wash properly" in q
     assert "no issues" not in q
     assert "looks good" not in q
+
+
+def test_retrieval_query_checked_all_keeps_anchor() -> None:
+    messages = [
+        HumanMessage(content="door doesn't open"),
+        HumanMessage(content="checked all. no issues there"),
+    ]
+    q = _retrieval_query(messages)
+    assert "door" in q.lower()
+    assert "checked all" not in q.lower()
+
+
+def test_retrieval_query_unresolved_keeps_symptom_anchor() -> None:
+    messages = [
+        HumanMessage(content="F5E2 door won't lock"),
+        HumanMessage(content="checked but still facing the issue"),
+    ]
+    q = _retrieval_query(messages)
+    assert "F5E2" in q
+    assert "door won't lock" in q
+    assert "still facing" not in q
+
+
+def test_retrieval_query_tried_but_did_not_solve_keeps_anchor() -> None:
+    messages = [
+        HumanMessage(content="door doesn't open"),
+        HumanMessage(content="tried but did not solve the problem"),
+    ]
+    q = _retrieval_query(messages)
+    assert "door" in q.lower()
+    assert "did not solve" not in q.lower()
 
 
 def test_retrieval_query_mid_cycle_correction_drops_vague_anchor() -> None:

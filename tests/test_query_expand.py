@@ -29,6 +29,9 @@ def test_query_expand_loads_from_yaml_config() -> None:
     mid = next(family for family in families if family.mid_cycle)
     assert "Activating Service Diagnostic Mode" in mid.expand
     assert any("halfway thru" in t for t in mid.triggers)
+    unlock = next(family for family in families if family.family_id == "door_unlock")
+    assert "F5E2" not in unlock.expand
+    assert "lock failure" not in unlock.expand.lower()
 
 
 def test_door_lock_polarity_stuck_vs_wont_lock() -> None:
@@ -40,13 +43,35 @@ def test_door_lock_polarity_stuck_vs_wont_lock() -> None:
     assert door_lock_polarity("F5E2 on display") is None
 
 
+def test_door_lock_polarity_folds_contractions() -> None:
+    for query in (
+        "door doesn't open",
+        "door does not open",
+        "door doesnt open",
+        "the door isn't opening",
+        "I can't get the door open",
+        "unable to open the door",
+    ):
+        assert door_lock_polarity(query) == "unlock", query
+    assert door_lock_polarity("door doesn't lock") == "lock"
+    assert door_lock_polarity("door is not locking") == "lock"
+    assert door_lock_polarity("door is not locked") is None
+    assert door_lock_polarity("won't lock and won't open") is None
+
+
 def test_expand_retrieval_query_adds_unlock_phrases() -> None:
     expanded = expand_retrieval_query("door got locked")
     assert expanded.startswith("door got locked")
     assert "will not unlock" in expanded.lower()
-    assert "F5E2" in expanded
+    assert "F5E2" not in expanded.upper()
+    assert "lock failure" not in expanded.lower()
     # Must not pull the opposite symptom into the expand string as primary.
     assert "Door Won't Lock" not in expanded
+    doesnt = expand_retrieval_query("door doesn't open")
+    assert "will not unlock" in doesnt.lower()
+    assert "F5E2" not in doesnt.upper()
+    assert "lock failure" not in doesnt.lower()
+    assert "Door Won't Lock" not in doesnt
 
 
 def test_expand_retrieval_query_mid_cycle_stop() -> None:
@@ -132,6 +157,18 @@ def test_unlock_polarity_prefers_unlock_evidence_over_wont_lock() -> None:
     # Owner audience keeps owner literature when available (drops service manual).
     assert ranked[0].chunk_id == "unlock"
     assert all(h.doc_id == "use-and-care" for h in ranked)
+
+    doesnt = filter_and_rank(
+        hits,
+        manifest,
+        Appliance(model="WFW5620HW0"),
+        limit=2,
+        query="door doesn't open",
+        audience="technician",
+    )
+    doesnt_unlock = next(h for h in doesnt if h.chunk_id == "unlock")
+    doesnt_wont = next(h for h in doesnt if h.chunk_id == "wont-lock")
+    assert doesnt_unlock.final_score > doesnt_wont.final_score
 
     tech_ranked = filter_and_rank(
         hits,

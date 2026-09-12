@@ -74,7 +74,9 @@ Open **http://localhost:8080/ui**. The app uses `DATABASE_URL` from `.env.local`
 to reach Postgres on the LAN host.
 
 Endpoints: `GET /health`, `GET /ready`, `POST /v1/search`, `/v1/ask`, `/v1/diagnose`
-(ADR-0016). No API key required (`REPAIR_API_KEY` empty, D8).
+(ADR-0016), plus `GET /v1/documents/{doc_id}/pages/{page}/image` for the
+source-page JPEG shown in `/ui` (ADR-0036 / ADR-0037). No API key required
+(`REPAIR_API_KEY` empty, D8).
 
 **Optional:** run the API as a Docker container on the LAN host — see
 [DEPLOYMENT.md](DEPLOYMENT.md) (`docker/deploy-api.ps1`). Not needed for normal use.

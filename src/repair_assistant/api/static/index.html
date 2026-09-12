@@ -154,7 +154,60 @@
       white-space: pre-wrap;
     }
     .cites { margin-top: 0.65rem; font-size: 0.8rem; color: var(--muted); }
-    .cites span { display: block; }
+    .cites a, .cites span { display: block; }
+    .body a.cite-ref, .cites a.cite-ref {
+      color: var(--ok);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+    .figures {
+      margin-top: 0.75rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--border);
+      white-space: normal;
+    }
+    .figures > summary {
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 650;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      list-style: none;
+    }
+    .figures > summary::-webkit-details-marker { display: none; }
+    .figures > summary::before { content: "▸ "; }
+    .figures[open] > summary::before { content: "▾ "; }
+    .figures .figure-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.65rem;
+    }
+    .figures figure { margin: 0; position: relative; }
+    .figures .highlight {
+      position: absolute;
+      border: 2px solid #e6c36a;
+      background: rgba(230, 195, 106, 0.22);
+      pointer-events: none;
+      box-sizing: border-box;
+      display: none;
+    }
+    .figures .highlight.visible { display: block; }
+    .figures figcaption {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .figures img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0b1016;
+    }
     .composer { display: flex; gap: 0.5rem; align-items: flex-end; }
     .composer textarea { min-height: 3.2rem; resize: vertical; flex: 1; }
     .composer .btns { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -499,6 +552,12 @@
           }
           lines.push("");
         }
+        if (m.figurePages && m.figurePages.length) {
+          for (const fp of m.figurePages) {
+            lines.push(`- Figure [${fp.index}] ${fp.doc_id} p.${fp.page} ${fp.url || ""}`);
+          }
+          lines.push("");
+        }
       }
       download(`repair-chat-${Date.now()}.md`, lines.join("\n"), "text/markdown");
     }
@@ -534,6 +593,105 @@
             : "Ask a repair question…";
     }
 
+    function sourcePageKey(docId, page) {
+      return `src-page-${docId}-${page}`;
+    }
+
+    function mergeSourcePages(citations, figurePages) {
+      const out = [];
+      const seen = new Set();
+      const add = (row) => {
+        if (!row || !row.doc_id || row.page == null) return;
+        const key = `${row.doc_id}:${row.page}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const url = row.url || `/v1/documents/${encodeURIComponent(row.doc_id)}/pages/${row.page}/image`;
+        out.push({ ...row, url });
+      };
+      for (const fp of figurePages || []) add(fp);
+      for (const c of citations || []) add(c);
+      return out;
+    }
+
+    function renderAnswerBody(body, text, citations) {
+      const byIndex = new Map();
+      for (const c of citations || []) byIndex.set(Number(c.index), c);
+      const re = /\[(\d+)\]/g;
+      let last = 0;
+      let match;
+      while ((match = re.exec(text))) {
+        if (match.index > last) {
+          body.appendChild(document.createTextNode(text.slice(last, match.index)));
+        }
+        const cite = byIndex.get(Number(match[1]));
+        if (cite && cite.doc_id && cite.page != null) {
+          const a = document.createElement("a");
+          a.className = "cite-ref";
+          a.href = `#${sourcePageKey(cite.doc_id, cite.page)}`;
+          a.textContent = match[0];
+          a.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            revealSource(cite);
+          });
+          body.appendChild(a);
+        } else {
+          body.appendChild(document.createTextNode(match[0]));
+        }
+        last = match.index + match[0].length;
+      }
+      if (last < text.length) {
+        body.appendChild(document.createTextNode(text.slice(last)));
+      }
+    }
+
+    let lastReveal = null;
+    function positionHighlight(box, img, cite) {
+      if (!cite.bbox || !cite.page_width || !cite.page_height) {
+        box.classList.remove("visible");
+        return;
+      }
+      const fig = box.parentElement;
+      const figR = fig.getBoundingClientRect();
+      const imgR = img.getBoundingClientRect();
+      const sx = imgR.width / cite.page_width;
+      const sy = imgR.height / cite.page_height;
+      box.style.left = `${imgR.left - figR.left + cite.bbox.x0 * sx}px`;
+      box.style.top = `${imgR.top - figR.top + cite.bbox.y0 * sy}px`;
+      box.style.width = `${(cite.bbox.x1 - cite.bbox.x0) * sx}px`;
+      box.style.height = `${(cite.bbox.y1 - cite.bbox.y0) * sy}px`;
+      box.classList.add("visible");
+    }
+
+    function revealSource(cite) {
+      lastReveal = cite;
+      const fig = document.getElementById(sourcePageKey(cite.doc_id, cite.page));
+      if (!fig) return;
+      const panel = fig.closest("details");
+      const show = () => {
+        fig.scrollIntoView({ behavior: "smooth", block: "center" });
+        const img = fig.querySelector("img");
+        const box = fig.querySelector(".highlight");
+        if (!img || !box) return;
+        const apply = () => positionHighlight(box, img, cite);
+        if (img.complete && img.naturalWidth) apply();
+        else img.addEventListener("load", apply, { once: true });
+      };
+      if (panel && !panel.open) {
+        panel.open = true;
+        requestAnimationFrame(show);
+        return;
+      }
+      show();
+    }
+
+    window.addEventListener("resize", () => {
+      if (!lastReveal) return;
+      const fig = document.getElementById(sourcePageKey(lastReveal.doc_id, lastReveal.page));
+      const img = fig && fig.querySelector("img");
+      const box = fig && fig.querySelector(".highlight");
+      if (img && box) positionHighlight(box, img, lastReveal);
+    });
+
     function append(role, text, opts = {}) {
       const {
         citations = [],
@@ -545,6 +703,7 @@
         pending = false,
         hit = false,
         score = null,
+        figurePages = [],
       } = opts;
       const div = document.createElement("div");
       const classes = ["msg", role];
@@ -574,7 +733,7 @@
       const body = document.createElement("div");
       body.className = "body";
       if (pending) body.innerHTML = `<span class="dots">${text}</span>`;
-      else body.textContent = text;
+      else renderAnswerBody(body, text, citations);
       div.appendChild(body);
 
       if (abstained && abstainReason) {
@@ -599,12 +758,75 @@
         const cites = document.createElement("div");
         cites.className = "cites";
         citations.forEach((c) => {
-          const line = document.createElement("span");
           const page = c.page != null ? ` p.${c.page}` : "";
-          line.textContent = `[${c.index}] ${c.label}${page} — ${c.doc_id}`;
-          cites.appendChild(line);
+          const label = `[${c.index}] ${c.label}${page} — ${c.doc_id}`;
+          if (c.doc_id && c.page != null) {
+            const line = document.createElement("a");
+            line.className = "cite-ref";
+            line.href = `#${sourcePageKey(c.doc_id, c.page)}`;
+            line.textContent = label;
+            line.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              revealSource(c);
+            });
+            cites.appendChild(line);
+          } else {
+            const line = document.createElement("span");
+            line.textContent = label;
+            cites.appendChild(line);
+          }
         });
         div.appendChild(cites);
+      }
+      const pages = mergeSourcePages(citations, figurePages);
+      if (pages.length) {
+        const wrap = document.createElement("details");
+        wrap.className = "figures";
+        const summary = document.createElement("summary");
+        const n = pages.length;
+        summary.textContent =
+          n === 1
+            ? "Source page (1) — expand to check the graphic"
+            : `Source pages (${n}) — expand to check the graphic`;
+        wrap.appendChild(summary);
+        const list = document.createElement("div");
+        list.className = "figure-list";
+        pages.forEach((fp) => {
+          if (!fp || !fp.url) return;
+          const fig = document.createElement("figure");
+          fig.id = sourcePageKey(fp.doc_id, fp.page);
+          const cap = document.createElement("figcaption");
+          cap.textContent = `[${fp.index}] ${fp.doc_id} p.${fp.page} (the model may misread the drawing)`;
+          const img = document.createElement("img");
+          img.src = fp.url;
+          img.alt = `Service literature page ${fp.page} for citation [${fp.index}]`;
+          img.loading = "lazy";
+          const link = document.createElement("a");
+          link.href = fp.url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.appendChild(img);
+          const hl = document.createElement("div");
+          hl.className = "highlight";
+          fig.appendChild(cap);
+          fig.appendChild(link);
+          fig.appendChild(hl);
+          list.appendChild(fig);
+        });
+        wrap.appendChild(list);
+        wrap.addEventListener("toggle", () => {
+          if (!wrap.open) return;
+          let cite = lastReveal;
+          const inWrap = (c) => {
+            const fig = document.getElementById(sourcePageKey(c.doc_id, c.page));
+            return Boolean(fig && wrap.contains(fig));
+          };
+          if (!cite || !inWrap(cite)) {
+            cite = citations.find((c) => c && c.bbox && c.page != null && inWrap(c));
+          }
+          if (cite) revealSource(cite);
+        });
+        div.appendChild(wrap);
       }
       log.appendChild(div);
       log.scrollTop = log.scrollHeight;
@@ -753,6 +975,7 @@
       }
       append("assistant", answer || "(empty response)", {
         citations: ev.citations || [],
+        figurePages: ev.figure_pages || [],
         abstained: !!ev.abstained,
         abstainReason: ev.abstain_reason || "",
         safetyAction: ev.safety_action || "allow",
@@ -762,6 +985,7 @@
       updateSafetyBanner(ev);
       record("assistant", answer, {
         citations: ev.citations || [],
+        figurePages: ev.figure_pages || [],
         meta: {
           abstained: !!ev.abstained,
           safety_action: ev.safety_action,

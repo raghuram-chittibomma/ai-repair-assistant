@@ -18,6 +18,17 @@ class CitationOut(BaseModel):
     chunk_id: str
     label: str
     page: int | None = None
+    url: str | None = None
+    bbox: dict | None = None
+    page_width: float | None = None
+    page_height: float | None = None
+
+
+class PageImageOut(BaseModel):
+    index: int
+    doc_id: str
+    page: int
+    url: str
 
 
 class SearchRequest(BaseModel):
@@ -68,6 +79,7 @@ class AskResponse(BaseModel):
     safety_action: str = "allow"
     safety_notice: str = ""
     escalated: bool = False
+    figure_pages: list[PageImageOut] = Field(default_factory=list)
 
 
 class DiagnoseRequest(BaseModel):
@@ -104,6 +116,7 @@ class DiagnoseResponse(BaseModel):
     safety_notice: str = ""
     escalated: bool = False
     diagnostic: DiagnoseBoardOut | None = None
+    figure_pages: list[PageImageOut] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):

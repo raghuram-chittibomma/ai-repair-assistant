@@ -23,6 +23,7 @@ from repair_assistant.diagnostic.graph import (
     respond_diagnose_state,
     retrieve_diagnose_state,
 )
+from repair_assistant.diagnostic.intent import last_doc_ids_from_citations, live_intent_complete
 from repair_assistant.diagnostic.state import DiagnosticGraphState, TurnResult
 from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import observation, update_span
@@ -35,6 +36,15 @@ from repair_assistant.safety.classifier import runtime_classifier
 from repair_assistant.safety.models import Audience, SafetyAction
 
 DEFAULT_SESSION_MAX_TURNS = 24
+
+
+def _session_classify_turn(injected_llm: LLMClient | None):
+    """Live classify only when this is a real API session (no test double)."""
+    if injected_llm is not None:
+        return None
+    if not openai_api_key():
+        return None
+    return live_intent_complete
 
 
 class SessionTurnLimitError(ValueError):
@@ -198,6 +208,7 @@ class DiagnosticSession:
                     retrieval_limit=self._retrieval_limit,
                     overfetch=self._overfetch,
                     classifier=self._classifier(),
+                    classify_turn=_session_classify_turn(self._llm),
                 )
             if needs_respond:
                 llm = self._llm or OpenAIClient(
@@ -215,6 +226,10 @@ class DiagnosticSession:
                     break
 
             cited = [] if pending.get("abstained") else citations_for_turn(pending, assistant)
+            remembered = last_doc_ids_from_citations(cited)
+            if remembered:
+                pending["last_cite_doc_ids"] = remembered
+            self._state = pending
             turn = TurnResult(
                 user_message=user_message,
                 assistant_message=assistant,
@@ -229,6 +244,7 @@ class DiagnosticSession:
                 claims=claims_from_dicts(pending.get("claims")),
                 evidence_blocks=dict(pending.get("evidence_blocks") or {}),
                 diagnostic=dict(pending.get("diagnostic") or {}),
+                figure_pages=list(pending.get("figure_pages") or []),
             )
             update_span(
                 span,
@@ -284,6 +300,7 @@ class DiagnosticSession:
                 retrieval_limit=self._retrieval_limit,
                 overfetch=self._overfetch,
                 classifier=self._classifier(),
+                classify_turn=_session_classify_turn(self._llm),
             ):
                 if event.get("type") == "done":
                     state = event.pop("_state")

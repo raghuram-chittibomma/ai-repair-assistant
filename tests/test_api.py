@@ -114,6 +114,103 @@ def test_ask_route(mock_prep: MagicMock, mock_complete: MagicMock, client: TestC
     body = response.json()
     assert "F5E2" in body["question"]
     assert body["citations"][0]["doc_id"] == "tech-sheet-w11320651"
+    assert body["figure_pages"] == []
+
+
+@patch("repair_assistant.api.app.complete_ask")
+@patch("repair_assistant.api.app.prepare_ask")
+def test_ask_includes_figure_pages(
+    mock_prep: MagicMock, mock_complete: MagicMock, client: TestClient
+) -> None:
+    mock_complete.return_value = AnswerResult(
+        question="What connects to J36?",
+        answer="See the wiring page [1].",
+        abstained=False,
+        citations=[
+            Citation(
+                index=1,
+                doc_id="service-manual-w11169652-revb",
+                chunk_id="p48",
+                label="W11169652 p.48",
+                page=48,
+                excerpt="J36",
+            )
+        ],
+        retrieval_count=1,
+        figure_pages=[
+            {"index": 1, "doc_id": "service-manual-w11169652-revb", "page": 48},
+        ],
+    )
+    response = client.post(
+        "/v1/ask",
+        json={"question": "What connects to J36?", "model": "WFW5620HW0"},
+    )
+    assert response.status_code == 200
+    pages = response.json()["figure_pages"]
+    assert pages == [
+        {
+            "index": 1,
+            "doc_id": "service-manual-w11169652-revb",
+            "page": 48,
+            "url": "/v1/documents/service-manual-w11169652-revb/pages/48/image",
+        }
+    ]
+    cite = response.json()["citations"][0]
+    assert cite["url"] == "/v1/documents/service-manual-w11169652-revb/pages/48/image"
+    assert cite.get("bbox") is None
+
+
+@patch("repair_assistant.api.app.complete_ask")
+@patch("repair_assistant.api.app.prepare_ask")
+def test_ask_includes_table_row_bbox(
+    mock_prep: MagicMock, mock_complete: MagicMock, client: TestClient
+) -> None:
+    mock_complete.return_value = AnswerResult(
+        question="What is F5E2?",
+        answer="Door lock failure [1].",
+        abstained=False,
+        citations=[
+            Citation(
+                index=1,
+                doc_id="tech-sheet-w11320651",
+                chunk_id="p8",
+                label="W11320651 p.8",
+                page=8,
+                excerpt="F5E2",
+                bbox={"x0": 10, "y0": 80, "x1": 400, "y1": 100},
+                page_width=612,
+                page_height=792,
+            )
+        ],
+        retrieval_count=1,
+    )
+    response = client.post("/v1/ask", json={"question": "What is F5E2?"})
+    assert response.status_code == 200
+    cite = response.json()["citations"][0]
+    assert cite["url"] == "/v1/documents/tech-sheet-w11320651/pages/8/image"
+    assert cite["bbox"]["y0"] == 80
+    assert cite["page_width"] == 612
+
+
+def test_page_image_rejects_unknown_or_unsafe_id(client: TestClient) -> None:
+    assert client.get("/v1/documents/no-such-doc/pages/1/image").status_code == 404
+    assert client.get("/v1/documents/../secret/pages/1/image").status_code == 404
+
+
+@patch("repair_assistant.api.app.ensure_page_raster")
+def test_page_image_serves_jpeg(
+    mock_ensure: MagicMock, client: TestClient, tmp_path
+) -> None:
+    jpeg = tmp_path / "p0048.jpg"
+    jpeg.write_bytes(b"\xff\xd8\xff\xd9")
+    mock_ensure.return_value = jpeg
+    response = client.get(
+        "/v1/documents/service-manual-w11169652-revb/pages/48/image"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/jpeg")
+    assert response.content[:2] == b"\xff\xd8"
+    mock_ensure.assert_called_once()
 
 
 @patch("repair_assistant.api.app.complete_ask")
@@ -305,6 +402,14 @@ def test_ask_stream_route_sse(mock_stream: MagicMock, client: TestClient) -> Non
                 "safety_action": "allow",
                 "safety_notice": "",
                 "escalated": False,
+                "figure_pages": [
+                    {
+                        "index": 1,
+                        "doc_id": "service-manual-w11169652-revb",
+                        "page": 48,
+                        "url": "/v1/documents/service-manual-w11169652-revb/pages/48/image",
+                    }
+                ],
             },
         ]
     )
@@ -315,6 +420,8 @@ def test_ask_stream_route_sse(mock_stream: MagicMock, client: TestClient) -> Non
     assert '"type": "token"' in response.text or '"type":"token"' in response.text
     assert '"type": "error"' not in response.text
     assert "StopIteration" not in response.text
+    assert "figure_pages" in response.text
+    assert "/v1/documents/service-manual-w11169652-revb/pages/48/image" in response.text
 
 
 @patch("repair_assistant.api.app.ask_stream")
@@ -448,6 +555,11 @@ def test_ui_page(client: TestClient) -> None:
     assert "Export JSON" in response.text
     assert "Cancel" in response.text
     assert "API key" not in response.text
+    assert "Source pages" in response.text
+    assert "expand to check the graphic" in response.text
+    assert "figure_pages" in response.text
+    assert "cite-ref" in response.text
+    assert "revealSource" in response.text
 
     root = client.get("/", follow_redirects=False)
     assert root.status_code in {307, 308}

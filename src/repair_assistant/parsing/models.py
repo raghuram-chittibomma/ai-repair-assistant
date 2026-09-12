@@ -17,6 +17,9 @@ class BBox:
     x1: float
     y1: float
 
+    def to_dict(self) -> dict[str, float]:
+        return {"x0": self.x0, "y0": self.y0, "x1": self.x1, "y1": self.y1}
+
 
 @dataclass
 class Block:
@@ -42,6 +45,19 @@ class Table:
     rows: list[TableRow]
     page: int
     bbox: BBox | None = None
+    page_width: float | None = None
+    page_height: float | None = None
+
+
+@dataclass(frozen=True)
+class Word:
+    """One pdfplumber extract_words() token with page-space geometry."""
+
+    text: str
+    x0: float
+    y0: float
+    x1: float
+    y1: float
 
 
 @dataclass
@@ -51,6 +67,10 @@ class ExtractedPage:
     blocks: list[Block] = field(default_factory=list)
     tables: list[Table] = field(default_factory=list)
     language: str | None = None
+    layout_kind: str | None = None
+    page_width: float | None = None
+    page_height: float | None = None
+    words: list[Word] = field(default_factory=list)
 
 
 @dataclass

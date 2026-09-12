@@ -80,6 +80,55 @@ def test_merge_ack_rules_out_numbered_checks_from_prior_assistant() -> None:
     assert "correct dispenser usage" in board.ruled_out
 
 
+def test_merge_ack_rules_out_inline_numbered_category() -> None:
+    prior = merge_board(
+        DiagnosticBoard(),
+        step=1,
+        symptom_anchor="door doesn't open",
+        user_message="door doesn't open",
+        delta=DiagnosticDelta(phase="next_step", next_check="Reset washer"),
+    )
+    board = merge_board(
+        prior,
+        step=2,
+        symptom_anchor="door doesn't open",
+        user_message="checked all. no issues there",
+        prior_assistant=(
+            "Possible causes and checks: 1. **Reset washer**: Unplug and "
+            "reconnect the power cord. 2. **Check door lock mechanism**: "
+            "Inspect for misalignment. 3. **Door lock mechanism not "
+            "functioning**: See TEST #4 [1]."
+        ),
+    )
+    assert any("Reset washer" in item for item in board.ruled_out)
+    assert any("door lock mechanism" in item.lower() for item in board.ruled_out)
+    assert board.next_check == ""
+
+
+def test_merge_unresolved_rules_out_prior_next_check() -> None:
+    prior = merge_board(
+        DiagnosticBoard(),
+        step=1,
+        symptom_anchor="F5E2 door won't lock",
+        user_message="F5E2 door won't lock",
+        delta=DiagnosticDelta(
+            phase="next_step",
+            hypotheses=["door lock mechanism"],
+            next_check="Check door lock mechanism for proper operation",
+        ),
+    )
+    board = merge_board(
+        prior,
+        step=2,
+        symptom_anchor="F5E2 door won't lock",
+        user_message="checked but still facing the issue",
+    )
+    assert board.ruled_out == [
+        "Check door lock mechanism for proper operation"
+    ]
+    assert board.next_check == ""
+
+
 def test_merge_unions_ruled_out_and_drops_hypothesis() -> None:
     prior = merge_board(
         DiagnosticBoard(),

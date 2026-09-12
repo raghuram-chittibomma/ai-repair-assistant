@@ -18,6 +18,14 @@ from repair_assistant.corpus.support import (
     unsupported_appliance_message,
 )
 from repair_assistant.diagnostic.board import format_board, merge_from_raw
+from repair_assistant.diagnostic.intent import (
+    classify_diagnose_turn,
+    demote_texts_from_board,
+    last_doc_ids_from_citations,
+    query_for_label,
+    session_codes,
+    stick_diagnose_hits,
+)
 from repair_assistant.diagnostic.prompts import (
     build_diagnostic_user_prompt,
     window_transcript,
@@ -27,7 +35,12 @@ from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import child_observation, update_span
 from repair_assistant.parsing.error_codes import extract_error_codes
 from repair_assistant.prompts import diagnose_system
-from repair_assistant.qa.acks import ORPHAN_ACK_IN_DIAGNOSE, is_ack_only_message
+from repair_assistant.qa.acks import (
+    ORPHAN_ACK_IN_DIAGNOSE,
+    is_ack_only_message,
+    is_progress_followup,
+    is_unresolved_followup,
+)
 from repair_assistant.qa.context import format_evidence, resolve_citations
 from repair_assistant.qa.env import llm_model, llm_vision_model, openai_api_key
 from repair_assistant.qa.generate import (
@@ -39,7 +52,13 @@ from repair_assistant.qa.generate import (
     invoke_stream,
     iter_answer_tokens,
 )
-from repair_assistant.qa.page_images import PageImageSpec, attach_gated_images, raster_page_images
+from repair_assistant.qa.page_images import (
+    PageImageSpec,
+    attach_gated_images,
+    citation_public_dict,
+    figure_page_payloads,
+    raster_page_images,
+)
 from repair_assistant.qa.parts import related_parts_note
 from repair_assistant.qa.structured import (
     bind_generation,
@@ -139,27 +158,22 @@ def _done_payload(
 ) -> dict[str, Any]:
     abstained = bool(state.get("abstained"))
     cited = [] if abstained else citations_for_turn(state, assistant)
+    remembered = last_doc_ids_from_citations(cited)
+    if remembered:
+        state = _apply_delta(state, {"last_cite_doc_ids": remembered})
     return {
         "type": "done",
         "assistant_message": assistant,
         "abstained": abstained,
         "abstain_reason": state.get("abstain_reason") or "",
         "abstain_code": abstain_code,
-        "citations": [
-            {
-                "index": c.index,
-                "doc_id": c.doc_id,
-                "chunk_id": c.chunk_id,
-                "label": c.label,
-                "page": c.page,
-            }
-            for c in cited
-        ],
+        "citations": [citation_public_dict(c) for c in cited],
         "retrieval_count": int(state.get("retrieval_count") or 0),
         "safety_action": state.get("safety_action", SafetyAction.ALLOW.value),
         "safety_notice": state.get("safety_notice") or "",
         "escalated": bool(state.get("escalated")),
         "diagnostic": dict(state.get("diagnostic") or {}),
+        "figure_pages": figure_page_payloads(state.get("figure_pages") or []),
         "_state": state,
     }
 
@@ -199,7 +213,7 @@ def _user_texts(messages: list) -> list[str]:
 def _session_symptom_anchor(messages: list) -> str:
     """First non-ack user message — the symptom the session is about."""
     for text in _user_texts(messages):
-        if not is_ack_only_message(text):
+        if not is_progress_followup(text):
             return text.strip()
     texts = _user_texts(messages)
     return texts[0].strip() if texts else ""
@@ -229,11 +243,11 @@ def _retrieval_query(messages: list) -> str:
         # a vague first turn ("doesn't wash properly") or retrieval stays on
         # "not cleaning clothes".
         query = latest
-    elif latest and is_ack_only_message(latest) and anchor:
+    elif latest and is_progress_followup(latest) and anchor:
         query = anchor
     else:
         # Prefer non-ack turns so "no error code. machine shuts down" still joins.
-        substantive = [p for p in parts if not is_ack_only_message(p)]
+        substantive = [p for p in parts if not is_progress_followup(p)]
         recent = (substantive or parts)[-3:]
         query = " ".join(recent).strip()
 
@@ -241,6 +255,20 @@ def _retrieval_query(messages: list) -> str:
         unique = sorted(set(codes))
         query = f"{' '.join(unique)} {query}".strip()
     return query
+
+
+def _progress_retry_suffix(latest: str) -> str:
+    if is_unresolved_followup(latest):
+        return (
+            "\n\nCRITICAL: The last check did not resolve the symptom. "
+            "Do NOT abstain. Do NOT repeat that check from another document. "
+            "Give the next checklist category with [n] citations."
+        )
+    return (
+        "\n\nCRITICAL: The user confirmed prior checks passed. "
+        "Do NOT abstain. Acknowledge briefly and give the next "
+        "checklist category with [n] citations."
+    )
 
 
 def make_assess_node(classifier=None):
@@ -282,13 +310,20 @@ def make_blocked_node():
     return blocked
 
 
-def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int, overfetch: int):
+def make_retrieve_node(
+    db: Database,
+    manifest: Manifest,
+    *,
+    retrieval_limit: int,
+    overfetch: int,
+    classify_turn=None,
+):
     def retrieve(state: DiagnosticGraphState) -> dict:
         from repair_assistant.retrieval.planner import plan_for_query
 
         latest = _latest_human(state["messages"])
         # Ack with no prior assistant reply → session lost / wrong mode; don't search.
-        if is_ack_only_message(latest) and not _has_prior_assistant(state["messages"]):
+        if is_progress_followup(latest) and not _has_prior_assistant(state["messages"]):
             return {
                 "retrieval_query": latest,
                 "evidence_text": "",
@@ -299,7 +334,28 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 "figure_pages": [],
             }
 
-        query = _retrieval_query(state["messages"])
+        messages = state["messages"]
+        label = None
+        if _has_prior_assistant(messages):
+            with child_observation(
+                "diagnose_intent",
+                input={"message": latest},
+            ) as span:
+                label = classify_diagnose_turn(
+                    board_text=_prompt_board_text(state),
+                    transcript=_transcript(messages),
+                    complete=classify_turn,
+                )
+                update_span(span, output={"label": label})
+        if label:
+            query = query_for_label(
+                label,
+                anchor=_session_symptom_anchor(messages),
+                latest=latest,
+                codes=session_codes(_user_texts(messages)),
+            )
+        else:
+            query = _retrieval_query(messages)
         appliance = None
         if state.get("appliance_model"):
             appliance = Appliance(
@@ -318,7 +374,22 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
             audience=audience,
             plan=plan,
         )
-        if not result.hits:
+        prior_assistant = _assistant_before_latest_user(messages)
+        hits = stick_diagnose_hits(
+            result.hits,
+            prefer_doc_ids=list(state.get("last_cite_doc_ids") or []),
+            demote_texts=demote_texts_from_board(
+                merge_from_raw(
+                    state.get("diagnostic"),
+                    step=len(_user_texts(messages)),
+                    symptom_anchor=_session_symptom_anchor(messages),
+                    user_message=latest,
+                    prior_assistant=prior_assistant,
+                ).as_dict(),
+                extra=[prior_assistant] if prior_assistant else None,
+            ),
+        )
+        if not hits:
             return {
                 "retrieval_query": query,
                 "evidence_text": "",
@@ -327,23 +398,24 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 "abstained": True,
                 "abstain_reason": "No matching manufacturer evidence for this question.",
                 "figure_pages": [],
+                "retrieve_label": label or "",
             }
-        evidence_text, citations = format_evidence(result.hits, manifest=manifest)
+        evidence_text, citations = format_evidence(hits, manifest=manifest)
         evidence_text, citations, images = attach_gated_images(
-            result.hits,
+            hits,
             citations,
             evidence_text,
             manifest,
             enabled=bool(llm_vision_model()),
         )
-        parts = related_parts_note(result.hits, manifest, appliance)
+        parts = related_parts_note(hits, manifest, appliance)
         if parts:
             evidence_text = f"{evidence_text}\n\n{parts}"
         return {
             "retrieval_query": query,
             "evidence_text": evidence_text,
             "citations_available": citations,
-            "retrieval_count": len(result.hits),
+            "retrieval_count": len(hits),
             "abstained": False,
             "abstain_reason": "",
             "evidence_blocks": {c.index: (c.block_text or c.excerpt or "") for c in citations},
@@ -351,6 +423,7 @@ def make_retrieve_node(db: Database, manifest: Manifest, *, retrieval_limit: int
                 {"index": img.index, "doc_id": img.doc_id, "page": img.page}
                 for img in images
             ],
+            "retrieve_label": label or "",
         }
 
     return retrieve
@@ -432,6 +505,7 @@ def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
             transcript=_transcript(state["messages"]),
             symptom_anchor=anchor,
             ack_followup=is_ack_only_message(latest) and bool(anchor),
+            unresolved_followup=is_unresolved_followup(latest) and bool(anchor),
             mid_cycle_followup=is_mid_cycle_stop_query(latest),
             board_text=_prompt_board_text(state),
         )
@@ -441,15 +515,12 @@ def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
         bound = bind_generation(raw, available)
         if bound.abstained:
             # Ack follow-ups with evidence must continue the path, not abstain.
-            if is_ack_only_message(latest) and state.get("evidence_text") and _has_prior_assistant(
+            if is_progress_followup(latest) and state.get("evidence_text") and _has_prior_assistant(
                 state["messages"]
             ):
                 raw = invoke_complete(
                     llm,
-                    system
-                    + "\n\nCRITICAL: The user confirmed prior checks passed. "
-                    "Do NOT abstain. Acknowledge briefly and give the next "
-                    "checklist category with [n] citations.",
+                    system + _progress_retry_suffix(latest),
                     user_prompt,
                     images,
                 )
@@ -499,6 +570,7 @@ def diagnose_turn_stream(
     retrieval_limit: int = 8,
     overfetch: int = 40,
     classifier=None,
+    classify_turn=None,
 ) -> Iterator[dict[str, Any]]:
     """Yield SSE events for one turn: status, token deltas, then done."""
     client = llm or OpenAIClient(
@@ -547,7 +619,13 @@ def diagnose_turn_stream(
     yield {"type": "status", "phase": "retrieving"}
     state = _apply_delta(
         state,
-        make_retrieve_node(db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch)(state),
+        make_retrieve_node(
+            db,
+            manifest,
+            retrieval_limit=retrieval_limit,
+            overfetch=overfetch,
+            classify_turn=classify_turn,
+        )(state),
     )
 
     orphan = _maybe_orphan_ack_reply(state)
@@ -605,6 +683,8 @@ def diagnose_turn_stream(
     latest = _latest_human(state["messages"])
     anchor = _session_symptom_anchor(state["messages"])
     ack_followup = is_ack_only_message(latest) and bool(anchor)
+    unresolved_followup = is_unresolved_followup(latest) and bool(anchor)
+    progress_followup = ack_followup or unresolved_followup
     user_prompt = build_diagnostic_user_prompt(
         appliance_model=state.get("appliance_model"),
         appliance_serial=state.get("appliance_serial"),
@@ -612,6 +692,7 @@ def diagnose_turn_stream(
         transcript=_transcript(state["messages"]),
         symptom_anchor=anchor,
         ack_followup=ack_followup,
+        unresolved_followup=unresolved_followup,
         mid_cycle_followup=is_mid_cycle_stop_query(latest),
         board_text=_prompt_board_text(state),
     )
@@ -623,17 +704,12 @@ def diagnose_turn_stream(
     available = list(state.get("citations_available") or [])
     bound = bind_generation(raw, available)
 
-    if bound.abstained and ack_followup and state.get("evidence_text"):
-        retry_system = (
-            system
-            + "\n\nCRITICAL: The user confirmed prior checks passed. "
-            "Do NOT abstain. Acknowledge briefly and give the next "
-            "checklist category with [n] citations."
-        )
+    if bound.abstained and progress_followup and state.get("evidence_text"):
+        retry_system = system + _progress_retry_suffix(latest)
         raw = "".join(invoke_stream(client, retry_system, user_prompt, images)).strip()
         bound = bind_generation(raw, available)
 
-    stream_tokens = not ack_followup and may_stream(assessment)
+    stream_tokens = not progress_followup and may_stream(assessment)
     if bound.abstained:
         state = _apply_delta(
             state,
@@ -676,6 +752,7 @@ def retrieve_diagnose_state(
     retrieval_limit: int,
     overfetch: int,
     classifier=None,
+    classify_turn=None,
 ) -> tuple[DiagnosticGraphState, bool]:
     """Assess safety and retrieve evidence. Returns (state, needs_respond).
 
@@ -686,7 +763,11 @@ def retrieve_diagnose_state(
         blocked = _apply_delta(state, make_blocked_node()(state))
         return _stamp_board(blocked, phase_hint="escalate"), False
     retrieve = make_retrieve_node(
-        db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch
+        db,
+        manifest,
+        retrieval_limit=retrieval_limit,
+        overfetch=overfetch,
+        classify_turn=classify_turn,
     )
     return _apply_delta(state, retrieve(state)), True
 
@@ -713,6 +794,7 @@ def build_diagnostic_graph(
     llm: LLMClient | None = None,
     retrieval_limit: int = 8,
     overfetch: int = 40,
+    classify_turn=None,
 ):
     llm = llm or OpenAIClient(
         api_key=openai_api_key(), model=llm_model(), prompt_name="diagnose_system"
@@ -720,7 +802,16 @@ def build_diagnostic_graph(
     graph = StateGraph(DiagnosticGraphState)
     graph.add_node("assess", make_assess_node())  # regex-only unless a classifier is wired
     graph.add_node("blocked", make_blocked_node())
-    graph.add_node("retrieve", make_retrieve_node(db, manifest, retrieval_limit=retrieval_limit, overfetch=overfetch))
+    graph.add_node(
+        "retrieve",
+        make_retrieve_node(
+            db,
+            manifest,
+            retrieval_limit=retrieval_limit,
+            overfetch=overfetch,
+            classify_turn=classify_turn,
+        ),
+    )
     graph.add_node("respond", make_respond_node(llm, manifest))
     graph.add_edge(START, "assess")
     graph.add_conditional_edges("assess", _route_after_assess, {"blocked": "blocked", "retrieve": "retrieve"})

@@ -130,6 +130,40 @@ def test_numeric_table_row_includes_column_headers():
     assert any(ch.isalpha() for ch in rows[1].text)
 
 
+def test_table_row_chunk_keeps_matched_bbox() -> None:
+    from repair_assistant.parsing.models import BBox
+
+    row = TableRow(
+        cells=["70", "21", "3.4"],
+        page=20,
+        bbox=BBox(10, 80, 400, 100),
+    )
+    document = ExtractedDocument(
+        path="synthetic",
+        extractor="test",
+        pages=[
+            ExtractedPage(
+                number=20,
+                text="THERMISTOR",
+                tables=[
+                    Table(
+                        headers=["Temp F", "Temp C", "Resistance kOhm"],
+                        rows=[row],
+                        page=20,
+                        page_width=612,
+                        page_height=792,
+                    )
+                ],
+            )
+        ],
+    )
+    chunks = chunk_document(document, strategy="structured")
+    rows = [c for c in chunks if c.kind == "table_row"]
+    assert rows[0].metadata["bbox"] == {"x0": 10, "y0": 80, "x1": 400, "y1": 100}
+    assert rows[0].metadata["page_width"] == 612
+    assert rows[0].content_hash() == rows[0].content_hash()
+
+
 def test_section_inherited_on_prose_under_heading():
     document = ExtractedDocument(
         path="synthetic",

@@ -109,6 +109,40 @@ def test_load_parsed_strips_nul_from_text_and_metadata(tmp_path: Path) -> None:
     assert doc.chunks[0].content_hash != "stale-hash-with-nuls"
 
 
+def test_ingest_updates_metadata_when_fingerprint_unchanged(tmp_path: Path) -> None:
+    from unittest.mock import MagicMock
+
+    from repair_assistant.ingest.pipeline import _ingest_one
+    from repair_assistant.ingest.store import DocumentRow
+
+    base = {
+        "chunk_id": "a",
+        "text": "F5E2 door lock",
+        "page": 8,
+        "kind": "table_row",
+        "error_codes": ["F5E2"],
+        "language": "en",
+        "doc_id": "tech-sheet",
+        "publication_number": "W11320651",
+        "revision": "A",
+        "metadata": {"bbox": {"x0": 1, "y0": 2, "x1": 3, "y1": 4}, "page_width": 612},
+    }
+    parsed = load_parsed_document(_write_parsed(tmp_path, "tech-sheet", [base]))
+    db = MagicMock()
+    db.get_document.return_value = DocumentRow(
+        doc_id=parsed.doc_id,
+        content_fingerprint=parsed.content_fingerprint,
+        chunk_count=1,
+    )
+    db.chunks_missing_embeddings.return_value = []
+    db.update_chunk_metadata.return_value = 1
+    stats = _ingest_one(db, parsed, NullEmbedder(), force=False, corpus_sha256=None)
+    assert stats.status == "upserted"
+    assert "metadata" in stats.detail
+    db.update_chunk_metadata.assert_called_once()
+    db.replace_chunks.assert_not_called()
+
+
 def test_strip_nul_chars_recursive() -> None:
     assert strip_nul_chars("a\x00b") == "ab"
     assert strip_nul_chars({"x": "a\x00b", "y": ["c\x00"]}) == {"x": "ab", "y": ["c"]}

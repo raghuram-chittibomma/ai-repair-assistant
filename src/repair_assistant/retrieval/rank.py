@@ -33,7 +33,7 @@ _TECHNICIAN_DEPTH = re.compile(
 )
 _UNLOCK_EVIDENCE = re.compile(
     r"will not unlock|won'?t unlock|door will not unlock|add garment|"
-    r"door locks when cycle|touch (?:start/)?pause|f5\s*e2|lock failure",
+    r"door locks when cycle|touch (?:start/)?pause",
     re.I,
 )
 _WRONG_UNLOCK_POLARITY = re.compile(

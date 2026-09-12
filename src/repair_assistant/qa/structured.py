@@ -73,6 +73,32 @@ DIAGNOSE_RESPONSE_FORMAT: dict = {
     "json_schema": GROUNDED_DIAGNOSE_SCHEMA,
 }
 
+DIAGNOSE_INTENT_LABELS: tuple[str, ...] = (
+    "ack",
+    "still_unresolved",
+    "mid_cycle_stop",
+    "new_symptom",
+    "unclear",
+)
+
+DIAGNOSE_INTENT_SCHEMA: dict = {
+    "name": "diagnose_intent",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "label": {"type": "string", "enum": list(DIAGNOSE_INTENT_LABELS)},
+        },
+        "required": ["label"],
+    },
+}
+
+DIAGNOSE_INTENT_RESPONSE_FORMAT: dict = {
+    "type": "json_schema",
+    "json_schema": DIAGNOSE_INTENT_SCHEMA,
+}
+
 
 @dataclass(frozen=True)
 class Claim:

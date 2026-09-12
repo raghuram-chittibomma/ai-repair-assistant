@@ -102,18 +102,51 @@ scenarios:
       Mid-cycle / no-code stop should quote Activating Service Diagnostic Mode
       from the service manual (W11169652), not invent a knob sequence.
 
+  - id: f5e2-door-lock-still-unresolved
+    command: diagnose
+    turns:
+      - Washer shows F5E2 and the door will not lock.
+      - checked but still facing the issue
+    appliance: {model: WFW5620HW0}
+    turn_grades:
+      2:
+        expect_cites_any: [W11169652]
+        fails_if_contains:
+          - "Possible cause: Door lock mechanism not functioning"
+    notes: >-
+      After the door-lock check is done and the symptom remains, stay on the
+      service manual path. Do not re-ask the same cause from W11320651.
+
   - id: door-got-locked-unlock
     command: ask
     question: door got locked
     appliance: {model: WFW5620HW0}
-    expect_contains_any: [unlock, open, "Add Garment", "start/pause", pause]
+    expect_contains_any: [unlock, "Add Garment", "start/pause", pause]
     fails_if_contains:
       - "won't lock"
       - "will not lock"
       - "Ensure that door is completely closed"
+      - "TEST #4"
+      - "test #4"
     expect_cites_any: [W11156985, W11169652, W11320651, W11156989]
     notes: >-
-      Unlock polarity — stuck-closed guidance, not "door won't lock" start checks.
+      Unlock polarity — stuck-closed guidance, not "door won't lock" / TEST #4.
+
+  - id: door-doesnt-open-unlock
+    command: ask
+    question: door doesn't open
+    appliance: {model: WFW5620HW0}
+    expect_contains_any: [unlock, "Add Garment", "start/pause", pause]
+    fails_if_contains:
+      - "won't lock"
+      - "will not lock"
+      - "Ensure that door is completely closed"
+      - "TEST #4"
+      - "test #4"
+    expect_cites_any: [W11156985, W11169652, W11320651, W11156989]
+    notes: >-
+      Same unlock polarity as "won't open" (ADR-0040 / ADR-0041). Must not
+      cite TEST #4 or the Door Won't Lock start table.
 
   - id: door-lock-underspecified-clarify
     command: ask

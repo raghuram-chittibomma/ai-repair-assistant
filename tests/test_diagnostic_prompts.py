@@ -29,6 +29,19 @@ def test_mid_cycle_followup_prefers_diagnostic_entry() -> None:
     assert "before-servicing" in text
 
 
+def test_unresolved_followup_says_do_not_repeat_from_another_doc() -> None:
+    text = build_diagnostic_user_prompt(
+        appliance_model="WFW5620HW0",
+        appliance_serial=None,
+        evidence_text="[1] Possible cause: Door lock",
+        transcript="User: checked but still facing the issue",
+        symptom_anchor="F5E2",
+        unresolved_followup=True,
+    )
+    assert "did not resolve" in text
+    assert "another document" in text
+
+
 def test_window_transcript_short_list_unchanged() -> None:
     lines = ["User: a", "Assistant: b"]
     assert window_transcript(lines) == "User: a\nAssistant: b"

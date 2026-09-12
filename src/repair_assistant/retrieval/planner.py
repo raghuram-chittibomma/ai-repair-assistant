@@ -14,7 +14,7 @@ from repair_assistant.retrieval.query_expand import (
 # Shared with rank polarity heuristics (OEM wording).
 _UNLOCK_EVIDENCE = re.compile(
     r"will not unlock|won'?t unlock|door will not unlock|add garment|"
-    r"door locks when cycle|f5\s*e2|lock failure",
+    r"door locks when cycle|touch (?:start/)?pause",
     re.I,
 )
 _WRONG_UNLOCK_POLARITY = re.compile(
@@ -59,14 +59,13 @@ class EvidenceFit:
 def suggest_plan_codes(intent: QueryIntent) -> tuple[str, ...]:
     """Topic-driven retrieval code hints (not user-reported).
 
-    Add new topic→code mappings here as evals justify them; keep them out of
-    answer assertions via ``user_codes`` vs ``plan_codes`` provenance.
+    Fault codes are user-typed ([ADR-0041]). Do not map unlock polarity
+    to F5E2 — that ``code_fetch``es TEST #4. Add new mappings here only
+    when evals justify them; keep them out of answer assertions via
+    ``user_codes`` vs ``plan_codes`` provenance.
     """
-    suggested: list[str] = []
-    user = {c.upper() for c in intent.user_codes}
-    if intent.door_polarity == "unlock" and "F5E2" not in user:
-        suggested.append("F5E2")
-    return tuple(dict.fromkeys(suggested))
+    _ = intent
+    return ()
 
 
 def plan_retrieval(intent: QueryIntent) -> RetrievalPlan:

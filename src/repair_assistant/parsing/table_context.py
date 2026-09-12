@@ -19,7 +19,7 @@ import re
 from dataclasses import dataclass, field
 
 from repair_assistant.parsing.error_codes import extract_error_codes
-from repair_assistant.parsing.models import Table
+from repair_assistant.parsing.models import BBox, Table
 
 # Column header synonyms (case-insensitive substring match).
 _PROBLEM_HDR = ("problem", "symptom", "fault", "condition")
@@ -49,7 +49,7 @@ _MATRIX_HDR_LOOSE_RE = re.compile(
 # Guide #1 problem anchors (first line of problem cell).
 _PROBLEM_ANCHOR_RE = re.compile(
     r"^(?:WON'?T|NO |DOOR |HMI |INCORRECT |LEAKING|VIBRATION|POOR DRY|CLEAN |SANITIZE |"
-    r"DRUM |DRY HEATER|WON'T|WONT)",
+    r"DRUM |DRY HEATER|OVERFILLS|MOTOR |WON'T|WONT)",
     re.I,
 )
 # Guide #2 group titles (category headers inside the matrix).
@@ -64,6 +64,19 @@ _GROUP_TITLE_TAIL_RE = re.compile(
 _SYMPTOM_ROW_RE = re.compile(
     r"(?:^|(?<=[\n.]))([A-Z][A-Za-z0-9][^.\n]{4,70}\.)",
     re.M,
+)
+# Guide #1 check leads after a short cause sentence (LTR extract, no table grid).
+_GUIDE1_CHECK_LEAD = (
+    r"Check |See TEST|See |Unplug |Ensure |Verify |Open |Press |Clean |"
+    r"Try |Remove |Make sure |Wait |1\. "
+)
+_GUIDE1_CAUSE_CHECK = re.compile(
+    rf"([A-Z][^.?\n]{{3,80}}\.)\s+((?:{_GUIDE1_CHECK_LEAD})[^.?\n]{{3,}}(?:\.|$))",
+    re.I,
+)
+_GUIDE1_CAUSE_CHECK_NO_DOT = re.compile(
+    rf"([A-Z][^.\n]{{8,80}}?)\s+((?:{_GUIDE1_CHECK_LEAD})[^.?\n]{{4,}}\.)",
+    re.I,
 )
 _GUIDE1_PROBLEM_RE = re.compile(
     r"(?:^|\n)((?:WON'?T|NO |DOOR |CLEAN WASHER|INCORRECT WATER|NO BUTTON)"
@@ -111,6 +124,7 @@ class ContextualTableRow:
     group_title: str = ""
     group_note: str = ""
     headers: list[str] = field(default_factory=list)
+    bbox: BBox | None = None
 
 
 def is_troubleshooting_matrix(headers: list[str]) -> bool:
@@ -174,18 +188,24 @@ def problem_anchor_title(text: str) -> str:
 
 
 def is_problem_anchor(text: str) -> bool:
-    """Guide #1 problem title (WON'T POWER UP, WON'T START CYCLE, …)."""
+    """Guide #1 problem title (WON'T POWER UP, Door Won't Unlock, …)."""
     line = (text or "").strip().splitlines()[0].strip() if text else ""
     if not line or len(line) < 4:
         return False
-    normalized = line.replace("'", "'").replace("'", "'")
-    if extract_error_codes(line):
+    normalized = line.replace("\u2019", "'").replace("\u2018", "'").replace("`", "'")
+    title = re.sub(r"\s*\(.*$", "", normalized).strip()
+    if extract_error_codes(title):
         return False
-    if not _ALL_CAPS_LINE_RE.match(normalized.replace(".", "")):
+    if _GROUP_SYMPTOM_TITLE_RE.search(title):
         return False
-    if _GROUP_SYMPTOM_TITLE_RE.search(normalized):
+    if not _PROBLEM_ANCHOR_RE.match(title):
         return False
-    return bool(_PROBLEM_ANCHOR_RE.match(normalized))
+    # Tech sheets are ALL CAPS; service manuals use title case on the same
+    # anchors. Cause sentences ("Door lock mechanism not functioning.") have
+    # a period and must not inherit as a new problem.
+    if _ALL_CAPS_LINE_RE.match(title.replace(".", "")):
+        return True
+    return not bool(re.search(r"[.!?]", title))
 
 
 def is_group_symptom_header(cells: list[str], col: ColumnMap) -> bool:
@@ -297,6 +317,7 @@ def iter_contextual_rows(
                     group_title=current_group,
                     group_note=current_group_note,
                     headers=headers,
+                    bbox=row.bbox,
                 )
             )
             continue
@@ -335,6 +356,7 @@ def iter_contextual_rows(
                     group_title=current_group,
                     group_note=current_group_note,
                     headers=headers,
+                    bbox=row.bbox,
                 )
             )
             continue
@@ -351,6 +373,7 @@ def iter_contextual_rows(
                     problem_title=effective_problem,
                     problem_detail=effective_detail,
                     headers=headers,
+                    bbox=row.bbox,
                 )
             )
 
@@ -842,6 +865,19 @@ def _parse_guide2_prose(
     return _parse_matrix_prose_unified(body, headers, col, guide_title)
 
 
+def _keep_guide1_pair(cause: str, checks: str) -> bool:
+    """Drop LTR leftovers (wrapped 'Wait 2 minutes', parenthetical See page)."""
+    c = (cause or "").strip()
+    k = (checks or "").strip()
+    if len(c) < 8 or len(k) < 8:
+        return False
+    if c.lower().startswith(("wait ", "if ", "see ")):
+        return False
+    if k.lower().startswith("see ("):
+        return False
+    return True
+
+
 def _parse_guide1_prose(
     body: str,
     headers: list[str],
@@ -861,20 +897,22 @@ def _parse_guide1_prose(
             if not _ALL_CAPS_LINE_RE.match(problem_title.replace(".", "")):
                 continue
         end = anchors[i + 1].start() if i + 1 < len(anchors) else len(body)
-        segment = body[am.end() : end].strip()
+        raw_segment = body[am.end() : end].strip()
         title = problem_title
         # Bullet symptom detail lines under the anchor.
         detail_lines = [
             ln.strip()
-            for ln in segment.splitlines()
+            for ln in raw_segment.splitlines()
             if ln.strip().startswith(("•", "-", "*", "\uf0d8"))
         ]
         detail = "\n".join(detail_lines)
-        pairs = re.findall(
-            r"([A-Z][^.?\n]{4,100}\.)\s+((?:Check |See TEST|See )[^.?\n]{4,}(?:\.|$))",
-            segment,
-            re.I,
-        )
+        # LTR wraps split a cause/check across lines; fold space before pairing.
+        segment = " ".join(raw_segment.split())
+        pairs = list(_GUIDE1_CAUSE_CHECK.findall(segment))
+        seen = {cause.strip().lower() for cause, _ in pairs}
+        for cause, checks in _GUIDE1_CAUSE_CHECK_NO_DOT.findall(segment):
+            if cause.strip().lower() not in seen:
+                pairs.append((cause, checks))
         if not pairs:
             pairs = re.findall(
                 r"([A-Z][^.?\n]{4,100}\.)\s+([A-Z][^.?\n]{4,}\.)",
@@ -883,7 +921,7 @@ def _parse_guide1_prose(
         for cause, checks in pairs:
             c = cause.strip()
             k = checks.strip()
-            if _is_symptom_title(c) and not k.lower().startswith(("check", "see")):
+            if not _keep_guide1_pair(c, k):
                 continue
             cells = ["", "", ""]
             cells[col.problem] = title

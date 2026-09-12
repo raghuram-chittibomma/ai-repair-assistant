@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from repair_assistant.qa.acks import is_ack_only_message
+from repair_assistant.qa.acks import is_progress_followup
 
 _NUMBERED_CHECK = re.compile(r"^\s*\d+\.\s+(.+)$")
 
@@ -77,14 +77,38 @@ def _norm(text: str) -> str:
     return _clip(text).lower()
 
 
+_INLINE_NUMBERED = re.compile(r"(?:^|[\s*])(\d+)\.\s+")
+
+
+def _clean_check(raw: str) -> str:
+    item = re.sub(r"\s*\[\d+\]\s*$", "", _clip(raw))
+    item = re.sub(r"\*+", "", item)
+    return item.strip(" :.-")
+
+
 def checks_from_assistant(text: str) -> list[str]:
-    """Numbered checklist lines from the previous assistant turn."""
+    """Numbered checklist items from the previous assistant turn.
+
+    Accepts one item per line or an inline ``1. … 2. …`` list (common when the
+    model puts the whole category in one paragraph).
+    """
     items: list[str] = []
     for line in (text or "").splitlines():
         match = _NUMBERED_CHECK.match(line)
         if not match:
             continue
-        item = re.sub(r"\s*\[\d+\]\s*$", "", _clip(match.group(1)))
+        item = _clean_check(match.group(1))
+        if item:
+            items.append(item)
+    if items:
+        return items
+    matches = list(_INLINE_NUMBERED.finditer(text or ""))
+    if len(matches) < 2:
+        return []
+    for i, match in enumerate(matches):
+        start = match.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text or "")
+        item = _clean_check((text or "")[start:end])
         if item:
             items.append(item)
     return items
@@ -217,7 +241,7 @@ def merge_board(
                 board.observations,
                 Observation(text=text, source="assistant", turn=board.step),
             )
-    if is_ack_only_message(user_message):
+    if is_progress_followup(user_message):
         confirmed: list[str] = []
         if prior.next_check:
             confirmed.append(prior.next_check)

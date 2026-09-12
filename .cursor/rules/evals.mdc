@@ -10,6 +10,8 @@ alwaysApply: false
 - `mine-traces` writes at most `evals/qa/drafts/mine-report-*.md` (or stdout). No draft YAML on disk, no `query_expand.yaml` rows, no live fixture edits.
 - `evals/retrieval/drafts/` is gitignored local scratch. Do not promote it as the S4 held-out set.
 - Retrieval release gate is pass/fail on hard fixtures. IR metrics (Hit@K, MRR, nDCG, latency) compare strategies; they do not replace the corpus cases.
-- A later diagnose closed-set intent slice ([ADR-0034](docs/adr/0034-diagnose-nlu-split.md)) must move `mid-cycle-stop-diag-entry` and the poor-wash fixtures before changing `_retrieval_query`.
+- Diagnose retrieve labels ([ADR-0039](docs/adr/0039-diagnose-retrieve-labels.md)) grade `mid-cycle-stop-diag-entry` and `f5e2-door-lock-still-unresolved`. Do not let the model write search text.
+- Door polarity grammar ([ADR-0040](docs/adr/0040-door-polarity-grammar.md)) and unlock-without-F5E2 ([ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md)) grade `door-got-locked-unlock` and `door-doesnt-open-unlock`. Those fixtures fail on TEST #4. Do not add contraction rows or fault codes to unlock `add_to_search`.
+- Same-problem coalesce ([ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md)) is not a ranking bake-off. Do not add a hard fixture whose only job is “prefer the first table row.”
 - Layout pack: `repair-corpus bench-layout` against `corpus/parsed/<doc>/chunks.jsonl` → `evals/parsing/results/layout-pack.md`.
 - Safety: regex remains the CI gate. Optional classifier may only raise severity ([ADR-0032](docs/adr/0032-safety-classifier-union.md)).

@@ -1,10 +1,15 @@
-# Retrieval query expansion — edit this file, not Python.
+# Retrieval query expansion — OEM phrases and leftover idioms, not slang.
 #
-# when_user_says: everyday wording a customer might type.
+# Door polarity (won't / doesn't / can't open vs lock) is compositional
+# (ADR-0040). Do not add contraction rows here. when_user_says on door
+# families is for idioms that are not negation + verb (got locked).
+#
+# when_user_says: leftover non-compositional wording, or mid-cycle cues.
 # add_to_search: words that already appear in a manual or tech sheet.
 #   Do not invent OEM-sounding phrases. If it is not in the literature, leave it out.
-#   Not a slang dictionary (ADR-0034). Do not add they / stopping / halfway rows
-#   so regex can do diagnose NLU.
+#   Do not put fault codes (F5E2) or TEST #4 glosses in an unlock family
+#   (ADR-0041). Not a slang dictionary (ADR-0034). Do not add they /
+#   stopping / halfway rows so regex can do diagnose NLU.
 # seen_in: optional publication numbers, for the next editor.
 #
 # phrase_pairs: optional shortcut. Matches a word from `from` followed by a
@@ -21,7 +26,7 @@ version: 1
 families:
   - id: door_unlock
     polarity: unlock
-    note: Door stuck closed / will not open
+    note: Door stuck closed / will not open. Productive negation is ADR-0040.
     seen_in: [W11156985]
     when_user_says:
       - got locked
@@ -30,36 +35,18 @@ families:
       - door locked
       - door is locked
       - door was locked
-      - won't open
-      - will not open
-      - can't open
-      - cannot open
-      - won't unlock
-      - will not unlock
-      - can't unlock
-      - cannot unlock
-      - door will not unlock
     add_to_search:
       - door will not unlock
       - door will not open
-      - lock failure
-      - F5E2
       - Door locks when cycle has started
 
   - id: door_lock
     polarity: lock
-    note: Door will not latch / start
+    note: Door will not latch / start. Productive negation is ADR-0040.
     seen_in: [W11169652]
     when_user_says:
-      - won't lock
-      - will not lock
-      - doesn't lock
-      - does not lock
-      - not locking
       - failed to lock
       - door not lock
-      - door won't lock
-      - door will not lock
     add_to_search:
       - Door Won't Lock
       - door not closed

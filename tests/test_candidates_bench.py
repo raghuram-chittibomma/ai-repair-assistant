@@ -21,6 +21,7 @@ def test_ready_candidates_with_questions() -> None:
     assert "control-lock-before-board" in ids
     assert "f7e1-bolts-then-persist" in ids
     assert "mid-cycle-stop-diag-entry" in ids
+    assert "f5e2-door-lock-still-unresolved" in ids
     assert "door-got-locked-unlock" in ids
     assert "door-lock-underspecified-clarify" in ids
     assert "serial-inside-range" not in ids  # E4: deferred

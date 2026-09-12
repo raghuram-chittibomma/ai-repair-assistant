@@ -26,9 +26,12 @@ local BGE embeddings). Manufacturer PDFs stay out of git.
 
 Encoded in `.cursor/rules/standing-decisions.mdc`. In short: keep
 `vector_apply_boost`; do not start R11/R20/R22 ranking or R41 feedback UI;
-R18 waits as closed-set diagnose intent ([ADR-0034](docs/adr/0034-diagnose-nlu-split.md)), not slang YAML or a rule-only agent;
-do not invent a held-out retrieval set; do not grow `query_expand.yaml` as
-slang; `mine-traces` reports only.
+R18 is closed-set diagnose retrieve labels ([ADR-0039](docs/adr/0039-diagnose-retrieve-labels.md)), not slang YAML, a rule-only agent, or free query rewrite;
+do not invent a held-out retrieval set; door polarity is compositional
+([ADR-0040](docs/adr/0040-door-polarity-grammar.md)); unlock retrieve is
+stuck-closed OEM not F5E2 ([ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md));
+same-problem rows coalesce into one citation ([ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md));
+`mine-traces` reports only.
 
 ## Commands
 

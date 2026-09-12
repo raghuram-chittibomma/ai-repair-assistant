@@ -11,11 +11,15 @@ from .language import detect_language
 from .models import Block, ExtractedDocument, ExtractedPage, Table
 from .page_classify import classify_page, looks_like_junk_table
 from .parse_quality import PageAudit, audit_page, quality_override_for
+from .prose_bbox import words_from_pdfplumber
+from .table_bbox import attach_row_bboxes
 
 
 def _extract_tables(page: object, page_no: int) -> list[Table]:
     tables = [convert_table(t, page_no) for t in (page.extract_tables() or []) if t]
-    return [t for t in tables if t is not None]
+    kept = [t for t in tables if t is not None]
+    attach_row_bboxes(kept, page)
+    return kept
 
 
 def _layout_prose_text(path: Path, page_index: int) -> str | None:
@@ -131,6 +135,10 @@ class HybridExtractor:
                         blocks=[Block(text=text, page=index, kind="text")],
                         tables=tables,
                         language=detect_language(text),
+                        layout_kind=layout_kind,
+                        page_width=float(getattr(page, "width", 0) or 0) or None,
+                        page_height=float(getattr(page, "height", 0) or 0) or None,
+                        words=words_from_pdfplumber(page),
                     )
                 )
 

@@ -167,6 +167,12 @@ Rare literals vs term mismatch remain a deliberate pair. Leaders currently
 saturate **14/14** hard on pass/fail — compare mean Precision@K. Bake-off cores
 (`run_strategy`) omit production side doors unless the `production_search`
 strategy is included; see [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
+Door polarity and unlock-without-F5E2 grade
+`door-got-locked-unlock` / `door-doesnt-open-unlock`
+([ADR-0040](adr/0040-door-polarity-grammar.md),
+[ADR-0041](adr/0041-unlock-family-no-fault-code.md)). Same-problem checklist
+coalesce ([ADR-0042](adr/0042-guide1-anchor-and-checklist-coalesce.md)) is
+retrieve formatting — do not add a ranking fixture for “prefer first row.”
 
 ### IR ↔ candidates crosswalk (same stories, different IDs)
 
@@ -222,6 +228,7 @@ report by hand if you want new smoke/candidates.
 
 Added (2026-08-27, not yet hand-baselined): smoke + candidates
 `mid-cycle-stop-diag-entry`, `door-got-locked-unlock`,
+`door-doesnt-open-unlock`,
 `door-lock-underspecified-clarify`. Run:
 
 ```powershell

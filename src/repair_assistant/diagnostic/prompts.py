@@ -42,6 +42,7 @@ def build_diagnostic_user_prompt(
     transcript: str,
     symptom_anchor: str | None = None,
     ack_followup: bool = False,
+    unresolved_followup: bool = False,
     mid_cycle_followup: bool = False,
     board_text: str | None = None,
 ) -> str:
@@ -55,10 +56,20 @@ def build_diagnostic_user_prompt(
         lines.append(f"Session symptom anchor: {symptom_anchor}")
     if board_text:
         lines.append(board_text)
-    if ack_followup:
+    if unresolved_followup:
+        lines.append(
+            "Latest user message says the last check did not resolve the "
+            "symptom — continue the same path. Do not repeat that check from "
+            "another document. Advance to the next category. Do not abstain "
+            "for a missing symptom."
+        )
+    elif ack_followup:
         lines.append(
             "Latest user message confirms prior checks passed — continue the "
-            "symptom path. Do not re-ask those checks. Do not abstain for a "
+            "symptom path. Do not re-ask those checks. Do not restart the "
+            "cleared category from its first remedy (reset / unplug). Advance "
+            "to a still-open cause or the explicit See TEST #N in evidence, "
+            "or close if that path is exhausted. Do not abstain for a "
             "missing symptom."
         )
     if mid_cycle_followup:

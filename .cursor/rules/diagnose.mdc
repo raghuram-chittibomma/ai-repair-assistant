@@ -8,5 +8,6 @@ alwaysApply: false
 
 - **Rules own protocol and evidence:** board merge, safety, applicability, which OEM phrases may be appended ([ADR-0031](docs/adr/0031-structured-diagnostic-state.md), [ADR-0034](docs/adr/0034-diagnose-nlu-split.md)).
 - **Do not** add `when_user_says` slang so search can understand the user. **Do not** replace diagnose with a rule-only expert-system tree.
-- **Do not** implement unconstrained query rewrite. R18, when opened, is closed-set labels (`ack`, `mid_cycle_stop`, `poor_wash`, …) that pick a retrieve **family**; `add_to_search` stays literature text. Not started — owner must ask, then measure `mid-cycle-stop-diag-entry` and poor-wash fixtures.
-- Today's `_retrieval_query` still uses `acks.py` and YAML matchers. That is acknowledged, not a licence to grow detectors. The LLM writes the next step from retrieved chunks; it does not invent search words.
+- **Do not** implement unconstrained query rewrite. R18 is closed-set labels that pick a retrieve family ([ADR-0039](docs/adr/0039-diagnose-retrieve-labels.md)); `add_to_search` stays literature text.
+- `_retrieval_query` / `acks.py` remain the offline fallback. Do not grow those detectors as the product strategy. The classify call may return a label only — never a search string.
+- Board merge harvests numbered checks from the prior assistant turn (one per line or inline `1. … 2. …`). After the user clears a category, do not restart that category from the first remedy.

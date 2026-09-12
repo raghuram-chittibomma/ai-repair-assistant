@@ -217,8 +217,11 @@ def test_chunker_prose_fallback_not_one_mega_chunk():
 def test_is_problem_anchor_guide1():
     assert is_problem_anchor("WON'T POWER UP")
     assert is_problem_anchor("WON'T START CYCLE")
+    assert is_problem_anchor("Door Won't Unlock (See page 2-2 for manually unlocking")
+    assert is_problem_anchor("Won't Dispense")
     assert not is_problem_anchor("POOR WASH PERFORMANCE")
     assert not is_problem_anchor("Oversuds.")
+    assert not is_problem_anchor("Door lock mechanism not functioning.")
 
 
 def test_detect_matrix_kind_guide1():
@@ -370,3 +373,71 @@ def test_chunker_emits_one_chunk_per_guide1_cause_row():
     assert power.metadata.get("problem_title") == "WON'T POWER UP"
     acu = next(c for c in matrix_rows if "ACU problem" in c.text)
     assert "TEST #1" in acu.text
+
+
+def test_guide1_prose_keeps_first_unlock_remedies() -> None:
+    """LTR matrix pages have no extract_tables() grid; first remedies must still chunk."""
+    prose = (
+        "FOR SERVICE TECHNICIAN'S USE ONLY\n"
+        "TROUBLESHOOTING GUIDE #1\n"
+        "PROBLEM POSSIBLE CAUSE CHECKS & TESTS\n"
+        "DOOR WON'T LOCK Door not closed. Ensure that door is completely closed.\n"
+        "Door lock obstructed. Check mechanism for obstruction.\n"
+        "Door lock mechanism not functioning. See TEST #4: Door Lock System, page 15.\n"
+        "DOOR WON'T UNLOCK Reset washer. Unplug and reconnect the power cord. "
+        "Wait 2 minutes to see\n"
+        "(See page 24 for manually if the washer door unlocks.\n"
+        "unlocking the door lock Misaligned, broken, or over-tightened "
+        "Check door lock mechanism and repair as necessary.\n"
+        "system) door latch.\n"
+        "Door lock mechanism not functioning. See TEST #4: Door Lock System, page 15.\n"
+        "WON'T DISPENSE No water supplied to washer. 1. Check water connections "
+        "to washer.\n"
+    )
+    rows = parse_troubleshooting_prose(prose)
+    unlock = [r for r in rows if r.problem_title == "DOOR WON'T UNLOCK"]
+    lock = [r for r in rows if r.problem_title == "DOOR WON'T LOCK"]
+    assert any("Reset washer" in r.cells[1] and "Unplug" in r.cells[2] for r in unlock)
+    assert any("TEST #4" in r.cells[2] for r in unlock)
+    assert any("Door not closed" in r.cells[1] and "Ensure" in r.cells[2] for r in lock)
+
+
+def test_title_case_door_wont_unlock_inherits_empty_rows() -> None:
+    """Service-manual Guide #1 uses title case, not ALL CAPS."""
+    table = Table(
+        headers=["Problem", "Possible Cause", "Checks & Tests"],
+        rows=[
+            TableRow(
+                cells=[
+                    "Door Won't Unlock (See page 2-2 for manually unlocking the door lock system.)",
+                    "Reset washer.",
+                    "Unplug and reconnect the power cord. Wait 2 minutes to see if the washer door unlocks.",
+                ],
+                page=35,
+            ),
+            TableRow(
+                cells=[
+                    "",
+                    "Misaligned, broken, or over-tightened door latch.",
+                    "Check door lock mechanism and repair as necessary.",
+                ],
+                page=35,
+            ),
+            TableRow(
+                cells=[
+                    "",
+                    "Door lock mechanism not functioning.",
+                    "See TEST #4: Door Lock System, page 3-11.",
+                ],
+                page=35,
+            ),
+        ],
+        page=35,
+    )
+    assert detect_matrix_kind(table) == "problem_spanned"
+    data = [r for r in iter_contextual_rows(table) if r.role == "data"]
+    assert len(data) == 3
+    assert all(r.problem_title.startswith("Door Won't Unlock") for r in data)
+    assert "Reset washer" in data[0].cells[1]
+    assert "Misaligned" in data[1].cells[1]
+    assert "TEST #4" in data[2].cells[2]

@@ -18,6 +18,13 @@ def test_intent_door_got_locked_is_unlock_not_ambiguous() -> None:
     assert intent.topic == "door_lock"
 
 
+def test_intent_door_doesnt_open_is_unlock_not_ambiguous() -> None:
+    intent = extract_intent("door doesn't open", audience="owner")
+    assert intent.door_polarity == "unlock"
+    assert intent.needs_clarification is False
+    assert "will not unlock" in plan_retrieval(intent).embed_query.lower()
+
+
 def test_intent_underspecified_door_lock_asks_clarify() -> None:
     intent = extract_intent("door lock problem", audience="owner")
     assert intent.door_polarity is None
@@ -26,17 +33,20 @@ def test_intent_underspecified_door_lock_asks_clarify() -> None:
     assert "stuck closed" in intent.clarify_question.lower()
 
 
-def test_plan_adds_f5e2_as_plan_code_not_user_code() -> None:
-    intent = extract_intent("door got locked", audience="owner")
-    plan = plan_retrieval(intent)
-    assert intent.user_codes == ()
-    assert plan.user_codes == ()
-    assert plan.plan_codes == ("F5E2",)
-    assert "F5E2" in plan.codes
-    assert "will not unlock" in plan.embed_query.lower()
-    assert "polarity_expand" in plan.hops
-    assert plan.enable_graph_hop is False
-    assert "graph" not in plan.hops
+def test_plan_does_not_inject_f5e2_on_unlock() -> None:
+    for question in ("door got locked", "door doesn't open"):
+        intent = extract_intent(question, audience="owner")
+        plan = plan_retrieval(intent)
+        assert intent.user_codes == ()
+        assert plan.user_codes == ()
+        assert plan.plan_codes == ()
+        assert "F5E2" not in plan.codes
+        assert "F5E2" not in plan.embed_query.upper()
+        assert "lock failure" not in plan.embed_query.lower()
+        assert "will not unlock" in plan.embed_query.lower()
+        assert "polarity_expand" in plan.hops
+        assert plan.enable_graph_hop is False
+        assert "graph" not in plan.hops
 
 
 def test_user_reported_code_stays_user_code() -> None:
@@ -61,6 +71,18 @@ def test_provenance_block_in_user_prompt() -> None:
     assert "(none)" in prompt
     assert "Suggested for retrieval only" in prompt
     assert "F5E2" in prompt
+
+
+def test_evidence_fit_f5e2_lock_failure_is_not_unlock() -> None:
+    intent = extract_intent("door doesn't open", audience="owner")
+    texts = [
+        "F5E2 Lock failure. See TEST #4: Door Lock System, page 15.",
+        "Problem: Door Won't Lock | Ensure that door is completely closed.",
+        "Door not closed. Ensure that door is completely closed.",
+    ]
+    fit = check_evidence_fit(intent, texts)
+    assert fit.ok is False
+    assert fit.clarify_question
 
 
 def test_evidence_fit_fails_when_only_wont_lock_hits() -> None:
