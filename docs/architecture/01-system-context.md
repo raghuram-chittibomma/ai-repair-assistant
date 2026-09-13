@@ -66,7 +66,7 @@ flowchart LR
 | --- | --- | --- |
 | CLI | `search` / `ask` / `diagnose` | Same engines as API; good for benches |
 | API | `POST /v1/ask`, `/v1/diagnose`, streams | Optional `X-API-Key` ([ADR-0016](../adr/0016-http-api-docker.md)) |
-| UI | `http://localhost:8080/ui` | Ask / diagnose / search; export JSON/MD |
+| UI | `http://localhost:8080/ui` | Ask / diagnose / search; diagnose shows a read-only session tally ([ADR-0044](../adr/0044-diagnose-session-tally.md)); export JSON/MD |
 
 ## Three-way copyright separation
 

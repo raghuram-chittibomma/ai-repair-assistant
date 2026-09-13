@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from repair_assistant.corpus.support import CorpusSupportResult
 from repair_assistant.diagnostic.graph import _retrieval_query, diagnose_turn_stream
@@ -146,6 +146,8 @@ def test_retrieval_query_ack_keeps_symptom_anchor() -> None:
     assert is_ack_only_message("they look good")
     assert is_ack_only_message("checked all. no issues there")
     assert is_ack_only_message("checked all no issues there")
+    assert is_ack_only_message("checked all, no issues found there")
+    assert is_ack_only_message("checked. no issue there as well")
     assert not is_ack_only_message("no error code. whole machine shuts down.")
     from repair_assistant.qa.acks import is_unresolved_followup
 
@@ -232,6 +234,65 @@ def test_session_symptom_anchor_skips_acks() -> None:
         HumanMessage(content="no problem here"),
     ]
     assert _session_symptom_anchor(messages) == "doesn't wash properly"
+
+
+def test_diagnose_turn_stream_closes_when_see_test_already_offered() -> None:
+    from repair_assistant.qa.context import Citation
+
+    llm = MagicMock()
+    llm.model = "fake"
+    llm.stream = MagicMock(side_effect=AssertionError("generate should not run"))
+    state = _base_state()
+    state["messages"] = [
+        HumanMessage(content="Washer will not drain."),
+        AIMessage(content="Proceed to TEST #8: Drain/Recirculation Pump [1]."),
+        HumanMessage(content="checked all, no issues found there"),
+    ]
+    state["evidence_text"] = (
+        "[1] Possible cause: Pump not pumping. See TEST #8: "
+        "Drain/Recirculation Pump."
+    )
+    state["citations_available"] = [
+        Citation(
+            index=1,
+            doc_id="tech-sheet-example",
+            chunk_id="p10",
+            label="W11320651 Rev B",
+            page=10,
+            excerpt="See TEST #8: Drain/Recirculation Pump.",
+            block_text="See TEST #8: Drain/Recirculation Pump.",
+        )
+    ]
+    state["retrieval_count"] = 1
+    state["evidence_blocks"] = {1: "See TEST #8: Drain/Recirculation Pump."}
+    db = MagicMock()
+    manifest = MagicMock()
+    with (
+        patch("repair_assistant.diagnostic.graph.corpus_supports_appliance") as support,
+        patch("repair_assistant.diagnostic.graph.search") as search,
+    ):
+        support.return_value = CorpusSupportResult(True, 1, "ok", "1 doc")
+        events = list(
+            diagnose_turn_stream(
+                db,
+                manifest,
+                state,
+                llm=llm,  # type: ignore[arg-type]
+                classify_turn=lambda _s, _u: '{"label": "ack"}',
+            )
+        )
+    search.assert_not_called()
+    llm.stream.assert_not_called()
+    done = events[-1]
+    assert done["type"] == "done"
+    assert done["abstained"] is False
+    assert "no further grounded steps" in done["assistant_message"]
+    assert done["diagnostic"]["phase"] == "close"
+    assert any("test #8" in item.lower() for item in done["diagnostic"]["ruled_out"])
+    assert done["tally"]["closed"] is True
+    assert done["tally"]["symptom"] == "Washer will not drain."
+    assert "See TEST #8" in done["tally"]["cleared"]
+    assert done["tally"]["citation_index"] == 1
 
 
 def test_orphan_ack_reply_not_abstain() -> None:

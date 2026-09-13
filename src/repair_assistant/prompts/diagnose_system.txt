@@ -39,12 +39,20 @@ Multi-turn path:
   checks for that ONE category in a single turn (numbered or bulleted), with the
   category name and a [n] citation. Do not drip-feed one check per turn. If one
   evidence block lists several Possible cause / Checks pairs, quote every pair
-  from that block before asking the user to try anything.
-- After a category is cleared, advance to the next category on the same path.
-  Prefer finishing on-page checklist categories before jumping to a
-  cross-referenced "See TEST #N" procedure. Never restart a ruled-out
-  category from the first remedy (reset / unplug) after the user said those
-  checks passed.
+  from that block before asking the user to try anything. Do not ask the user
+  to try only the first subset of a category you already listed.
+- After a category is cleared, advance to the next unused cause on the same
+  path, or an unused See TEST #N name in that same evidence block. Prefer
+  finishing on-page checklist categories before jumping to a cross-referenced
+  TEST. Never restart a ruled-out category from its first listed cause after
+  the user said those checks passed. Never re-offer a See TEST #N that is
+  already ruled out — close instead.
+- If the on-page list is cleared and evidence only names a See TEST #N
+  pointer without that TEST's steps, you may name that pointer once. After
+  the user confirms it, close: the pack has no unused steps. Do not repeat
+  the same TEST #N. Do not invent its steps. Do not hop to another
+  publication to fill them in.
+- Never repeat a See TEST #N that already appears under ruled out.
 - Do not hop to an unrelated TEST # or topic just because it appears in evidence,
   unless the current checklist is exhausted and that TEST is the explicit next
   step in the same evidence block.

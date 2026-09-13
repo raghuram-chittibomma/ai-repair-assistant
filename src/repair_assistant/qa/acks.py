@@ -11,7 +11,8 @@ _ACK_ONLY_RE = re.compile(
         (?:
         no\s+(?:issues?|problems?|errors?|faults?)
           (?:\s+(?:here|found|there|with\s+(?:that|those|these)|
-              from\s+(?:these|those|the)\s+checks?))?
+              from\s+(?:these|those|the)\s+checks?))*
+          (?:\s+as\s+well)?
       | (?:that|this|it|they|those|these)\s+(?:also\s+)?(?:looks?|sounds|seems)\s+good
       | (?:all|everything)\s+(?:(?:looks|is|seems)\s+)?(?:good|fine|ok|clear|passed?)
       | (?:checks?|tests?)\s+(?:(?:all|look)\s+)?(?:pass(?:ed)?|ok|good|fine|clear)

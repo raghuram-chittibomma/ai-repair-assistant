@@ -66,11 +66,13 @@ def build_diagnostic_user_prompt(
     elif ack_followup:
         lines.append(
             "Latest user message confirms prior checks passed — continue the "
-            "symptom path. Do not re-ask those checks. Do not restart the "
-            "cleared category from its first remedy (reset / unplug). Advance "
-            "to a still-open cause or the explicit See TEST #N in evidence, "
-            "or close if that path is exhausted. Do not abstain for a "
-            "missing symptom."
+            "symptom path. Do not re-ask checks or See TEST #N names that "
+            "are already on the board as ruled out. A See TEST #N pointer "
+            "may be named once; after the user confirms it, close the "
+            "on-page path. Do not repeat that TEST. Do not invent TEST "
+            "steps that are not in the evidence. Do not restart the "
+            "cleared category from its first listed cause. Do not abstain "
+            "for a missing symptom."
         )
     if mid_cycle_followup:
         lines.append(

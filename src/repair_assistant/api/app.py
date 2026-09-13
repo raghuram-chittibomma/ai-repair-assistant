@@ -27,6 +27,7 @@ from repair_assistant.api.schemas import (
     CitationOut,
     DiagnoseRequest,
     DiagnoseResponse,
+    DiagnoseTallyOut,
     HealthResponse,
     PageImageOut,
     ReadyResponse,
@@ -46,6 +47,7 @@ from repair_assistant.corpus.support import (
     corpus_supports_appliance,
     unsupported_appliance_message,
 )
+from repair_assistant.diagnostic.board import board_from_mapping, session_tally
 from repair_assistant.diagnostic.session import (
     DEFAULT_SESSION_MAX_TURNS,
     SessionTurnLimitError,
@@ -118,6 +120,15 @@ def _figure_pages_out(rows) -> list[PageImageOut]:
 
 def _citation_out(cite) -> CitationOut:
     return CitationOut(**citation_public_dict(cite))
+
+
+def _diagnose_tally_out(turn) -> DiagnoseTallyOut:
+    payload = session_tally(
+        board_from_mapping(getattr(turn, "diagnostic", None)),
+        list(getattr(turn, "citations", None) or []),
+        assistant=str(getattr(turn, "assistant_message", "") or ""),
+    )
+    return DiagnoseTallyOut(**payload)
 
 
 _manifest_cache = None
@@ -540,6 +551,7 @@ def create_app(
             safety_notice=turn.safety_notice,
             escalated=turn.escalated,
             diagnostic=turn.diagnostic if isinstance(turn.diagnostic, dict) else None,
+            tally=_diagnose_tally_out(turn),
             figure_pages=_figure_pages_out(turn.figure_pages),
         )
 

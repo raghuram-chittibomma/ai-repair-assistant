@@ -3,7 +3,9 @@
 ## Status
 
 Accepted. Implements the closed-set retrieve step named in
-[ADR-0034](0034-diagnose-nlu-split.md). Does not supersede
+[ADR-0034](0034-diagnose-nlu-split.md). Progress follow-ups reuse the
+session pack instead of searching again
+([ADR-0043](0043-session-evidence-reuse.md)). Does not supersede
 [ADR-0031](0031-structured-diagnostic-state.md) (no second board planner).
 Does not open unconstrained query rewrite or ranking R11 / R20 / R22.
 

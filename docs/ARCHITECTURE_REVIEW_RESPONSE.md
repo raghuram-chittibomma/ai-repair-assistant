@@ -32,7 +32,8 @@ cites can highlight a unique one-cluster word-span
 ([ADR-0038](adr/0038-paragraph-highlight.md)). Guide #1 title-case anchors
 and same-problem checklist coalesce are
 [ADR-0042](adr/0042-guide1-anchor-and-checklist-coalesce.md) (not a ranking
-change).
+change). The diagnose `/ui` tally is a read-only view of the R31 board
+([ADR-0044](adr/0044-diagnose-session-tally.md)); it is not R41 feedback.
 
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)
@@ -206,7 +207,7 @@ recorded in the deferral ADR with a reopen trigger.
 | R28 | Accept | S2 | Revision-aware citation matching |
 | R29 | Accept | S4 / S7 | MRR / nDCG + latency in S4; token and cost with R43 in S7 |
 | R30 | Reduce | S7 | Judge-model diversity and abstention achievable; agreement statistics blocked |
-| R31 | Accept (ADR-first) | S7 | Structured state unblocks trajectory evals and gap #7 in the eval audit |
+| R31 | Accept (ADR-first) | S7 | Structured state unblocks trajectory evals and gap #7 in the eval audit; progress follow-ups reuse the session pack ([ADR-0043](adr/0043-session-evidence-reuse.md)) |
 | R32 | Defer | ADR-0025 | Already deferred in ADR-0021; ADR-0025 adds the trigger and a worker-count detector |
 | R33 | Accept | S7 | Figure classification + honest note; gated page rasters at generate time ([ADR-0035](adr/0035-late-fusion-page-images.md)); `/ui` shows those pages ([ADR-0036](adr/0036-ui-source-page-images.md)); table-row overlay ([ADR-0037](adr/0037-table-row-highlight.md)); unique prose/procedure/heading word-span overlay ([ADR-0038](adr/0038-paragraph-highlight.md)); Guide #1 title-case + checklist coalesce ([ADR-0042](adr/0042-guide1-anchor-and-checklist-coalesce.md)); OCR still deferred |
 | R34 | Reframe | S7 | Serving Spanish is a non-goal; stop paying the index cost for content with no product value |

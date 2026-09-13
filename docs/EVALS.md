@@ -39,7 +39,9 @@ scenarios use `command: diagnose`, `turns:`, and optional `turn_grades:` (per-tu
 det keys); without `turn_grades`, top-level keys apply to `expect_turn` (or the
 last turn). Diagnose `turn_grades` may also assert board fields (`expect_phase`,
 `expect_ruled_out_any`, `expect_hypotheses_any` — [ADR-0031](adr/0031-structured-diagnostic-state.md)).
-All eval benches stay **manual** (not CI-scheduled).
+The session tally ([ADR-0044](adr/0044-diagnose-session-tally.md)) is a
+formatter unit test (`tests/test_diagnostic_board.py`), not a retrieval
+fixture. All eval benches stay **manual** (not CI-scheduled).
 
 ---
 
@@ -173,6 +175,9 @@ Door polarity and unlock-without-F5E2 grade
 [ADR-0041](adr/0041-unlock-family-no-fault-code.md)). Same-problem checklist
 coalesce ([ADR-0042](adr/0042-guide1-anchor-and-checklist-coalesce.md)) is
 retrieve formatting — do not add a ranking fixture for “prefer first row.”
+Progress follow-ups reuse the last diagnose evidence pack
+([ADR-0043](adr/0043-session-evidence-reuse.md)) — unit-test that protocol;
+do not add an IR fixture whose only job is “same `[n]` after checks passed.”
 
 ### IR ↔ candidates crosswalk (same stories, different IDs)
 

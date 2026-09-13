@@ -17,7 +17,15 @@ from repair_assistant.corpus.support import (
     no_evidence_message,
     unsupported_appliance_message,
 )
-from repair_assistant.diagnostic.board import format_board, merge_from_raw
+from repair_assistant.diagnostic.board import (
+    board_from_mapping,
+    exhausted_path_close_message,
+    format_board,
+    is_board_progress,
+    merge_from_raw,
+    session_tally,
+    should_close_exhausted_pointer,
+)
 from repair_assistant.diagnostic.intent import (
     classify_diagnose_turn,
     demote_texts_from_board,
@@ -109,7 +117,14 @@ def _assistant_before_latest_user(messages: list) -> str:
     return ""
 
 
-def _prompt_board_text(state: DiagnosticGraphState) -> str:
+def _intent_label(state: DiagnosticGraphState) -> str | None:
+    label = str(state.get("retrieve_label") or "").strip()
+    return label or None
+
+
+def _prompt_board_text(
+    state: DiagnosticGraphState, *, intent_label: str | None = None
+) -> str:
     messages = list(state.get("messages") or [])
     board = merge_from_raw(
         state.get("diagnostic"),
@@ -117,6 +132,7 @@ def _prompt_board_text(state: DiagnosticGraphState) -> str:
         symptom_anchor=_session_symptom_anchor(messages),
         user_message=_latest_human(messages),
         prior_assistant=_assistant_before_latest_user(messages),
+        intent_label=intent_label,
     )
     return format_board(board)
 
@@ -127,8 +143,10 @@ def _attach_board(
     *,
     raw: str | None = None,
     phase_hint: str | None = None,
+    intent_label: str | None = None,
 ) -> dict:
     messages = [*state.get("messages", []), *delta.get("messages", [])]
+    label = intent_label if intent_label is not None else _intent_label(state)
     board = merge_from_raw(
         state.get("diagnostic"),
         step=len(_user_texts(messages)),
@@ -137,6 +155,7 @@ def _attach_board(
         raw=raw,
         phase_hint=phase_hint,
         prior_assistant=_assistant_before_latest_user(messages),
+        intent_label=label,
     )
     return {**delta, "diagnostic": board.as_dict()}
 
@@ -161,6 +180,12 @@ def _done_payload(
     remembered = last_doc_ids_from_citations(cited)
     if remembered:
         state = _apply_delta(state, {"last_cite_doc_ids": remembered})
+    tally = session_tally(
+        board_from_mapping(state.get("diagnostic")),
+        cited,
+        list(state.get("citations_available") or []),
+        assistant=assistant,
+    )
     return {
         "type": "done",
         "assistant_message": assistant,
@@ -173,6 +198,7 @@ def _done_payload(
         "safety_notice": state.get("safety_notice") or "",
         "escalated": bool(state.get("escalated")),
         "diagnostic": dict(state.get("diagnostic") or {}),
+        "tally": tally,
         "figure_pages": figure_page_payloads(state.get("figure_pages") or []),
         "_state": state,
     }
@@ -187,6 +213,32 @@ def _latest_human(messages: list) -> str:
 
 def _has_prior_assistant(messages: list) -> bool:
     return any(isinstance(msg, AIMessage) and msg.content for msg in messages)
+
+
+_REUSE_LABELS = frozenset({"ack", "still_unresolved"})
+_SEARCH_AGAIN_LABELS = frozenset({"new_symptom", "mid_cycle_stop"})
+
+
+def _has_session_pack(state: DiagnosticGraphState) -> bool:
+    if str(state.get("evidence_text") or "").strip():
+        return True
+    return bool(state.get("citations_available"))
+
+
+def should_reuse_session_evidence(
+    *,
+    label: str | None,
+    latest: str,
+    has_pack: bool,
+) -> bool:
+    """True when this turn continues the same path and a pack already exists."""
+    if not has_pack:
+        return False
+    if label in _SEARCH_AGAIN_LABELS:
+        return False
+    if label in _REUSE_LABELS:
+        return True
+    return is_progress_followup(latest)
 
 
 def _transcript(messages: list) -> str:
@@ -266,8 +318,8 @@ def _progress_retry_suffix(latest: str) -> str:
         )
     return (
         "\n\nCRITICAL: The user confirmed prior checks passed. "
-        "Do NOT abstain. Acknowledge briefly and give the next "
-        "checklist category with [n] citations."
+        "Do NOT abstain. Do NOT repeat a See TEST #N that is already "
+        "ruled out. If the pack has no unused grounded step, close."
     )
 
 
@@ -347,6 +399,23 @@ def make_retrieve_node(
                     complete=classify_turn,
                 )
                 update_span(span, output={"label": label})
+        if should_reuse_session_evidence(
+            label=label,
+            latest=latest,
+            has_pack=_has_session_pack(state),
+        ):
+            return {
+                "retrieval_query": str(state.get("retrieval_query") or "")
+                or _session_symptom_anchor(messages),
+                "evidence_text": str(state.get("evidence_text") or ""),
+                "citations_available": list(state.get("citations_available") or []),
+                "retrieval_count": int(state.get("retrieval_count") or 0),
+                "abstained": False,
+                "abstain_reason": "",
+                "evidence_blocks": dict(state.get("evidence_blocks") or {}),
+                "figure_pages": list(state.get("figure_pages") or []),
+                "retrieve_label": label or "",
+            }
         if label:
             query = query_for_label(
                 label,
@@ -385,6 +454,7 @@ def make_retrieve_node(
                     symptom_anchor=_session_symptom_anchor(messages),
                     user_message=latest,
                     prior_assistant=prior_assistant,
+                    intent_label=label,
                 ).as_dict(),
                 extra=[prior_assistant] if prior_assistant else None,
             ),
@@ -429,6 +499,37 @@ def make_retrieve_node(
     return retrieve
 
 
+def _maybe_exhausted_close(state: DiagnosticGraphState) -> dict | None:
+    """Rule-owned close when the pack's See TEST pointer is already confirmed."""
+    latest = _latest_human(state.get("messages") or [])
+    label = _intent_label(state)
+    if not is_board_progress(user_message=latest, intent_label=label):
+        return None
+    evidence = str(state.get("evidence_text") or "")
+    if not evidence or not _has_prior_assistant(state.get("messages") or []):
+        return None
+    board = merge_from_raw(
+        state.get("diagnostic"),
+        step=len(_user_texts(list(state.get("messages") or []))),
+        symptom_anchor=_session_symptom_anchor(list(state.get("messages") or [])),
+        user_message=latest,
+        prior_assistant=_assistant_before_latest_user(list(state.get("messages") or [])),
+        intent_label=label,
+    )
+    if not should_close_exhausted_pointer(board, evidence_text=evidence):
+        return None
+    return _attach_board(
+        state,
+        {
+            "messages": [AIMessage(content=exhausted_path_close_message(board))],
+            "abstained": False,
+            "abstain_reason": "",
+        },
+        phase_hint="close",
+        intent_label=label,
+    )
+
+
 def _maybe_orphan_ack_reply(state: DiagnosticGraphState) -> dict | None:
     if state.get("abstain_reason") == "orphan_ack" and not state.get("evidence_text"):
         return {
@@ -464,6 +565,10 @@ def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
         if orphan is not None:
             return _attach_board(state, orphan)
 
+        closed = _maybe_exhausted_close(state)
+        if closed is not None:
+            return closed
+
         if state.get("abstained") and not state.get("evidence_text"):
             appliance = None
             if state.get("appliance_model"):
@@ -498,16 +603,19 @@ def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
 
         latest = _latest_human(state["messages"])
         anchor = _session_symptom_anchor(state["messages"])
+        label = _intent_label(state)
         user_prompt = build_diagnostic_user_prompt(
             appliance_model=state.get("appliance_model"),
             appliance_serial=state.get("appliance_serial"),
             evidence_text=state.get("evidence_text", ""),
             transcript=_transcript(state["messages"]),
             symptom_anchor=anchor,
-            ack_followup=is_ack_only_message(latest) and bool(anchor),
-            unresolved_followup=is_unresolved_followup(latest) and bool(anchor),
+            ack_followup=(label == "ack" or is_ack_only_message(latest)) and bool(anchor),
+            unresolved_followup=(
+                label == "still_unresolved" or is_unresolved_followup(latest)
+            ) and bool(anchor),
             mid_cycle_followup=is_mid_cycle_stop_query(latest),
-            board_text=_prompt_board_text(state),
+            board_text=_prompt_board_text(state, intent_label=label),
         )
         images = _page_images_for_state(state, manifest)
         raw = invoke_complete(llm, system, user_prompt, images)
@@ -637,6 +745,14 @@ def diagnose_turn_stream(
         yield _done_payload(state, str(msg))
         return
 
+    closed = _maybe_exhausted_close(state)
+    if closed is not None:
+        state = _apply_delta(state, closed)
+        msg = closed["messages"][0].content
+        yield {"type": "token", "text": msg}
+        yield _done_payload(state, str(msg))
+        return
+
     if state.get("abstained") and not state.get("evidence_text"):
         appliance = None
         if state.get("appliance_model"):
@@ -682,8 +798,11 @@ def diagnose_turn_stream(
         system = f"{system}\n\n{assessment.prompt_directive}"
     latest = _latest_human(state["messages"])
     anchor = _session_symptom_anchor(state["messages"])
-    ack_followup = is_ack_only_message(latest) and bool(anchor)
-    unresolved_followup = is_unresolved_followup(latest) and bool(anchor)
+    label = _intent_label(state)
+    ack_followup = (label == "ack" or is_ack_only_message(latest)) and bool(anchor)
+    unresolved_followup = (
+        label == "still_unresolved" or is_unresolved_followup(latest)
+    ) and bool(anchor)
     progress_followup = ack_followup or unresolved_followup
     user_prompt = build_diagnostic_user_prompt(
         appliance_model=state.get("appliance_model"),
@@ -694,7 +813,7 @@ def diagnose_turn_stream(
         ack_followup=ack_followup,
         unresolved_followup=unresolved_followup,
         mid_cycle_followup=is_mid_cycle_stop_query(latest),
-        board_text=_prompt_board_text(state),
+        board_text=_prompt_board_text(state, intent_label=label),
     )
 
     # ADR-0028: buffer the structured completion, gate the rendered answer,

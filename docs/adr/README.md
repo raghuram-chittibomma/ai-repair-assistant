@@ -67,6 +67,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0031](0031-structured-diagnostic-state.md) | Session board: step, phase, hypotheses, ruled-out, observations | Review R31 |
 | [0034](0034-diagnose-nlu-split.md) | Rules own protocol; LLM owns closed-set labels — no slang YAML, no rule-only agent, no free query rewrite | Review R18 reading |
 | [0039](0039-diagnose-retrieve-labels.md) | Turn 2+ classify → rule-built query + same-doc stickiness | ADR-0034 opened with fixtures |
+| [0043](0043-session-evidence-reuse.md) | Progress follow-ups reuse the session evidence pack; search only on a new or corrected problem | Re-search replaced `[n]` after checks passed |
 | [0035](0035-late-fusion-page-images.md) | Gated page rasters at generate time; BGE retrieval unchanged; image embeddings deferred | Review R33 follow-on |
 
 ## Phase 7 — Safety and escalation
@@ -97,6 +98,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0036](0036-ui-source-page-images.md) | Chat UI shows the same gated page JPEG the model saw | Operator cross-check after ADR-0035 |
 | [0037](0037-table-row-highlight.md) | Click `[n]` to the page JPEG; overlay table-row bbox when matched | Dense tech-sheet rows |
 | [0038](0038-paragraph-highlight.md) | Overlay unique one-cluster prose / procedure / heading word-span | Procedure pages after ADR-0037 |
+| [0044](0044-diagnose-session-tally.md) | Diagnose `/ui` tally is a read-only board view (not R41, not a flowchart) | Session path was only in the transcript |
 
 ## Phase 10 — Product hardening
 

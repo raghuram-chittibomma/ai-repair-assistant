@@ -31,6 +31,8 @@ do not invent a held-out retrieval set; door polarity is compositional
 ([ADR-0040](docs/adr/0040-door-polarity-grammar.md)); unlock retrieve is
 stuck-closed OEM not F5E2 ([ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md));
 same-problem rows coalesce into one citation ([ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md));
+progress follow-ups reuse the session evidence pack ([ADR-0043](docs/adr/0043-session-evidence-reuse.md));
+the diagnose tally is a read-only board view ([ADR-0044](docs/adr/0044-diagnose-session-tally.md)), not R41;
 `mine-traces` reports only.
 
 ## Commands

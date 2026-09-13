@@ -49,6 +49,71 @@
       flex-direction: column;
       gap: 0.85rem;
     }
+    body.diagnose-mode main { max-width: 76rem; }
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .workspace-main {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    #tally {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+    }
+    #tally[hidden] { display: none !important; }
+    #tally summary {
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 650;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      list-style: none;
+    }
+    #tally summary::-webkit-details-marker { display: none; }
+    #tally h3 {
+      margin: 0.85rem 0 0.3rem;
+      font-size: 0.7rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    #tally h3:first-of-type { margin-top: 0.65rem; }
+    #tally p, #tally li {
+      margin: 0;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    #tally ul { margin: 0; padding-left: 1.1rem; }
+    #tally .tally-empty { color: var(--muted); font-size: 0.85rem; margin-top: 0.55rem; }
+    #tally .tally-cite { margin-top: 0.75rem; }
+    @media (min-width: 64rem) {
+      body.diagnose-mode .workspace {
+        flex-direction: row-reverse;
+        align-items: stretch;
+      }
+      body.diagnose-mode #tally {
+        width: 18.5rem;
+        flex-shrink: 0;
+        position: sticky;
+        top: 0.75rem;
+        align-self: flex-start;
+        max-height: calc(100vh - 2rem);
+        overflow: auto;
+      }
+    }
     .controls {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr auto;
@@ -366,16 +431,37 @@
       </div>
       <div id="sessionBar" aria-live="polite"></div>
     </div>
-    <div id="status" class="status">Checking API…</div>
-    <div id="safetyBanner" class="safety-banner" role="status" aria-live="polite"></div>
-    <div id="log" aria-live="polite"></div>
-    <form class="composer" id="form">
-      <textarea id="input" rows="2" placeholder="Ask a repair question…" required></textarea>
-      <div class="btns">
-        <button type="submit" id="send">Send</button>
-        <button type="button" id="cancel" class="danger" disabled title="Cancel in-flight request (stops streaming on the server too)">Cancel</button>
+    <div class="workspace">
+      <aside id="tally" hidden>
+        <details id="tallyPanel" open>
+          <summary>Session path</summary>
+          <p id="tallyEmpty" class="tally-empty">No checks yet. Describe the symptom to begin.</p>
+          <div id="tallyBody" hidden>
+            <h3>Symptom</h3>
+            <p id="tallySymptom"></p>
+            <h3>Checked</h3>
+            <ul id="tallyCleared"></ul>
+            <p id="tallyClearedEmpty" class="tally-empty" hidden>None yet.</p>
+            <h3 id="tallyNextHeading">Now asking</h3>
+            <ul id="tallyOffered"></ul>
+            <p id="tallyNext"></p>
+            <p id="tallyCite" class="tally-cite"></p>
+          </div>
+        </details>
+      </aside>
+      <div class="workspace-main">
+        <div id="status" class="status">Checking API…</div>
+        <div id="safetyBanner" class="safety-banner" role="status" aria-live="polite"></div>
+        <div id="log" aria-live="polite"></div>
+        <form class="composer" id="form">
+          <textarea id="input" rows="2" placeholder="Ask a repair question…" required></textarea>
+          <div class="btns">
+            <button type="submit" id="send">Send</button>
+            <button type="button" id="cancel" class="danger" disabled title="Cancel in-flight request (stops streaming on the server too)">Cancel</button>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
   </main>
   <script>
     const log = document.getElementById("log");
@@ -390,6 +476,16 @@
     const sendBtn = document.getElementById("send");
     const cancelBtn = document.getElementById("cancel");
     const newSessionBtn = document.getElementById("newSession");
+    const tallyEl = document.getElementById("tally");
+    const tallyEmpty = document.getElementById("tallyEmpty");
+    const tallyBody = document.getElementById("tallyBody");
+    const tallySymptom = document.getElementById("tallySymptom");
+    const tallyCleared = document.getElementById("tallyCleared");
+    const tallyClearedEmpty = document.getElementById("tallyClearedEmpty");
+    const tallyOffered = document.getElementById("tallyOffered");
+    const tallyNextHeading = document.getElementById("tallyNextHeading");
+    const tallyNext = document.getElementById("tallyNext");
+    const tallyCite = document.getElementById("tallyCite");
     const sessionBar = document.getElementById("sessionBar");
     const exportJsonBtn = document.getElementById("exportJson");
     const exportMdBtn = document.getElementById("exportMd");
@@ -470,6 +566,8 @@
     let abortController = null;
     /** @type {{ts:string, role:string, mode:string, text:string, citations?:any[], meta?:object}[]} */
     let history = [];
+    /** @type {any[]} */
+    let lastTallyCitations = [];
 
     function authHeaders(extra = {}) {
       return { ...extra };
@@ -580,6 +678,164 @@
           `<span class="pill" title="${sessionId}">Session …${sessionId.slice(-8)}</span>`;
       } else {
         sessionBar.innerHTML = `<span class="pill">Diagnostic chat — replies stream; next send starts a session</span>`;
+      }
+    }
+
+    function syncDiagnoseChrome() {
+      const on = modeEl.value === "diagnose";
+      document.body.classList.toggle("diagnose-mode", on);
+      tallyEl.hidden = !on;
+    }
+
+    function clearTally() {
+      lastTallyCitations = [];
+      tallyEmpty.hidden = false;
+      tallyBody.hidden = true;
+      tallySymptom.textContent = "";
+      tallyCleared.replaceChildren();
+      tallyClearedEmpty.hidden = true;
+      tallyOffered.replaceChildren();
+      tallyNextHeading.textContent = "Now asking";
+      tallyNext.textContent = "";
+      tallyCite.replaceChildren();
+    }
+
+    function displayCheckLabel(text) {
+      const raw = String(text || "").replace(/\s+/g, " ").trim();
+      const needle = /^(?:see\s+)?test\s*#\s*(\d+)$/i.exec(raw);
+      return needle ? `See TEST #${needle[1]}` : raw;
+    }
+
+    function checksFromAssistant(text) {
+      const lines = String(text || "").split(/\n/);
+      const items = [];
+      for (const line of lines) {
+        const match = /^\s*\d+\.\s+(.+)$/.exec(line);
+        if (!match) continue;
+        const item = displayCheckLabel(match[1].replace(/\s*\[\d+\]\s*$/, "").replace(/\*+/g, "").trim());
+        if (item) items.push(item);
+      }
+      if (items.length) return items;
+      const inline = [];
+      const re = /(?:^|[\s*])(\d+)\.\s+/g;
+      const src = String(text || "");
+      const matches = [];
+      let found;
+      while ((found = re.exec(src))) matches.push(found);
+      if (matches.length < 2) {
+        const tests = src.match(/\bTEST\s*#\s*\d+/gi) || [];
+        return [...new Set(tests.map((t) => displayCheckLabel(t.replace(/\s+/g, " "))))];
+      }
+      for (let i = 0; i < matches.length; i++) {
+        const start = matches[i].index + matches[i][0].length;
+        const end = i + 1 < matches.length ? matches[i + 1].index : src.length;
+        const item = displayCheckLabel(src.slice(start, end).replace(/\s*\[\d+\]\s*$/, "").replace(/\*+/g, "").trim());
+        if (item) inline.push(item);
+      }
+      return inline;
+    }
+
+    function formatCleared(ruledOut) {
+      const labels = (ruledOut || []).map(displayCheckLabel).filter(Boolean);
+      const covered = new Set();
+      const testNum = (s) => {
+        const all = String(s).match(/\btest\s*#\s*(\d+)/gi) || [];
+        return all.map((m) => m.replace(/\s+/g, " ").toLowerCase());
+      };
+      for (const label of labels) {
+        if (!/^(?:see\s+)?test\s*#\s*\d+$/i.test(label)) {
+          for (const n of testNum(label)) covered.add(n);
+        }
+      }
+      const out = [];
+      const seen = new Set();
+      for (const label of labels) {
+        const only = /^(?:see\s+)?test\s*#\s*(\d+)$/i.exec(label);
+        if (only && covered.has(`test #${only[1]}`.toLowerCase())) continue;
+        const key = label.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(label);
+      }
+      return out;
+    }
+
+    function tallyFromEvent(ev) {
+      const raw = ev && ev.tally;
+      if (raw && (raw.symptom || (raw.cleared && raw.cleared.length) || (raw.offered && raw.offered.length) || raw.closed)) {
+        return raw;
+      }
+      const board = (ev && ev.diagnostic) || {};
+      const cites = (ev && ev.citations) || [];
+      const first = cites[0] || {};
+      const cleared = formatCleared(board.ruled_out || []);
+      const closed = board.phase === "close";
+      return {
+        symptom: board.symptom_anchor || "",
+        cleared,
+        offered: closed ? [] : checksFromAssistant(ev && ev.assistant_message),
+        next: closed ? "" : displayCheckLabel(board.next_check || ""),
+        closed,
+        citation_index: first.index,
+        citation_label: first.label || "",
+        citation_doc_id: first.doc_id || "",
+        citation_page: first.page,
+      };
+    }
+
+    function fillTallyList(el, items) {
+      el.replaceChildren();
+      for (const item of items || []) {
+        const li = document.createElement("li");
+        li.textContent = item;
+        el.appendChild(li);
+      }
+    }
+
+    function updateTally(ev) {
+      if (ev && Array.isArray(ev.citations) && ev.citations.length) {
+        lastTallyCitations = ev.citations;
+      }
+      const tally = tallyFromEvent(ev);
+      const hasPath = Boolean(
+        tally && (tally.symptom || (tally.cleared && tally.cleared.length) || (tally.offered && tally.offered.length) || tally.closed)
+      );
+      if (!hasPath) return;
+      tallyEmpty.hidden = true;
+      tallyBody.hidden = false;
+      tallySymptom.textContent = tally.symptom || "—";
+      const cleared = tally.cleared || [];
+      fillTallyList(tallyCleared, cleared);
+      tallyClearedEmpty.hidden = cleared.length > 0;
+      const offered = tally.offered || [];
+      fillTallyList(tallyOffered, offered);
+      tallyNextHeading.textContent = tally.closed ? "Status" : "Now asking";
+      if (tally.closed) {
+        tallyNext.textContent = "Path closed — no unused grounded steps in this evidence.";
+      } else if (offered.length) {
+        tallyNext.textContent = "";
+      } else {
+        tallyNext.textContent = tally.next || "Waiting for the next grounded step.";
+      }
+      tallyCite.replaceChildren();
+      if (!tally.citation_index) return;
+      const cite = lastTallyCitations.find(
+        (c) => c && Number(c.index) === Number(tally.citation_index)
+      );
+      const page = tally.citation_page != null ? ` p.${tally.citation_page}` : "";
+      const label = `[${tally.citation_index}] ${tally.citation_label || tally.citation_doc_id}${page}`;
+      if (cite && cite.doc_id && cite.page != null) {
+        const a = document.createElement("a");
+        a.className = "cite-ref";
+        a.href = `#${sourcePageKey(cite.doc_id, cite.page)}`;
+        a.textContent = label;
+        a.addEventListener("click", (clickEv) => {
+          clickEv.preventDefault();
+          revealSource(cite);
+        });
+        tallyCite.appendChild(a);
+      } else {
+        tallyCite.textContent = label;
       }
     }
 
@@ -892,6 +1148,8 @@
       history = [];
       log.innerHTML = "";
       clearSafetyBanner();
+      clearTally();
+      syncDiagnoseChrome();
       updateSessionBar();
       if (announce) {
         const mode = modeEl.value;
@@ -1063,6 +1321,10 @@
             if (ev.session_id) sessionId = ev.session_id;
             if (typeof ev.turn === "number") turn = ev.turn;
             updateSessionBar();
+            updateTally({
+              ...ev,
+              assistant_message: ev.assistant_message || assembled,
+            });
             ({ streamEl } = finalizeStreamMessage(ev, assembled, streamEl));
           }
         });
@@ -1070,6 +1332,7 @@
         if (err.status === 410 || (err.message && err.message.toLowerCase().includes("expired"))) {
           sessionId = null;
           turn = 0;
+          clearTally();
           updateSessionBar();
           throw new Error(
             err.message +
@@ -1185,6 +1448,7 @@
     });
 
     updatePlaceholder();
+    syncDiagnoseChrome();
     updateSessionBar();
     checkHealth();
     input.focus();

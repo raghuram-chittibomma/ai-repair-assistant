@@ -6,7 +6,11 @@ from unittest.mock import MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from repair_assistant.diagnostic.graph import _retrieval_query, retrieve_diagnose_state
+from repair_assistant.diagnostic.graph import (
+    _retrieval_query,
+    retrieve_diagnose_state,
+    should_reuse_session_evidence,
+)
 from repair_assistant.diagnostic.intent import (
     classify_diagnose_turn,
     last_doc_ids_from_citations,
@@ -15,6 +19,7 @@ from repair_assistant.diagnostic.intent import (
     stick_diagnose_hits,
 )
 from repair_assistant.diagnostic.state import DiagnosticGraphState
+from repair_assistant.qa.context import Citation
 from repair_assistant.retrieval.search import Hit
 from repair_assistant.safety.models import Audience, SafetyAction
 
@@ -159,6 +164,145 @@ def test_retrieval_query_fallback_still_used_without_label() -> None:
     q = _retrieval_query(messages)
     assert "F5E2" in q
     assert "still facing" not in q
+
+
+def test_should_reuse_session_evidence_is_protocol_not_symptom() -> None:
+    assert should_reuse_session_evidence(
+        label="ack", latest="checked. those look good", has_pack=True
+    )
+    assert should_reuse_session_evidence(
+        label="still_unresolved",
+        latest="checked but still facing the issue",
+        has_pack=True,
+    )
+    assert should_reuse_session_evidence(
+        label=None, latest="checked. those look good", has_pack=True
+    )
+    assert not should_reuse_session_evidence(
+        label="ack", latest="checked. those look good", has_pack=False
+    )
+    assert not should_reuse_session_evidence(
+        label="new_symptom",
+        latest="actually wash stops halfway thru",
+        has_pack=True,
+    )
+    assert not should_reuse_session_evidence(
+        label="mid_cycle_stop",
+        latest="stops after 10 minutes no error code",
+        has_pack=True,
+    )
+
+
+def _session_with_pack() -> DiagnosticGraphState:
+    cite = Citation(
+        index=1,
+        doc_id="tech-sheet-example",
+        chunk_id="p10",
+        label="W11320651 Rev B",
+        page=10,
+        excerpt="Possible cause: Reset washer.",
+        block_text="Problem: EXAMPLE | Possible cause: Reset washer.",
+    )
+    return {
+        "messages": [
+            HumanMessage(content="Washer will not drain."),
+            AIMessage(content="1. Check the drain hose [1]."),
+            HumanMessage(content="checked. those look good"),
+        ],
+        "appliance_model": "WFW5620HW0",
+        "appliance_serial": None,
+        "audience": Audience.OWNER.value,
+        "retrieval_query": "Washer will not drain.",
+        "evidence_text": "[1] Possible cause: Check the drain hose.",
+        "citations_available": [cite],
+        "retrieval_count": 1,
+        "abstained": False,
+        "abstain_reason": "",
+        "safety_action": SafetyAction.ALLOW.value,
+        "safety_notice": "",
+        "safety_rule_id": "allow",
+        "prompt_directive": "",
+        "escalated": False,
+        "evidence_blocks": {1: "Possible cause: Check the drain hose."},
+        "figure_pages": [{"index": 1, "doc_id": "tech-sheet-example", "page": 10}],
+        "last_cite_doc_ids": ["tech-sheet-example"],
+    }
+
+
+def test_progress_followup_reuses_pack_without_search() -> None:
+    state = _session_with_pack()
+    with patch("repair_assistant.diagnostic.graph.search") as search:
+        pending, needs = retrieve_diagnose_state(
+            MagicMock(),
+            MagicMock(),
+            state,
+            retrieval_limit=8,
+            overfetch=40,
+            classify_turn=lambda _s, _u: '{"label": "ack"}',
+        )
+    assert needs is True
+    search.assert_not_called()
+    assert pending["evidence_text"] == state["evidence_text"]
+    assert pending["citations_available"][0].doc_id == "tech-sheet-example"
+    assert pending["retrieve_label"] == "ack"
+    assert pending["figure_pages"][0]["page"] == 10
+
+
+def test_regex_ack_reuses_pack_when_classify_unavailable() -> None:
+    state = _session_with_pack()
+    with patch("repair_assistant.diagnostic.graph.search") as search:
+        pending, needs = retrieve_diagnose_state(
+            MagicMock(),
+            MagicMock(),
+            state,
+            retrieval_limit=8,
+            overfetch=40,
+            classify_turn=None,
+        )
+    assert needs is True
+    search.assert_not_called()
+    assert pending["citations_available"][0].doc_id == "tech-sheet-example"
+
+
+def test_unresolved_followup_reuses_pack_without_search() -> None:
+    state = _session_with_pack()
+    state["messages"][-1] = HumanMessage(content="checked but still facing the issue")
+    with patch("repair_assistant.diagnostic.graph.search") as search:
+        pending, needs = retrieve_diagnose_state(
+            MagicMock(),
+            MagicMock(),
+            state,
+            retrieval_limit=8,
+            overfetch=40,
+            classify_turn=lambda _s, _u: '{"label": "still_unresolved"}',
+        )
+    assert needs is True
+    search.assert_not_called()
+    assert pending["retrieve_label"] == "still_unresolved"
+    assert pending["citations_available"][0].doc_id == "tech-sheet-example"
+
+
+def test_new_symptom_searches_even_when_pack_exists() -> None:
+    state = _session_with_pack()
+    state["messages"] = [
+        HumanMessage(content="Washer will not drain."),
+        AIMessage(content="1. Check the drain hose [1]."),
+        HumanMessage(content="actually wash stops halfway thru"),
+    ]
+    hits = [_hit("tech-sheet-w11320651", "Activating Service Diagnostic Mode", score=0.8)]
+    with patch("repair_assistant.diagnostic.graph.search") as search:
+        search.return_value = MagicMock(hits=hits, fetched=1, filtered_out=0)
+        pending, needs = retrieve_diagnose_state(
+            MagicMock(),
+            MagicMock(),
+            state,
+            retrieval_limit=8,
+            overfetch=40,
+            classify_turn=lambda _s, _u: '{"label": "new_symptom"}',
+        )
+    assert needs is True
+    search.assert_called_once()
+    assert pending["retrieve_label"] == "new_symptom"
 
 
 def test_retrieve_uses_injected_label_not_followup_tokens() -> None:

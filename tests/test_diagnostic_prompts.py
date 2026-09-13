@@ -42,6 +42,21 @@ def test_unresolved_followup_says_do_not_repeat_from_another_doc() -> None:
     assert "another document" in text
 
 
+def test_ack_followup_does_not_name_only_reset_washer() -> None:
+    text = build_diagnostic_user_prompt(
+        appliance_model="WFW5620HW0",
+        appliance_serial=None,
+        evidence_text="[1] Possible cause: Drain hose installation.",
+        transcript="User: checked. those look good",
+        symptom_anchor="will not drain",
+        ack_followup=True,
+    )
+    assert "first listed cause" in text
+    assert "reset / unplug" not in text
+    assert "named once" in text
+    assert "Do not repeat that TEST" in text
+
+
 def test_window_transcript_short_list_unchanged() -> None:
     lines = ["User: a", "Assistant: b"]
     assert window_transcript(lines) == "User: a\nAssistant: b"

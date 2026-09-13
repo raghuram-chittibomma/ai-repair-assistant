@@ -103,6 +103,18 @@ class DiagnoseBoardOut(BaseModel):
     next_check: str = ""
 
 
+class DiagnoseTallyOut(BaseModel):
+    symptom: str = ""
+    cleared: list[str] = Field(default_factory=list)
+    offered: list[str] = Field(default_factory=list)
+    next: str = ""
+    closed: bool = False
+    citation_index: int | None = None
+    citation_label: str = ""
+    citation_doc_id: str = ""
+    citation_page: int | None = None
+
+
 class DiagnoseResponse(BaseModel):
     session_id: str
     turn: int
@@ -116,6 +128,7 @@ class DiagnoseResponse(BaseModel):
     safety_notice: str = ""
     escalated: bool = False
     diagnostic: DiagnoseBoardOut | None = None
+    tally: DiagnoseTallyOut | None = None
     figure_pages: list[PageImageOut] = Field(default_factory=list)
 
 

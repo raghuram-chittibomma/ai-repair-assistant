@@ -11,9 +11,10 @@ Owner must ask, with new measured evidence, before changing any of these.
 - **S4 held-out waived.** The 18 fixtures in `evals/retrieval/fixtures.yaml` (14 hard) are the decision set. Do not author a secret held-out pack.
 - **Do not start ranking work** R11 (applicability pre-filter), R20 (remaining applicability axes), or R22 (abstain coercion). They wait after the S5 reject.
 - **R18 is closed-set diagnose intent, not free query rewrite** ([ADR-0034](docs/adr/0034-diagnose-nlu-split.md), [ADR-0039](docs/adr/0039-diagnose-retrieve-labels.md)). Classify may return a label only. Do not grow synonym regex as the product strategy, do not replace diagnose with a rule-only flowchart, and do not let the model write the search query.
-- **R41 feedback UI is deferred.** No thumbs, scores, or feedback markup.
+- **R41 feedback UI is deferred.** No thumbs, scores, or feedback markup. The diagnose session tally is a read-only board view ([ADR-0044](docs/adr/0044-diagnose-session-tally.md)), not R41.
 - **Diagnose sessions are in-memory** ([ADR-0021](docs/adr/0021-api-hardening-embedder-sessions.md)). They die on API restart; unknown id → HTTP 410. Do not persist sessions to Postgres unless the owner reopens that ADR.
 - **`config/retrieval/query_expand.yaml` is not a slang dictionary.** Door polarity is compositional ([ADR-0040](docs/adr/0040-door-polarity-grammar.md)). Unlock `add_to_search` is stuck-closed OEM only — no fault codes ([ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md)). `when_user_says` is leftover idioms or mid-cycle cues, not contractions.
 - **Same-problem checklist coalesce is formatting** ([ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md)). Guide #1 anchors may be title case. Do not add a ranking constant to prefer the first table row.
+- **Progress follow-ups reuse the session evidence pack** ([ADR-0043](docs/adr/0043-session-evidence-reuse.md)). Search again only for a new or corrected problem. Generate stays claim-grounded on that pack.
 - **`mine-traces` does not propose `query_expand.yaml` rows** and does not write live fixtures ([ADR-0023](docs/adr/0023-trace-driven-eval-mining.md)).
 - **Charter-fixed stack:** Python, Postgres, pgvector, Docker, LangGraph, OpenAI for LLM only, local `BAAI/bge-base-en-v1.5`. LAN-only (charter D8). No cloud infra as a required dependency.
