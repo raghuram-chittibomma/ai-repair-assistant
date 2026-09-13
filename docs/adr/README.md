@@ -100,6 +100,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0038](0038-paragraph-highlight.md) | Overlay unique one-cluster prose / procedure / heading word-span | Procedure pages after ADR-0037 |
 | [0044](0044-diagnose-session-tally.md) | Diagnose `/ui` tally is a read-only board view (not R41, not a flowchart) | Session path was only in the transcript |
 | [0045](0045-diagnose-tally-symptom-trail.md) | Tally appends a symptom span on a corrected problem; checks stay with that span | Mid-session polarity flip mixed checks under the first symptom |
+| [0046](0046-current-span-protocol.md) | Live ruled-out / close / offered apply only to the current symptom | TEST #4 on the first path blocked the same TEST on the new problem |
 
 ## Phase 10 — Product hardening
 

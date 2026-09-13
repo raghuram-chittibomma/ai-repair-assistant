@@ -202,7 +202,7 @@ def test_close_when_pack_see_test_already_ruled_out() -> None:
         "Drain/Recirculation Pump."
     )
     assert should_close_exhausted_pointer(board, evidence_text=evidence)
-    assert "no further grounded steps" in exhausted_path_close_message(board)
+    assert "does not include those steps" in exhausted_path_close_message(board)
     unused = merge_board(
         DiagnosticBoard(),
         step=2,
@@ -494,6 +494,16 @@ def test_tally_groups_checks_under_each_symptom_without_replacing_first() -> Non
         "after few tries able to open the door but it can't close now",
     ]
     assert switched.next_check == "Ensure the door is completely closed"
+    assert switched.ruled_out == []
+    assert not should_close_exhausted_pointer(
+        switched,
+        evidence_text="See TEST #4: Door Lock System.",
+    )
+    retally = session_tally(
+        switched,
+        assistant="Refer to TEST #4: Door Lock System [1].",
+    )
+    assert any("TEST #4" in item for item in retally["offered"])
     tally = session_tally(asserted)
     assert tally["symptom"] == "door doesn't open"
     assert tally["segments"] == [

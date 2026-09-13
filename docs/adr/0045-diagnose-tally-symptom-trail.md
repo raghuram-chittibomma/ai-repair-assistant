@@ -2,8 +2,10 @@
 
 ## Status
 
-Accepted. Extends [ADR-0044](0044-diagnose-session-tally.md). Does not
-replace the first `symptom_anchor` ([ADR-0031](0031-structured-diagnostic-state.md),
+Accepted. Extended by [ADR-0046](0046-current-span-protocol.md) (live
+protocol is the current span). Extends [ADR-0044](0044-diagnose-session-tally.md).
+Does not replace the first `symptom_anchor`
+([ADR-0031](0031-structured-diagnostic-state.md),
 [ADR-0039](0039-diagnose-retrieve-labels.md)). Not R41. Not a flowchart.
 
 ## Context

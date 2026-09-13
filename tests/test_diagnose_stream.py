@@ -286,7 +286,7 @@ def test_diagnose_turn_stream_closes_when_see_test_already_offered() -> None:
     done = events[-1]
     assert done["type"] == "done"
     assert done["abstained"] is False
-    assert "no further grounded steps" in done["assistant_message"]
+    assert "does not include those steps" in done["assistant_message"]
     assert done["diagnostic"]["phase"] == "close"
     assert any("test #8" in item.lower() for item in done["diagnostic"]["ruled_out"])
     assert done["tally"]["closed"] is True

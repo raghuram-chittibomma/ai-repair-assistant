@@ -40,7 +40,8 @@ det keys); without `turn_grades`, top-level keys apply to `expect_turn` (or the
 last turn). Diagnose `turn_grades` may also assert board fields (`expect_phase`,
 `expect_ruled_out_any`, `expect_hypotheses_any` — [ADR-0031](adr/0031-structured-diagnostic-state.md)).
 The session tally ([ADR-0044](adr/0044-diagnose-session-tally.md),
-[ADR-0045](adr/0045-diagnose-tally-symptom-trail.md)) is a
+[ADR-0045](adr/0045-diagnose-tally-symptom-trail.md),
+[ADR-0046](adr/0046-current-span-protocol.md)) is a
 formatter unit test (`tests/test_diagnostic_board.py`), not a retrieval
 fixture. All eval benches stay **manual** (not CI-scheduled).
 

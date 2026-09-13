@@ -888,7 +888,7 @@
       fillTallyList(tallyOffered, offered);
       tallyNextHeading.textContent = tally.closed ? "Status" : "Now asking";
       if (tally.closed) {
-        tallyNext.textContent = "Path closed — no unused grounded steps in this evidence.";
+        tallyNext.textContent = "This page has no further steps for this symptom.";
       } else if (offered.length) {
         tallyNext.textContent = "";
       } else {

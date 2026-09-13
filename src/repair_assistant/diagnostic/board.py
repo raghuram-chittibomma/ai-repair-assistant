@@ -320,11 +320,17 @@ def should_close_exhausted_pointer(
 
 
 def exhausted_path_close_message(board: DiagnosticBoard) -> str:
-    cleared = "; ".join(board.ruled_out[:6]) if board.ruled_out else "the checks already offered"
+    checks = tally_cleared(board.ruled_out)
+    if checks:
+        listed = ", then ".join(checks[:4])
+        done = f"Those checks are done ({listed}) [1]. "
+    else:
+        done = "The checks on this page are done [1]. "
     return (
-        f"The on-page path is complete ({cleared}) [1]. This evidence only "
-        f"names a See TEST procedure without its steps, and that pointer was "
-        f"already offered. There are no further grounded steps on this path."
+        f"{done}This sheet only names a TEST to run next — it does not include "
+        f"those steps, so I cannot walk them from here. If the problem is "
+        f"unchanged, a technician will need that TEST from the full sheet, or "
+        f"you can describe a different symptom."
     )
 
 
@@ -354,8 +360,8 @@ def merge_board(
         step=max(0, int(step)),
         phase=prior.phase or "symptoms",
         symptom_anchor=anchor,
-        hypotheses=list(prior.hypotheses),
-        ruled_out=list(prior.ruled_out),
+        hypotheses=[] if switched else list(prior.hypotheses),
+        ruled_out=[] if switched else list(prior.ruled_out),
         observations=list(prior.observations),
         next_check="" if switched else prior.next_check,
         symptom_path=path,
@@ -579,10 +585,11 @@ def session_tally(
             cite_page = int(page) if page is not None else None
         break
     closed = board.phase == "close"
-    cleared = tally_cleared(board.ruled_out)
-    nxt = "" if closed else display_check_label(board.next_check)
-    offered = [] if closed else tally_offered(assistant, cleared)
     segments = tally_segments(board)
+    cleared = [item for seg in segments for item in list(seg.get("cleared") or [])]
+    current = list(segments[-1]["cleared"]) if segments else []
+    nxt = "" if closed else display_check_label(board.next_check)
+    offered = [] if closed else tally_offered(assistant, current)
     return {
         "symptom": board.symptom_anchor,
         "cleared": cleared,
@@ -629,6 +636,9 @@ def format_board(board: DiagnosticBoard) -> str:
     if len(board.symptom_path) > 1:
         lines.append(
             "symptom trail: " + " → ".join(span.text for span in board.symptom_path)
+        )
+        lines.append(
+            "prior-path checks are historical; they are not ruled out for this problem"
         )
     if board.hypotheses:
         lines.append("open hypotheses: " + "; ".join(board.hypotheses))
