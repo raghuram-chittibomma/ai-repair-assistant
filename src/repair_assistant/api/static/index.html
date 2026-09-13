@@ -99,6 +99,11 @@
     #tally ul { margin: 0; padding-left: 1.1rem; }
     #tally .tally-empty { color: var(--muted); font-size: 0.85rem; margin-top: 0.55rem; }
     #tally .tally-cite { margin-top: 0.75rem; }
+    #tally .tally-span + .tally-span {
+      margin-top: 0.85rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
     @media (min-width: 64rem) {
       body.diagnose-mode .workspace {
         flex-direction: row-reverse;
@@ -437,11 +442,7 @@
           <summary>Session path</summary>
           <p id="tallyEmpty" class="tally-empty">No checks yet. Describe the symptom to begin.</p>
           <div id="tallyBody" hidden>
-            <h3>Symptom</h3>
-            <p id="tallySymptom"></p>
-            <h3>Checked</h3>
-            <ul id="tallyCleared"></ul>
-            <p id="tallyClearedEmpty" class="tally-empty" hidden>None yet.</p>
+            <div id="tallyTrail"></div>
             <h3 id="tallyNextHeading">Now asking</h3>
             <ul id="tallyOffered"></ul>
             <p id="tallyNext"></p>
@@ -479,9 +480,7 @@
     const tallyEl = document.getElementById("tally");
     const tallyEmpty = document.getElementById("tallyEmpty");
     const tallyBody = document.getElementById("tallyBody");
-    const tallySymptom = document.getElementById("tallySymptom");
-    const tallyCleared = document.getElementById("tallyCleared");
-    const tallyClearedEmpty = document.getElementById("tallyClearedEmpty");
+    const tallyTrail = document.getElementById("tallyTrail");
     const tallyOffered = document.getElementById("tallyOffered");
     const tallyNextHeading = document.getElementById("tallyNextHeading");
     const tallyNext = document.getElementById("tallyNext");
@@ -691,9 +690,7 @@
       lastTallyCitations = [];
       tallyEmpty.hidden = false;
       tallyBody.hidden = true;
-      tallySymptom.textContent = "";
-      tallyCleared.replaceChildren();
-      tallyClearedEmpty.hidden = true;
+      tallyTrail.replaceChildren();
       tallyOffered.replaceChildren();
       tallyNextHeading.textContent = "Now asking";
       tallyNext.textContent = "";
@@ -701,7 +698,8 @@
     }
 
     function displayCheckLabel(text) {
-      const raw = String(text || "").replace(/\s+/g, " ").trim();
+      let raw = String(text || "").replace(/\s*\[\d+\]\s*/g, " ").replace(/\s+/g, " ").trim();
+      raw = raw.replace(/^\d+\.\s+/, "").replace(/[ :.-]+$/, "").trim();
       const needle = /^(?:see\s+)?test\s*#\s*(\d+)$/i.exec(raw);
       return needle ? `See TEST #${needle[1]}` : raw;
     }
@@ -735,8 +733,31 @@
       return inline;
     }
 
+    function isFindingNotCheck(text) {
+      if (/^(check|reset|inspect|refer|see test|verify|unplug|ensure|open|press|clean|measure|test #)/i.test(text)) {
+        return false;
+      }
+      return /\b(is off|is on|are off|are on|looks? good|sounds? good|seems? good|no issues?|passed)\b/i.test(text);
+    }
+
+    function sameCheck(left, right) {
+      const a = String(left || "").replace(/\s+/g, " ").trim().toLowerCase();
+      const b = String(right || "").replace(/\s+/g, " ").trim().toLowerCase();
+      if (!a || !b) return false;
+      if (a === b) return true;
+      if (Math.min(a.length, b.length) >= 24 && (a.includes(b) || b.includes(a))) return true;
+      const words = (s) => new Set(s.split(" ").filter((w) => w.length > 3));
+      const wa = words(a);
+      const wb = words(b);
+      if (!wa.size || !wb.size) return false;
+      let inter = 0;
+      for (const w of wa) if (wb.has(w)) inter += 1;
+      const smaller = Math.min(wa.size, wb.size);
+      return inter >= Math.max(3, smaller - 1) || (smaller <= 4 && inter >= 2);
+    }
+
     function formatCleared(ruledOut) {
-      const labels = (ruledOut || []).map(displayCheckLabel).filter(Boolean);
+      const labels = (ruledOut || []).map(displayCheckLabel).filter((item) => item && !isFindingNotCheck(item));
       const covered = new Set();
       const testNum = (s) => {
         const all = String(s).match(/\btest\s*#\s*(\d+)/gi) || [];
@@ -747,7 +768,7 @@
           for (const n of testNum(label)) covered.add(n);
         }
       }
-      const out = [];
+      const unique = [];
       const seen = new Set();
       for (const label of labels) {
         const only = /^(?:see\s+)?test\s*#\s*(\d+)$/i.exec(label);
@@ -755,14 +776,46 @@
         const key = label.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push(label);
+        unique.push(label);
+      }
+      const out = [];
+      for (const label of unique) {
+        let merged = false;
+        for (let i = 0; i < out.length; i++) {
+          if (!sameCheck(label, out[i])) continue;
+          if (label.length > out[i].length) out[i] = label;
+          merged = true;
+          break;
+        }
+        if (!merged) out.push(label);
       }
       return out;
     }
 
+    function tallySegmentsFromBoard(board, cleared) {
+      const path = (board && board.symptom_path) || [];
+      if (!path.length) {
+        return [{ symptom: (board && board.symptom_anchor) || "", cleared: cleared || [] }];
+      }
+      const earlier = [];
+      return path.map((span, i) => {
+        let items;
+        if (i < path.length - 1) {
+          items = formatCleared(span.frozen_cleared || []);
+          earlier.push(...items);
+        } else {
+          items = (cleared || []).filter((item) => !earlier.some((prev) => sameCheck(item, prev)));
+        }
+        return { symptom: span.text || "", cleared: items };
+      });
+    }
+
     function tallyFromEvent(ev) {
       const raw = ev && ev.tally;
-      if (raw && (raw.symptom || (raw.cleared && raw.cleared.length) || (raw.offered && raw.offered.length) || raw.closed)) {
+      if (raw && (raw.symptom || (raw.cleared && raw.cleared.length) || (raw.segments && raw.segments.length) || (raw.offered && raw.offered.length) || raw.closed)) {
+        if (!raw.segments || !raw.segments.length) {
+          raw.segments = [{ symptom: raw.symptom || "", cleared: raw.cleared || [] }];
+        }
         return raw;
       }
       const board = (ev && ev.diagnostic) || {};
@@ -773,6 +826,7 @@
       return {
         symptom: board.symptom_anchor || "",
         cleared,
+        segments: tallySegmentsFromBoard(board, cleared),
         offered: closed ? [] : checksFromAssistant(ev && ev.assistant_message),
         next: closed ? "" : displayCheckLabel(board.next_check || ""),
         closed,
@@ -797,16 +851,39 @@
         lastTallyCitations = ev.citations;
       }
       const tally = tallyFromEvent(ev);
+      const segments = (tally && tally.segments) || [];
       const hasPath = Boolean(
-        tally && (tally.symptom || (tally.cleared && tally.cleared.length) || (tally.offered && tally.offered.length) || tally.closed)
+        tally && (tally.symptom || (tally.cleared && tally.cleared.length) || segments.length || (tally.offered && tally.offered.length) || tally.closed)
       );
       if (!hasPath) return;
       tallyEmpty.hidden = true;
       tallyBody.hidden = false;
-      tallySymptom.textContent = tally.symptom || "—";
-      const cleared = tally.cleared || [];
-      fillTallyList(tallyCleared, cleared);
-      tallyClearedEmpty.hidden = cleared.length > 0;
+      tallyTrail.replaceChildren();
+      const spans = segments.length ? segments : [{ symptom: tally.symptom || "", cleared: tally.cleared || [] }];
+      for (let i = 0; i < spans.length; i++) {
+        const span = spans[i] || {};
+        const block = document.createElement("div");
+        block.className = "tally-span";
+        const hSymptom = document.createElement("h3");
+        hSymptom.textContent = i === 0 ? "Symptom" : "Symptom changed";
+        const pSymptom = document.createElement("p");
+        pSymptom.textContent = span.symptom || "—";
+        const hChecked = document.createElement("h3");
+        hChecked.textContent = "Checked";
+        block.append(hSymptom, pSymptom, hChecked);
+        const items = span.cleared || [];
+        if (items.length) {
+          const ul = document.createElement("ul");
+          fillTallyList(ul, items);
+          block.appendChild(ul);
+        } else {
+          const empty = document.createElement("p");
+          empty.className = "tally-empty";
+          empty.textContent = "None yet.";
+          block.appendChild(empty);
+        }
+        tallyTrail.appendChild(block);
+      }
       const offered = tally.offered || [];
       fillTallyList(tallyOffered, offered);
       tallyNextHeading.textContent = tally.closed ? "Status" : "Now asking";

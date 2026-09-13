@@ -27,6 +27,7 @@ PHASES = frozenset(
 
 MAX_ITEMS = 12
 MAX_ITEM_CHARS = 160
+MAX_PATH_SPANS = 6
 
 
 @dataclass
@@ -46,6 +47,13 @@ class DiagnosticDelta:
 
 
 @dataclass
+class SymptomSpan:
+    text: str
+    from_step: int = 0
+    frozen_cleared: list[str] = field(default_factory=list)
+
+
+@dataclass
 class DiagnosticBoard:
     step: int = 0
     phase: str = "symptoms"
@@ -54,6 +62,7 @@ class DiagnosticBoard:
     ruled_out: list[str] = field(default_factory=list)
     observations: list[Observation] = field(default_factory=list)
     next_check: str = ""
+    symptom_path: list[SymptomSpan] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -67,6 +76,14 @@ class DiagnosticBoard:
                 for item in self.observations
             ],
             "next_check": self.next_check,
+            "symptom_path": [
+                {
+                    "text": item.text,
+                    "from_step": item.from_step,
+                    "frozen_cleared": list(item.frozen_cleared),
+                }
+                for item in self.symptom_path
+            ],
         }
 
 
@@ -160,6 +177,69 @@ def _append_observation(
     ]
 
 
+def _copy_spans(spans: list[SymptomSpan]) -> list[SymptomSpan]:
+    return [
+        SymptomSpan(
+            text=item.text,
+            from_step=item.from_step,
+            frozen_cleared=list(item.frozen_cleared),
+        )
+        for item in spans
+    ]
+
+
+def _spans_from_mapping(rows: object) -> list[SymptomSpan]:
+    spans: list[SymptomSpan] = []
+    if not isinstance(rows, list):
+        return spans
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        text = _clip(str(row.get("text") or ""))
+        if not text:
+            continue
+        frozen = [
+            _clip(str(item))
+            for item in (row.get("frozen_cleared") or [])
+            if _clip(str(item))
+        ]
+        spans.append(
+            SymptomSpan(
+                text=text,
+                from_step=int(row.get("from_step") or 0),
+                frozen_cleared=frozen,
+            )
+        )
+    return spans[-MAX_PATH_SPANS:]
+
+
+def _seed_path(path: list[SymptomSpan], *, symptom: str, step: int) -> list[SymptomSpan]:
+    text = _clip(symptom)
+    if path or not text:
+        return path
+    return [SymptomSpan(text=text, from_step=max(1, int(step)))]
+
+
+_PATH_CHANGE_LABELS = frozenset({"new_symptom", "mid_cycle_stop"})
+
+
+def _record_path_change(
+    path: list[SymptomSpan],
+    *,
+    user_message: str,
+    intent_label: str | None,
+    prior_ruled_out: list[str],
+    step: int,
+) -> tuple[list[SymptomSpan], bool]:
+    incoming = _clip(user_message)
+    if (intent_label or "") not in _PATH_CHANGE_LABELS or not incoming or not path:
+        return path, False
+    if _norm(incoming) == _norm(path[-1].text):
+        return path, False
+    path[-1].frozen_cleared = list(prior_ruled_out)
+    return [*path, SymptomSpan(text=incoming, from_step=step)][-MAX_PATH_SPANS:], True
+
+
 def board_from_mapping(data: object) -> DiagnosticBoard:
     if not isinstance(data, dict):
         return DiagnosticBoard()
@@ -188,6 +268,7 @@ def board_from_mapping(data: object) -> DiagnosticBoard:
         ruled_out=[_clip(str(x)) for x in (data.get("ruled_out") or []) if _clip(str(x))],
         observations=observations[-MAX_ITEMS:],
         next_check=_clip(str(data.get("next_check") or "")),
+        symptom_path=_spans_from_mapping(data.get("symptom_path")),
     )
 
 
@@ -257,14 +338,27 @@ def merge_board(
     prior_assistant: str = "",
     intent_label: str | None = None,
 ) -> DiagnosticBoard:
+    anchor = prior.symptom_anchor or _clip(symptom_anchor)
+    path, switched = _record_path_change(
+        _seed_path(
+            _copy_spans(prior.symptom_path),
+            symptom=anchor,
+            step=prior.step or step,
+        ),
+        user_message=user_message,
+        intent_label=intent_label,
+        prior_ruled_out=prior.ruled_out,
+        step=step,
+    )
     board = DiagnosticBoard(
         step=max(0, int(step)),
         phase=prior.phase or "symptoms",
-        symptom_anchor=prior.symptom_anchor or _clip(symptom_anchor),
+        symptom_anchor=anchor,
         hypotheses=list(prior.hypotheses),
         ruled_out=list(prior.ruled_out),
         observations=list(prior.observations),
-        next_check=prior.next_check,
+        next_check="" if switched else prior.next_check,
+        symptom_path=path,
     )
     if user_message.strip():
         board.observations = _append_observation(
@@ -343,11 +437,25 @@ def merge_from_raw(
 
 
 _NEEDLE_ONLY = re.compile(r"^(?:see\s+)?test\s*#\s*(\d+)$", re.I)
+_LEADING_NUM = re.compile(r"^\d+\.\s+")
+_CITE_MARK = re.compile(r"\s*\[\d+\]\s*")
+_FINDING = re.compile(
+    r"\b(is off|is on|are off|are on|looks? good|sounds? good|seems? good|"
+    r"no issues?|passed)\b",
+    re.I,
+)
+_CHECK_VERB = re.compile(
+    r"^(check|reset|inspect|refer|see test|verify|unplug|ensure|open|press|"
+    r"clean|measure|test #)",
+    re.I,
+)
 
 
 def display_check_label(text: str) -> str:
-    """User-facing check text — needle-only ``test #N`` becomes See TEST #N."""
-    raw = _clip(text)
+    """User-facing check text — strip list numbers/cites; ``test #N`` → See TEST #N."""
+    raw = _CITE_MARK.sub(" ", _clip(text))
+    raw = _LEADING_NUM.sub("", raw)
+    raw = _clip(raw).strip(" :.-")
     if not raw:
         return ""
     needle = _NEEDLE_ONLY.match(raw)
@@ -356,10 +464,50 @@ def display_check_label(text: str) -> str:
     return raw
 
 
+def _is_finding_not_check(text: str) -> bool:
+    """User result phrasing ('LED is OFF') — not the check that was asked."""
+    if _CHECK_VERB.match(text):
+        return False
+    return bool(_FINDING.search(text))
+
+
+def _same_check(left: str, right: str) -> bool:
+    a, b = _norm(left), _norm(right)
+    if not a or not b or a == b:
+        return bool(a and b)
+    if set(procedure_needles(left)) != set(procedure_needles(right)):
+        return False
+    if min(len(a), len(b)) >= 24 and (a in b or b in a):
+        return True
+    wa = {w for w in a.split() if len(w) > 3}
+    wb = {w for w in b.split() if len(w) > 3}
+    if not wa or not wb:
+        return False
+    inter = len(wa & wb)
+    smaller = min(len(wa), len(wb))
+    return inter >= max(3, smaller - 1) or (smaller <= 4 and inter >= 2)
+
+
+def _collapse_near_duplicate_checks(labels: list[str]) -> list[str]:
+    kept: list[str] = []
+    for label in labels:
+        merged = False
+        for i, other in enumerate(kept):
+            if not _same_check(label, other):
+                continue
+            if len(label) > len(other):
+                kept[i] = label
+            merged = True
+            break
+        if not merged:
+            kept.append(label)
+    return kept
+
+
 def tally_cleared(ruled_out: list[str]) -> list[str]:
-    """Deduped cleared checks; drop a needle when a richer line names that TEST."""
+    """Deduped cleared checks; drop findings and needle-only TEST repeats."""
     labels = [display_check_label(item) for item in ruled_out]
-    labels = [item for item in labels if item]
+    labels = [item for item in labels if item and not _is_finding_not_check(item)]
     covered: set[str] = set()
     for label in labels:
         if not _NEEDLE_ONLY.match(label):
@@ -370,12 +518,12 @@ def tally_cleared(ruled_out: list[str]) -> list[str]:
         match = _NEEDLE_ONLY.match(label)
         if match and f"test #{match.group(1)}" in covered:
             continue
-        key = label.lower()
-        if key in seen:
+        key = _norm(label)
+        if not key or key in seen:
             continue
         seen.add(key)
         out.append(label)
-    return out
+    return _collapse_near_duplicate_checks(out)
 
 
 def tally_offered(assistant: str, cleared: list[str]) -> list[str]:
@@ -384,13 +532,12 @@ def tally_offered(assistant: str, cleared: list[str]) -> list[str]:
     if not items:
         items = [display_check_label(needle) for needle in procedure_needles(assistant)]
     labels = tally_cleared(items)
-    cleared_keys = {item.lower() for item in cleared}
     cleared_tests: set[str] = set()
     for item in cleared:
         cleared_tests.update(procedure_needles(item))
     out: list[str] = []
     for label in labels:
-        if label.lower() in cleared_keys:
+        if any(_same_check(label, item) for item in cleared):
             continue
         needles = set(procedure_needles(label))
         if needles and needles <= cleared_tests:
@@ -435,9 +582,11 @@ def session_tally(
     cleared = tally_cleared(board.ruled_out)
     nxt = "" if closed else display_check_label(board.next_check)
     offered = [] if closed else tally_offered(assistant, cleared)
+    segments = tally_segments(board)
     return {
         "symptom": board.symptom_anchor,
         "cleared": cleared,
+        "segments": segments,
         "offered": offered,
         "next": nxt,
         "closed": closed,
@@ -448,6 +597,28 @@ def session_tally(
     }
 
 
+def tally_segments(board: DiagnosticBoard) -> list[dict[str, object]]:
+    """Checks grouped under each symptom span — first problem is never replaced."""
+    path = list(board.symptom_path)
+    if not path:
+        return [{"symptom": board.symptom_anchor, "cleared": tally_cleared(board.ruled_out)}]
+    earlier: list[str] = []
+    out: list[dict[str, object]] = []
+    for i, span in enumerate(path):
+        if i < len(path) - 1:
+            cleared = tally_cleared(span.frozen_cleared)
+            earlier.extend(cleared)
+        else:
+            current = tally_cleared(board.ruled_out)
+            cleared = [
+                item
+                for item in current
+                if not any(_same_check(item, prev) for prev in earlier)
+            ]
+        out.append({"symptom": span.text, "cleared": cleared})
+    return out
+
+
 def format_board(board: DiagnosticBoard) -> str:
     lines = [
         "Session diagnostic board (authoritative — do not invent ruled-out checks):",
@@ -455,6 +626,10 @@ def format_board(board: DiagnosticBoard) -> str:
     ]
     if board.symptom_anchor:
         lines.append(f"symptom: {board.symptom_anchor}")
+    if len(board.symptom_path) > 1:
+        lines.append(
+            "symptom trail: " + " → ".join(span.text for span in board.symptom_path)
+        )
     if board.hypotheses:
         lines.append("open hypotheses: " + "; ".join(board.hypotheses))
     if board.ruled_out:

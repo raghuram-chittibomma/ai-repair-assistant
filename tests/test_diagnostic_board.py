@@ -354,6 +354,48 @@ def test_tally_formats_needles_and_drops_duplicate_test() -> None:
     ) == ["Reset washer", "Door lock mechanism not functioning: See TEST #4"]
 
 
+def test_tally_collapses_near_duplicate_checks_and_drops_findings() -> None:
+    assert display_check_label("1. Reset the washer by unplugging [1]") == (
+        "Reset the washer by unplugging"
+    )
+    cleared = tally_cleared(
+        [
+            "Reset the washer by unplugging and reconnecting the power cord.",
+            "Check the door lock mechanism for misalignment, damage, or "
+            "over-tightening, and repair as necessary.",
+            "If the door lock mechanism is suspected to be malfunctioning, "
+            "refer to TEST #4: Door Lock System on page 15 for further "
+            "diagnostics.",
+            "1. Reset the washer by unplugging and reconnecting the power cord.",
+            "Reset the washer by unplugging and reconnecting the power cord",
+            "Check the door lock mechanism for misalignment, damage, or "
+            "over-tightening, and repair as necessary",
+            "If the door lock mechanism is suspected to be malfunctioning, "
+            "refer to TEST #4: Door Lock System on page 15 for further "
+            "diagnostics [1]",
+            "Control lock LED/icon is OFF.",
+            "Check if the control lock LED/icon is on and deactivate it if "
+            "necessary.",
+            "Connections between ACU and HMI look good.",
+            "Check connections and harness continuity between ACU and HMI.",
+        ]
+    )
+    assert cleared == [
+        "Reset the washer by unplugging and reconnecting the power cord",
+        "Check the door lock mechanism for misalignment, damage, or "
+        "over-tightening, and repair as necessary",
+        "If the door lock mechanism is suspected to be malfunctioning, "
+        "refer to TEST #4: Door Lock System on page 15 for further "
+        "diagnostics",
+        "Check if the control lock LED/icon is on and deactivate it if "
+        "necessary",
+        "Check connections and harness continuity between ACU and HMI",
+    ]
+    assert not any(item.lower().startswith("1.") for item in cleared)
+    assert not any("is off" in item.lower() for item in cleared)
+    assert not any("look good" in item.lower() for item in cleared)
+
+
 def test_session_tally_closed_omits_next_and_uses_pack_cite() -> None:
     board = DiagnosticBoard(
         phase="close",
@@ -394,5 +436,81 @@ def test_session_tally_offers_numbered_checks_before_ack() -> None:
     )
     assert tally["symptom"] == "door doesn't open"
     assert tally["cleared"] == []
+    assert tally["segments"] == [{"symptom": "door doesn't open", "cleared": []}]
     assert any("Reset washer" in item for item in tally["offered"])
     assert any("TEST #4" in item for item in tally["offered"])
+
+
+def test_tally_groups_checks_under_each_symptom_without_replacing_first() -> None:
+    first = merge_board(
+        DiagnosticBoard(),
+        step=1,
+        symptom_anchor="door doesn't open",
+        user_message="door doesn't open",
+        delta=DiagnosticDelta(
+            phase="next_step",
+            next_check="See TEST #4: Door Lock System",
+        ),
+    )
+    after_test = merge_board(
+        first,
+        step=2,
+        symptom_anchor="door doesn't open",
+        user_message="ran test 4 but no use",
+        prior_assistant="Refer to TEST #4: Door Lock System [1].",
+        intent_label="still_unresolved",
+        delta=DiagnosticDelta(phase="next_step", next_check="Check the control lock LED"),
+    )
+    after_test.ruled_out = [
+        "Reset the washer by unplugging and reconnecting the power cord",
+        "Check the door lock mechanism for misalignment",
+        "See TEST #4: Door Lock System",
+    ]
+    switched = merge_board(
+        after_test,
+        step=3,
+        symptom_anchor="door doesn't open",
+        user_message="after few tries able to open the door but it can't close now",
+        intent_label="new_symptom",
+        delta=DiagnosticDelta(
+            phase="next_step",
+            next_check="Ensure the door is completely closed",
+        ),
+    )
+    asserted = merge_board(
+        switched,
+        step=4,
+        symptom_anchor="door doesn't open",
+        user_message="door closes a little then pops open",
+            prior_assistant=(
+                "1. Ensure the door is completely closed.\n"
+                "2. Check for obstructions."
+            ),
+        intent_label="still_unresolved",
+    )
+    assert switched.symptom_anchor == "door doesn't open"
+    assert [span.text for span in switched.symptom_path] == [
+        "door doesn't open",
+        "after few tries able to open the door but it can't close now",
+    ]
+    assert switched.next_check == "Ensure the door is completely closed"
+    tally = session_tally(asserted)
+    assert tally["symptom"] == "door doesn't open"
+    assert tally["segments"] == [
+        {
+            "symptom": "door doesn't open",
+            "cleared": [
+                "Reset the washer by unplugging and reconnecting the power cord",
+                "Check the door lock mechanism for misalignment",
+                "See TEST #4: Door Lock System",
+            ],
+        },
+        {
+            "symptom": "after few tries able to open the door but it can't close now",
+            "cleared": [
+                "Ensure the door is completely closed",
+                "Check for obstructions",
+            ],
+        },
+    ]
+    assert "Ensure the door is completely closed" not in tally["segments"][0]["cleared"]

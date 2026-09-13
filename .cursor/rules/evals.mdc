@@ -14,6 +14,6 @@ alwaysApply: false
 - Door polarity grammar ([ADR-0040](docs/adr/0040-door-polarity-grammar.md)) and unlock-without-F5E2 ([ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md)) grade `door-got-locked-unlock` and `door-doesnt-open-unlock`. Those fixtures fail on TEST #4. Do not add contraction rows or fault codes to unlock `add_to_search`.
 - Same-problem coalesce ([ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md)) is not a ranking bake-off. Do not add a hard fixture whose only job is “prefer the first table row.”
 - Session evidence reuse ([ADR-0043](docs/adr/0043-session-evidence-reuse.md)) is a diagnose protocol unit test, not a retrieval ranking fixture. Keep `mid-cycle-stop-diag-entry` and `f5e2-door-lock-still-unresolved` searching on a corrected or first-turn path.
-- The diagnose session tally ([ADR-0044](docs/adr/0044-diagnose-session-tally.md)) is a formatter unit test, not a retrieval fixture.
+- The diagnose session tally ([ADR-0044](docs/adr/0044-diagnose-session-tally.md), [ADR-0045](docs/adr/0045-diagnose-tally-symptom-trail.md)) is a formatter unit test, not a retrieval fixture.
 - Layout pack: `repair-corpus bench-layout` against `corpus/parsed/<doc>/chunks.jsonl` → `evals/parsing/results/layout-pack.md`.
 - Safety: regex remains the CI gate. Optional classifier may only raise severity ([ADR-0032](docs/adr/0032-safety-classifier-union.md)).

@@ -2,9 +2,11 @@
 
 ## Status
 
-Accepted. Extends [ADR-0031](0031-structured-diagnostic-state.md) (inspectable
-board) and [ADR-0017](0017-web-ui-deploy-eval.md) (`/ui`). Does not change
-retrieve, generate, or ranking. Not [R41](../ARCHITECTURE_REVIEW_RESPONSE.md)
+Accepted. Extended by [ADR-0045](0045-diagnose-tally-symptom-trail.md)
+(symptom spans; checks stay with the problem they were for). Extends
+[ADR-0031](0031-structured-diagnostic-state.md) (inspectable board) and
+[ADR-0017](0017-web-ui-deploy-eval.md) (`/ui`). Does not change retrieve,
+generate, or ranking. Not [R41](../ARCHITECTURE_REVIEW_RESPONSE.md)
 feedback capture. Sessions stay in-memory
 ([ADR-0021](0021-api-hardening-embedder-sessions.md)).
 

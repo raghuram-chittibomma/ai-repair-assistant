@@ -33,7 +33,8 @@ cites can highlight a unique one-cluster word-span
 and same-problem checklist coalesce are
 [ADR-0042](adr/0042-guide1-anchor-and-checklist-coalesce.md) (not a ranking
 change). The diagnose `/ui` tally is a read-only view of the R31 board
-([ADR-0044](adr/0044-diagnose-session-tally.md)); it is not R41 feedback.
+([ADR-0044](adr/0044-diagnose-session-tally.md),
+[ADR-0045](adr/0045-diagnose-tally-symptom-trail.md)); it is not R41 feedback.
 
 **Date:** 2026-08-29
 **Responds to:** [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) (48 findings, R1–R48)

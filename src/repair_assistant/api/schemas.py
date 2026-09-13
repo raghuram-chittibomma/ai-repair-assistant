@@ -101,11 +101,18 @@ class DiagnoseBoardOut(BaseModel):
     ruled_out: list[str] = Field(default_factory=list)
     observations: list[dict] = Field(default_factory=list)
     next_check: str = ""
+    symptom_path: list[dict] = Field(default_factory=list)
+
+
+class DiagnoseTallySegmentOut(BaseModel):
+    symptom: str = ""
+    cleared: list[str] = Field(default_factory=list)
 
 
 class DiagnoseTallyOut(BaseModel):
     symptom: str = ""
     cleared: list[str] = Field(default_factory=list)
+    segments: list[DiagnoseTallySegmentOut] = Field(default_factory=list)
     offered: list[str] = Field(default_factory=list)
     next: str = ""
     closed: bool = False
