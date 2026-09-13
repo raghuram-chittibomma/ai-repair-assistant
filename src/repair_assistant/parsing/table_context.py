@@ -873,9 +873,7 @@ def _keep_guide1_pair(cause: str, checks: str) -> bool:
         return False
     if c.lower().startswith(("wait ", "if ", "see ")):
         return False
-    if k.lower().startswith("see ("):
-        return False
-    return True
+    return not k.lower().startswith("see (")
 
 
 def _parse_guide1_prose(
