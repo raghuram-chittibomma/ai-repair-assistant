@@ -36,7 +36,7 @@ def test_load_prompt_files() -> None:
     assert "diagnostic" in diag
     assert "Clarifying vs abstaining" in diag
     assert "Do NOT use the ABSTAIN: prefix" in diag
-    assert "close cleanly" in diag
+    assert "close in plain language" in diag
     assert "Never ABSTAIN claiming" in diag or "Session symptom anchor" in diag
     assert "evidence_index" in diag
     assert "claims" in diag
