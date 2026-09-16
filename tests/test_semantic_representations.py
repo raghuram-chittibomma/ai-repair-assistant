@@ -16,7 +16,6 @@ from repair_assistant.semantic.representations import (
     parse_representations,
     register_builder,
 )
-from repair_assistant.semantic.units import SemanticUnit
 from repair_assistant.semantic.tokens import (
     BGE_MAX_TOKENS,
     DEFAULT_TOKEN_BUDGET,
@@ -25,6 +24,7 @@ from repair_assistant.semantic.tokens import (
     fits,
     overflow,
 )
+from repair_assistant.semantic.units import SemanticUnit
 from tests.semantic_fixtures import (
     LONG_STEP_BODY,
     FakeRepresenter,

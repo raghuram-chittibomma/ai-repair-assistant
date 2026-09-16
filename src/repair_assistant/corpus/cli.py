@@ -835,8 +835,9 @@ def segment_cmd(
         raise click.ClickException(str(exc)) from exc
 
     # Discover curate generate_* param
-    from repair_assistant.semantic import curate as _curate
     import inspect
+
+    from repair_assistant.semantic import curate as _curate
     gen_param = "generate_reps"
     for name in inspect.signature(_curate.propose_semantic_version).parameters:
         if name.startswith("generate_"):
