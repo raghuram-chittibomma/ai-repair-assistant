@@ -44,6 +44,9 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0049](0049-pdf-native-semantic-boundaries.md) | PDF page-range markers (native PDF or vision when scanned); thin PDF extract for `source_text`; real-PDF review UI | Parser/anchor path diverged from product intent |
 | [0050](0050-generate-hybrid-pdf-evidence.md) | Generate attaches native PDF page-ranges (text) or rasters (scanned); no structured 2k excerpt | Layout missing from text-only evidence pack |
 
+End-to-end diagram (propose → human board → retrieve → generate with layout):
+[architecture/08](../architecture/08-semantic-curator-to-generate.md).
+
 ## Phase 4 — Retrieval
 
 | ADR | Decision | Driver |

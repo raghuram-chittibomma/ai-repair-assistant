@@ -67,7 +67,8 @@ flowchart TD
 | `reference_fetch` / `manual_rev_fetch` | Publication / revision-aware pulls when the plan asks |
 
 On a `semantic_llm` document the arms match compact representations, not source
-text. After sibling coalesce, `collapse_semantic_units` groups hits by `unit_id`,
+text (full path in [08 — Semantic curator → generate](08-semantic-curator-to-generate.md)).
+After sibling coalesce, `collapse_semantic_units` groups hits by `unit_id`,
 keeps the best score, records the matched `rep_kind`s in
 `metadata.matched_representations`, and swaps `Hit.text` for the unit's own
 `source_text` — so several representations of one procedure arrive as one piece

@@ -97,3 +97,7 @@ step.
 - Measured by parsing and unit fixtures plus a `bench-retrieve` parity run on the
   untouched documents. A semantic-vs-structured retrieval comparison needs an
   evaluation mode that is deliberately not built here.
+
+## See also
+
+[architecture/08 — Semantic curator → generate](../architecture/08-semantic-curator-to-generate.md) · [ADR-0049](0049-pdf-native-semantic-boundaries.md) · [ADR-0050](0050-generate-hybrid-pdf-evidence.md)

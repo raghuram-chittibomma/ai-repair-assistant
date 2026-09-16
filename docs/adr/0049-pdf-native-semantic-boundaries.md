@@ -61,3 +61,7 @@ Segmentation input:
   an OCR slice supplies non-empty `source_text`.
 - Charter D9 (paid curator LLM) still applies; modality choice may increase
   token cost on large or scanned manuals.
+
+## See also
+
+[architecture/08 — Semantic curator → generate](../architecture/08-semantic-curator-to-generate.md) · [ADR-0050](0050-generate-hybrid-pdf-evidence.md)

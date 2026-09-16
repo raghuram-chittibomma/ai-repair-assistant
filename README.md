@@ -27,6 +27,7 @@ Each pipeline layer went through the same loop: **charter phase → measure → 
 | Retrieval arms | Hybrid re-test kept the product gate at 14/14 hard ([ADR-0010](docs/adr/0010-retrieval-applicability.md), [ADR-0020](docs/adr/0020-hybrid-retrieval-retest.md)) |
 | Safety | Deterministic allow / warn / escalate / block — not LLM-only ([ADR-0014](docs/adr/0014-safety-policy.md)) |
 | Traces → evals | Langfuse spans mined into human-reviewed draft scenarios ([ADR-0018](docs/adr/0018-langfuse-observability.md), [ADR-0023](docs/adr/0023-trace-driven-eval-mining.md)) |
+| Semantic curator | Opt-in LLM page-range units for high-risk PDFs; human board before cutover; generate sees layout ([ADR-0047](docs/adr/0047-ingestion-versions.md)–[ADR-0050](docs/adr/0050-generate-hybrid-pdf-evidence.md)) |
 
 Full decision log: [Architecture decision records](docs/adr/README.md).
 Manual benches at every layer: [Evaluation](docs/EVALS.md).
@@ -48,16 +49,20 @@ flowchart LR
   safety --> ui[LAN_UI_API]
   ui --> traces[Langfuse_traces]
   traces --> mine[mine_traces_improve]
+  docs -.->|opt_in_high_risk| curator[Semantic_curator]
+  curator --> human[Human_PDF_board]
+  human --> ingest
 ```
 
 - **Parsing** — hybrid page router (matrix / TOC / schematic / photo-access / multi-column), quality overrides ([ADR-0024](docs/adr/0024-hybrid-parse-architecture.md))
-- **Chunking** — table-row / matrix / contextual enrichment; Guide #1 title-case or ALL-CAPS anchors ([ADR-0007](docs/adr/0007-parser-and-chunker.md), [ADR-0022](docs/adr/0022-contextual-chunk-enrichment.md), [ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md))
-- **Retrieval** — vector + codes/connectors, applicability, owner-preferring literature when feasible; door polarity is grammar, not slang YAML; same-problem rows coalesce into one citation ([ADR-0010](docs/adr/0010-retrieval-applicability.md), [ADR-0040](docs/adr/0040-door-polarity-grammar.md), [ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md), [ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md))
+- **Chunking (default)** — table-row / matrix / contextual enrichment; Guide #1 title-case or ALL-CAPS anchors ([ADR-0007](docs/adr/0007-parser-and-chunker.md), [ADR-0022](docs/adr/0022-contextual-chunk-enrichment.md), [ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md))
+- **Semantic chunking (opt-in)** — spend a **highly capable LLM once at corpus build** on high-risk manuals (install / repair procedures) so units keep warnings with their TEST steps; a human reviews markers on the real PDF before activate; retrieval indexes compact reps; **generate sees full page-range layout** (native PDF or rasters) plus claim-binding `source_text` ([ADR-0047](docs/adr/0047-ingestion-versions.md)–[ADR-0050](docs/adr/0050-generate-hybrid-pdf-evidence.md), [architecture/08](docs/architecture/08-semantic-curator-to-generate.md))
+- **Retrieval** — vector + codes/connectors, applicability, owner-preferring literature when feasible; door polarity is grammar, not slang YAML; same-problem rows coalesce into one citation; semantic hits collapse to unit text ([ADR-0010](docs/adr/0010-retrieval-applicability.md), [ADR-0040](docs/adr/0040-door-polarity-grammar.md), [ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md), [ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md))
 - **Grounded Q&A / diagnose** — citations, abstain, checklist path discipline, gated source-page overlay and row/prose highlight, diagnose session tally ([ADR-0012](docs/adr/0012-grounded-qa.md), [ADR-0013](docs/adr/0013-langgraph-diagnostic.md), [ADR-0036](docs/adr/0036-ui-source-page-images.md)–[ADR-0038](docs/adr/0038-paragraph-highlight.md), [ADR-0044](docs/adr/0044-diagnose-session-tally.md)–[ADR-0046](docs/adr/0046-current-span-protocol.md))
 - **Safety** — block / escalate / post-LLM gates; owner vs technician ([ADR-0014](docs/adr/0014-safety-policy.md))
 - **Improve from traces** — Langfuse → `mine-traces` reports → human promote ([ADR-0018](docs/adr/0018-langfuse-observability.md), [ADR-0023](docs/adr/0023-trace-driven-eval-mining.md))
 
-**Architecture (drill-down):** [System context](docs/architecture/01-system-context.md) · [Deployment](docs/architecture/02-deployment.md) · [Offline ingest](docs/architecture/03-offline-ingest.md) · [Retrieval](docs/architecture/04-retrieval.md) · [Ask vs diagnose](docs/architecture/05-runtime-ask-diagnose.md) · [Safety](docs/architecture/06-safety.md) · [Observability](docs/architecture/07-observability-improve.md) — index: [docs/architecture/](docs/architecture/)
+**Architecture (drill-down):** [System context](docs/architecture/01-system-context.md) · [Deployment](docs/architecture/02-deployment.md) · [Offline ingest](docs/architecture/03-offline-ingest.md) · [Retrieval](docs/architecture/04-retrieval.md) · [Ask vs diagnose](docs/architecture/05-runtime-ask-diagnose.md) · [Safety](docs/architecture/06-safety.md) · [Observability](docs/architecture/07-observability-improve.md) · [Semantic curator → generate](docs/architecture/08-semantic-curator-to-generate.md) — index: [docs/architecture/](docs/architecture/)
 
 ---
 
@@ -105,6 +110,24 @@ Retrieve, evidence, LLM, and safety_gate spans for the same ask/diagnose runs ([
 
 ![Langfuse trace with retrieve, evidence, llm, and safety_gate spans](docs/images/langfuse-trace.png)
 
+### Corpus review — semantic markers
+
+Opt-in curator at `http://localhost:8080/ui/corpus`. Structured docs stay on the
+default parse path; promote a high-risk PDF when procedure-scale units matter.
+Full flow: [architecture/08](docs/architecture/08-semantic-curator-to-generate.md).
+
+**Board overview** — per-document strategy (`structured` vs `semantic_llm`) and review status.
+
+![Corpus review board listing documents by ingestion strategy](docs/images/ui-corpus-board.png)
+
+**Markers on the manufacturer PDF** — LLM-proposed page ranges overlaid for human check; live approved list on the right.
+
+![Corpus review with semantic markers on installation instructions PDF](docs/images/ui-corpus-install-markers.png)
+
+**Select / split / join** — drag page-fraction handles, join neighbors, then Finalize representations and Activate cutover (retrieval stays on the prior active version until activate).
+
+![Corpus review with a multi-page installation-parts marker selected](docs/images/ui-corpus-marker-selected.png)
+
 ---
 
 ## Get started
@@ -118,6 +141,7 @@ uv sync --frozen --extra dev
 # API + UI (same machine)
 uv run python -m repair_assistant.api.main
 # open http://localhost:8080/ui
+# corpus curator: http://localhost:8080/ui/corpus
 ```
 
 `uv.lock` pins the resolved environment so ADR scorecards can be regenerated.
@@ -133,7 +157,7 @@ python -m repair_assistant.corpus.cli diagnose --model WFW5620HW0
 
 **No corpus yet?** [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) (acquire → parse → ingest), then return here.
 
-**As a framework:** describe documents in `corpus/manifest/`, acquire PDFs under `corpus/documents/` (gitignored), `parse` → `ingest` → ask / diagnose / UI. Keep eval fixtures and ADRs as the quality bar when you change chunking or retrieval.
+**As a framework:** describe documents in `corpus/manifest/`, acquire PDFs under `corpus/documents/` (gitignored), `parse` → `ingest` → ask / diagnose / UI. For high-risk manuals, optionally `segment` → review on `/ui/corpus` → activate ([ADR-0047](docs/adr/0047-ingestion-versions.md)–[ADR-0049](docs/adr/0049-pdf-native-semantic-boundaries.md)). Keep eval fixtures and ADRs as the quality bar when you change chunking or retrieval.
 
 ---
 
@@ -161,15 +185,15 @@ tests/                   deterministic tests
 
 ## Documentation
 
-- [Deployment](docs/DEPLOYMENT.md) — run API/UI/CLI against LAN Postgres
-- [Architecture diagrams](docs/architecture/) — system, deploy, ingest, retrieve, runtime, safety, traces
+- [Deployment](docs/DEPLOYMENT.md) — API/UI/CLI against LAN Postgres; `/ui` chat and `/ui/corpus` curator
+- [Architecture diagrams](docs/architecture/) — system, deploy, ingest, retrieve, runtime, safety, traces, [semantic curator → generate](docs/architecture/08-semantic-curator-to-generate.md)
 - [Evaluation](docs/EVALS.md) — manual benches at every pipeline layer
 - [Architecture review](docs/ARCHITECTURE_REVIEW.md) — external audit, 48 findings
 - [Review response](docs/ARCHITECTURE_REVIEW_RESPONSE.md) — claims re-verified, disposition per finding, remediation slices
 - [Project charter](docs/CHARTER.md) — vision, constraints, roadmap
 - [Langfuse](docs/LANGFUSE.md) — optional self-hosted tracing
-- [Architecture decision records](docs/adr/) — design decisions
-- [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) — Whirlpool acquire → ingest
+- [Architecture decision records](docs/adr/) — design decisions ([0047](docs/adr/0047-ingestion-versions.md)–[0050](docs/adr/0050-generate-hybrid-pdf-evidence.md) for semantic units)
+- [Reference corpus build](docs/REFERENCE_CORPUS_BUILD.md) — Whirlpool acquire → ingest (optional semantic promote)
 - [Corpus licensing](docs/CORPUS_LICENSING.md) — copyright; no downloader
 
 ## Stack

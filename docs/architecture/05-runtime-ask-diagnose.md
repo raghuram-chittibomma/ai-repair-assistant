@@ -29,6 +29,11 @@ flowchart TB
 
 - Both paths call ADR-0010 `search()`, `format_evidence`, OpenAI, and safety gates.
 - Diagnose adds session history, error-code carry-forward, and LangGraph node wiring.
+- When a citation is a **semantic unit**, generate attaches the unit’s
+  `source_text` plus a **native PDF page-range** (text PDFs) or page rasters
+  (scanned) so the model sees procedure layout, not only a text pack
+  ([ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md),
+  [08 — Semantic curator → generate](08-semantic-curator-to-generate.md)).
 
 ## Ask (one-shot)
 

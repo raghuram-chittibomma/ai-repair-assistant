@@ -136,11 +136,14 @@ flowchart TD
 
 ## Semantic curator (opt-in, per document)
 
+End-to-end (board → retrieve → generate with native PDF):
+[08 — Semantic curator through generate](08-semantic-curator-to-generate.md).
+
 Structured chunking above stays the default for every document. A document may
-instead be **promoted** to `semantic_llm`, where an LLM proposes PDF page-range
-markers (native PDF, or vision rasters when scanned), a human checks them on
-the real PDF, and the new representation replaces the old one in a single
-transaction
+instead be **promoted** to `semantic_llm`, where a **capable LLM once at
+corpus build** proposes PDF page-range markers (native PDF, or vision rasters
+when scanned), a human checks them on the real PDF, and the new representation
+replaces the old one in a single transaction
 ([ADR-0047](../adr/0047-ingestion-versions.md), [ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md)).
 
 ```mermaid

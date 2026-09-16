@@ -85,6 +85,17 @@ repair-corpus db-migrate
 repair-corpus ingest --all            # + local BGE embeddings (free)
 ```
 
+Optional — promote a high-risk PDF to LLM semantic units (human board before
+cutover). Needs `SEMANTIC_OPENAI_API_KEY`. Diagram:
+[architecture/08](architecture/08-semantic-curator-to-generate.md).
+
+```bash
+repair-corpus segment installation-instructions-w11156977
+# open http://localhost:8080/ui/corpus — revise markers, Finalize, Activate
+repair-corpus ingestion-status
+# repair-corpus ingestion-revert <doc_id>   # restore structured without re-parse
+```
+
 ---
 
 ## 4. Smoke the reference model
@@ -95,6 +106,7 @@ repair-corpus ask "What does F5E2 mean?" --model WFW5620HW0
 repair-corpus diagnose --model WFW5620HW0
 
 python -m repair_assistant.api.main   # then open http://localhost:8080/ui
+# curator: http://localhost:8080/ui/corpus
 ```
 
 ---

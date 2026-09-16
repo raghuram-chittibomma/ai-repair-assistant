@@ -9,7 +9,7 @@ index. Do not treat chat history as a licence to reopen a settled decision.
 | --- | --- |
 | [docs/CHARTER.md](docs/CHARTER.md) | Vision, fixed stack, D8 LAN-only, deviations |
 | [docs/adr/README.md](docs/adr/README.md) | Accepted decisions; supersede with a new ADR |
-| [docs/architecture/](docs/architecture/) | Current diagrams (01–07) |
+| [docs/architecture/](docs/architecture/) | Current diagrams (01–08); semantic E2E in [08](docs/architecture/08-semantic-curator-to-generate.md) |
 | [docs/EVALS.md](docs/EVALS.md) | How to measure a change |
 | [docs/ARCHITECTURE_REVIEW_RESPONSE.md](docs/ARCHITECTURE_REVIEW_RESPONSE.md) | Review triage and slice status |
 

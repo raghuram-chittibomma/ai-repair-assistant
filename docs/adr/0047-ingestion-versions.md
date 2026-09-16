@@ -70,3 +70,7 @@ and literal arms, `code_fetch`, the sibling expansion, and generation.
   assertion.
 - Storage grows: a promoted document keeps both representations. Acceptable for
   a 22-document corpus; a prune command is a later concern if it stops being.
+
+## See also
+
+[architecture/08 — Semantic curator → generate](../architecture/08-semantic-curator-to-generate.md)

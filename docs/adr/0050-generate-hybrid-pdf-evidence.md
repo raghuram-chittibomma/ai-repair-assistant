@@ -45,3 +45,7 @@ semantic unit filled the pack budget.
   ``LangfuseMedia`` (`native_pdf_parts`) so the UI can show the file that went
   to the model (self-hosted media/S3 required; OEM content stays LAN-only).
 - Curator segmentation path unchanged.
+
+## See also
+
+[architecture/08 — Semantic curator → generate](../architecture/08-semantic-curator-to-generate.md) · [LANGFUSE.md](../LANGFUSE.md)
