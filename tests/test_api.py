@@ -570,5 +570,5 @@ def test_corpus_ui_page(client: TestClient) -> None:
     response = client.get("/ui/corpus", follow_redirects=False)
     assert response.status_code == 200
     assert "Corpus review" in response.text
-    assert "Process with semantic ingestion" in response.text
+    assert "Propose semantic" in response.text
     assert "/v1/corpus/documents" in response.text
