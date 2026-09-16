@@ -18,6 +18,7 @@ from repair_assistant.ingest.parsed import (
 from repair_assistant.ingest.store import Database
 from repair_assistant.parsing.language import is_index_language
 from repair_assistant.parsing.page_classify import should_index_chunk
+from repair_assistant.semantic.lifecycle import LifecycleError, ensure_structured_active
 
 
 @dataclass
@@ -89,7 +90,7 @@ def ingest_parsed(
             result.documents.append(stats)
             db.commit()
         except Exception as exc:  # noqa: BLE001 — surface per-doc failures to CLI
-            db._conn.rollback()
+            db.rollback()
             result.documents.append(
                 DocIngestStats(doc_id=path.name, status="failed", detail=str(exc))
             )
@@ -105,13 +106,35 @@ def _ingest_one(
     corpus_sha256: str | None,
 ) -> DocIngestStats:
     existing = db.get_document(parsed.doc_id)
-    if (
+    unchanged = (
         not force
-        and existing
+        and existing is not None
         and existing.content_fingerprint == parsed.content_fingerprint
-    ):
+    )
+
+    # The document row must exist before a version can reference it, and the
+    # version must exist before any chunk can be written into it (ADR-0047).
+    # An unchanged document already has its row, so leave `ingested_at` alone.
+    if not unchanged:
+        db.upsert_document(parsed, corpus_sha256)
+    try:
+        version = ensure_structured_active(
+            db,
+            parsed.doc_id,
+            source_fingerprint=parsed.content_fingerprint,
+        )
+    except LifecycleError as exc:
+        db.rollback()
+        return DocIngestStats(
+            doc_id=parsed.doc_id,
+            status="skipped",
+            chunks=len(parsed.chunks),
+            detail=str(exc),
+        )
+
+    if unchanged:
         # Still fill any NULL embeddings (e.g. prior --skip-embed run).
-        embedded = _embed_missing(db, parsed.doc_id, embedder)
+        embedded = _embed_missing(db, parsed.doc_id, embedder, version_id=version.id)
         if embedded:
             return DocIngestStats(
                 doc_id=parsed.doc_id,
@@ -120,7 +143,9 @@ def _ingest_one(
                 embedded=embedded,
                 detail="fingerprint unchanged; filled missing embeddings",
             )
-        meta_updated = db.update_chunk_metadata(parsed.doc_id, parsed.chunks)
+        meta_updated = db.update_chunk_metadata(
+            parsed.doc_id, parsed.chunks, version_id=version.id
+        )
         if meta_updated:
             return DocIngestStats(
                 doc_id=parsed.doc_id,
@@ -141,16 +166,20 @@ def _ingest_one(
         for c in parsed.chunks
         if should_index_chunk(c.text, c.kind) and is_index_language(c.language)
     ]
-    prior_hashes = db.existing_chunk_hashes(parsed.doc_id)
+    prior_hashes = db.existing_chunk_hashes(parsed.doc_id, version_id=version.id)
     keep = {
         c.chunk_id
         for c in indexable
         if prior_hashes.get(c.chunk_id) == c.content_hash
     }
 
-    db.upsert_document(parsed, corpus_sha256)
-    db.replace_chunks(parsed.doc_id, indexable, keep_embeddings_for=keep)
-    embedded = _embed_missing(db, parsed.doc_id, embedder)
+    db.replace_chunks(
+        parsed.doc_id,
+        indexable,
+        version_id=version.id,
+        keep_embeddings_for=keep,
+    )
+    embedded = _embed_missing(db, parsed.doc_id, embedder, version_id=version.id)
     return DocIngestStats(
         doc_id=parsed.doc_id,
         status="upserted",
@@ -159,10 +188,16 @@ def _ingest_one(
     )
 
 
-def _embed_missing(db: Database, doc_id: str, embedder: Embedder) -> int:
+def _embed_missing(
+    db: Database,
+    doc_id: str,
+    embedder: Embedder,
+    *,
+    version_id: int,
+) -> int:
     missing = [
         m
-        for m in db.chunks_missing_embeddings(doc_id)
+        for m in db.chunks_missing_embeddings(doc_id, version_id=version_id)
         if should_index_chunk(m[1], None)
     ]
     if not missing:
@@ -172,5 +207,10 @@ def _embed_missing(db: Database, doc_id: str, embedder: Embedder) -> int:
     ids = [m[0] for m in missing]
     texts = [m[1] for m in missing]
     vectors = embedder.embed(texts)
-    db.set_embeddings(doc_id, list(zip(ids, vectors, strict=True)), embedder.model)
+    db.set_embeddings(
+        doc_id,
+        list(zip(ids, vectors, strict=True)),
+        embedder.model,
+        version_id=version_id,
+    )
     return len(ids)

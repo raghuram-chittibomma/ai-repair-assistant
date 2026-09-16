@@ -109,11 +109,32 @@ def test_load_parsed_strips_nul_from_text_and_metadata(tmp_path: Path) -> None:
     assert doc.chunks[0].content_hash != "stale-hash-with-nuls"
 
 
-def test_ingest_updates_metadata_when_fingerprint_unchanged(tmp_path: Path) -> None:
+def test_ingest_updates_metadata_when_fingerprint_unchanged(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
     from unittest.mock import MagicMock
 
+    from repair_assistant.ingest import pipeline as pipeline_mod
     from repair_assistant.ingest.pipeline import _ingest_one
     from repair_assistant.ingest.store import DocumentRow
+    from repair_assistant.semantic.lifecycle import (
+        STATUS_ACTIVE,
+        STRATEGY_STRUCTURED,
+        IngestionVersion,
+    )
+
+    monkeypatch.setattr(
+        pipeline_mod,
+        "ensure_structured_active",
+        lambda db, doc_id, *, source_fingerprint: IngestionVersion(
+            id=1,
+            doc_id=doc_id,
+            version=1,
+            strategy=STRATEGY_STRUCTURED,
+            status=STATUS_ACTIVE,
+        ),
+    )
 
     base = {
         "chunk_id": "a",

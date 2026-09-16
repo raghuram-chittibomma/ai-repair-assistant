@@ -9,12 +9,17 @@ from __future__ import annotations
 import hashlib
 import os
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
 from repair_assistant.ingest.embeddings import DEFAULT_EMBEDDING_DIMS
-from repair_assistant.ingest.parsed import ParsedChunk
+from repair_assistant.ingest.parsed import ParsedChunk, ParsedDocument
 from repair_assistant.ingest.store import Database, apply_migrations
+from repair_assistant.semantic.lifecycle import (
+    IngestionVersion,
+    ensure_structured_active,
+)
 
 TEST_DATABASE_URL_ENV = "REPAIR_TEST_DATABASE_URL"
 
@@ -66,6 +71,42 @@ def make_chunk(
         metadata={"ci": True},
         content_hash=_hash(text),
     )
+
+
+def upsert_structured(
+    db: Database,
+    doc_id: str,
+    chunks: list[ParsedChunk],
+    embedder: FixedEmbedder | None = None,
+    *,
+    meta: dict | None = None,
+) -> IngestionVersion:
+    """Ingest chunks as the document's structured active version (ADR-0047)."""
+    parsed = ParsedDocument(
+        doc_id=doc_id,
+        path=Path("ci"),
+        meta=meta
+        or {
+            "publication_number": chunks[0].publication_number if chunks else None,
+            "extractor": "ci",
+        },
+        chunks=chunks,
+    )
+    db.upsert_document(parsed, corpus_sha256=None)
+    version = ensure_structured_active(
+        db, doc_id, source_fingerprint=parsed.content_fingerprint
+    )
+    db.replace_chunks(doc_id, chunks, version_id=version.id)
+    if embedder is not None:
+        vectors = embedder.embed([c.text for c in chunks])
+        db.set_embeddings(
+            doc_id,
+            [(c.chunk_id, v) for c, v in zip(chunks, vectors, strict=True)],
+            embedder.model,
+            version_id=version.id,
+        )
+    db.commit()
+    return version
 
 
 @pytest.fixture

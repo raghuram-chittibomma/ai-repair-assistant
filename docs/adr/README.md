@@ -39,6 +39,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | --- | --- | --- |
 | [0008](0008-incremental-ingestion.md) | Parsed JSONL → Postgres/pgvector; fingerprint skip | Incremental refresh without re-parse; LAN DB |
 | [0009](0009-local-open-embeddings.md) | Local `BAAI/bge-base-en-v1.5` (768-d); OpenAI not used for embed | Zero embed cost; OpenAI reserved for LLM only |
+| [0047](0047-ingestion-versions.md) | Per-document ingestion strategy over versioned derived data; one DB-enforced active version; retrieval reads `active_chunks` | Promote a document without duplicate or missing retrieval |
 
 ## Phase 4 — Retrieval
 
