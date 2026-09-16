@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted (supersedes the embedding choice in ADR-0008)
+Accepted (supersedes the embedding choice in ADR-0008). Decision 3 is
+**narrowed by [ADR-0048](0048-semantic-knowledge-units.md)**: `parse` and
+`ingest` remain free of paid calls, but an opt-in curator step may call OpenAI
+to propose semantic boundaries. Decisions 1, 2, 4, and 5 are unchanged.
 
 ## Context
 

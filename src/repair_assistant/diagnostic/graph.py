@@ -68,6 +68,7 @@ from repair_assistant.qa.page_images import (
     raster_page_images,
 )
 from repair_assistant.qa.parts import related_parts_note
+from repair_assistant.qa.semantic_evidence import attach_semantic_pdf_evidence
 from repair_assistant.qa.structured import (
     bind_generation,
     citations_from_claims,
@@ -468,6 +469,7 @@ def make_retrieve_node(
                 "abstained": True,
                 "abstain_reason": "No matching manufacturer evidence for this question.",
                 "figure_pages": [],
+                "evidence_pdf_paths": [],
                 "retrieve_label": label or "",
             }
         evidence_text, citations = format_evidence(hits, manifest=manifest)
@@ -478,6 +480,11 @@ def make_retrieve_node(
             manifest,
             enabled=bool(llm_vision_model()),
         )
+        semantic = attach_semantic_pdf_evidence(hits, citations, manifest)
+        if semantic.page_images:
+            images = list(images) + list(semantic.page_images)
+        if semantic.notes:
+            evidence_text = f"{evidence_text}\n\n" + "\n".join(semantic.notes)
         parts = related_parts_note(hits, manifest, appliance)
         if parts:
             evidence_text = f"{evidence_text}\n\n{parts}"
@@ -493,6 +500,7 @@ def make_retrieve_node(
                 {"index": img.index, "doc_id": img.doc_id, "page": img.page}
                 for img in images
             ],
+            "evidence_pdf_paths": [str(p) for p in semantic.pdf_paths],
             "retrieve_label": label or "",
         }
 
@@ -559,6 +567,31 @@ def _page_images_for_state(
     return raster_page_images(specs, manifest)
 
 
+def _evidence_pdf_paths(state: DiagnosticGraphState) -> list:
+    from pathlib import Path
+
+    out = []
+    for raw in state.get("evidence_pdf_paths") or []:
+        path = Path(str(raw))
+        if path.is_file():
+            out.append(path)
+    return out
+
+
+def _cleanup_evidence_pdfs(state: DiagnosticGraphState) -> None:
+    from pathlib import Path
+
+    for raw in state.get("evidence_pdf_paths") or []:
+        path = Path(str(raw))
+        try:
+            path.unlink(missing_ok=True)
+            parent = path.parent
+            if parent.name.startswith("repair-evidence-pdf-"):
+                parent.rmdir()
+        except OSError:
+            pass
+
+
 def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
     def respond(state: DiagnosticGraphState) -> dict:
         orphan = _maybe_orphan_ack_reply(state)
@@ -618,33 +651,40 @@ def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
             board_text=_prompt_board_text(state, intent_label=label),
         )
         images = _page_images_for_state(state, manifest)
-        raw = invoke_complete(llm, system, user_prompt, images)
-        available = list(state.get("citations_available") or [])
-        bound = bind_generation(raw, available)
-        if bound.abstained:
-            # Ack follow-ups with evidence must continue the path, not abstain.
-            if is_progress_followup(latest) and state.get("evidence_text") and _has_prior_assistant(
-                state["messages"]
-            ):
-                raw = invoke_complete(
-                    llm,
-                    system + _progress_retry_suffix(latest),
-                    user_prompt,
-                    images,
-                )
-                bound = bind_generation(raw, available)
+        pdf_paths = _evidence_pdf_paths(state)
+        try:
+            raw = invoke_complete(
+                llm, system, user_prompt, images, pdf_paths=pdf_paths or None
+            )
+            available = list(state.get("citations_available") or [])
+            bound = bind_generation(raw, available)
             if bound.abstained:
-                return _attach_board(
-                    state,
-                    {
-                        "messages": [AIMessage(content=bound.display)],
-                        "abstained": True,
-                        "abstain_reason": bound.abstain_reason,
-                        "claims": claims_as_dicts(bound.claims),
-                    },
-                    raw=raw,
-                    phase_hint="close",
-                )
+                # Ack follow-ups with evidence must continue the path, not abstain.
+                if is_progress_followup(latest) and state.get("evidence_text") and _has_prior_assistant(
+                    state["messages"]
+                ):
+                    raw = invoke_complete(
+                        llm,
+                        system + _progress_retry_suffix(latest),
+                        user_prompt,
+                        images,
+                        pdf_paths=pdf_paths or None,
+                    )
+                    bound = bind_generation(raw, available)
+        finally:
+            _cleanup_evidence_pdfs(state)
+        if bound.abstained:
+            return _attach_board(
+                state,
+                {
+                    "messages": [AIMessage(content=bound.display)],
+                    "abstained": True,
+                    "abstain_reason": bound.abstain_reason,
+                    "claims": claims_as_dicts(bound.claims),
+                },
+                raw=raw,
+                phase_hint="close",
+            )
 
         gated = gate_answer(
             assessment,
@@ -818,17 +858,36 @@ def diagnose_turn_stream(
 
     # ADR-0028: buffer the structured completion, gate the rendered answer,
     # then emit prose. JSON tokens never reach the client (R1 / ADR-0026).
+    # Native PDF file parts force non-stream complete (ADR-0050).
     images = _page_images_for_state(state, manifest)
-    raw = "".join(invoke_stream(client, system, user_prompt, images)).strip()
-    available = list(state.get("citations_available") or [])
-    bound = bind_generation(raw, available)
-
-    if bound.abstained and progress_followup and state.get("evidence_text"):
-        retry_system = system + _progress_retry_suffix(latest)
-        raw = "".join(invoke_stream(client, retry_system, user_prompt, images)).strip()
+    pdf_paths = _evidence_pdf_paths(state)
+    try:
+        if pdf_paths:
+            raw = invoke_complete(
+                client, system, user_prompt, images, pdf_paths=pdf_paths
+            ).strip()
+        else:
+            raw = "".join(invoke_stream(client, system, user_prompt, images)).strip()
+        available = list(state.get("citations_available") or [])
         bound = bind_generation(raw, available)
 
-    stream_tokens = not progress_followup and may_stream(assessment)
+        if bound.abstained and progress_followup and state.get("evidence_text"):
+            retry_system = system + _progress_retry_suffix(latest)
+            if pdf_paths:
+                raw = invoke_complete(
+                    client, retry_system, user_prompt, images, pdf_paths=pdf_paths
+                ).strip()
+            else:
+                raw = "".join(
+                    invoke_stream(client, retry_system, user_prompt, images)
+                ).strip()
+            bound = bind_generation(raw, available)
+    finally:
+        _cleanup_evidence_pdfs(state)
+
+    stream_tokens = (
+        not progress_followup and may_stream(assessment) and not pdf_paths
+    )
     if bound.abstained:
         state = _apply_delta(
             state,

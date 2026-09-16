@@ -76,7 +76,9 @@ to reach Postgres on the LAN host.
 Endpoints: `GET /health`, `GET /ready`, `POST /v1/search`, `/v1/ask`, `/v1/diagnose`
 (ADR-0016), plus `GET /v1/documents/{doc_id}/pages/{page}/image` for the
 source-page JPEG and row/prose highlight in `/ui` (ADR-0036–0038). Diagnose
-shows a read-only session path tally (ADR-0044 / ADR-0045). No API key required
+shows a read-only session path tally (ADR-0044 / ADR-0045). The `/v1/corpus/*`
+routes behind `/ui/corpus` list each document's active ingestion version and
+drive semantic boundary review (ADR-0047 / ADR-0048). No API key required
 (`REPAIR_API_KEY` empty, D8).
 
 **Optional:** run the API as a Docker container on the LAN host — see

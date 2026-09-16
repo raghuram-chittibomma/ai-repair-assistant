@@ -93,8 +93,23 @@ def trace_max_chars() -> int:
         return _DEFAULT_TRACE_MAX
 
 
+def _is_langfuse_media(value: Any) -> bool:
+    """True for LangfuseMedia wrappers (must not be truncated or stringified)."""
+    try:
+        from langfuse.media import LangfuseMedia
+    except Exception:  # pragma: no cover — optional import path
+        return type(value).__name__ == "LangfuseMedia"
+    return isinstance(value, LangfuseMedia)
+
+
 def truncate_for_trace(value: Any, *, max_chars: int | None = None) -> Any:
-    """Truncate long strings in trace payloads; recurse into dicts/lists."""
+    """Truncate long strings in trace payloads; recurse into dicts/lists.
+
+    ``LangfuseMedia`` objects pass through unchanged so native PDF / image
+    attachments reach Langfuse object storage (multi-modality).
+    """
+    if _is_langfuse_media(value):
+        return value
     limit = max_chars if max_chars is not None else trace_max_chars()
     if isinstance(value, str):
         if len(value) <= limit:

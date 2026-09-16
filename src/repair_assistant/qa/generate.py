@@ -7,6 +7,7 @@ import random
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
 from repair_assistant.corpus.applicability import Appliance
@@ -48,6 +49,10 @@ from repair_assistant.qa.env import (
 )
 from repair_assistant.qa.page_images import PageImage, attach_gated_images
 from repair_assistant.qa.parts import related_parts_note
+from repair_assistant.qa.semantic_evidence import (
+    SemanticEvidenceAttach,
+    attach_semantic_pdf_evidence,
+)
 from repair_assistant.qa.structured import (
     DIAGNOSE_RESPONSE_FORMAT,
     OPENAI_RESPONSE_FORMAT,
@@ -184,18 +189,76 @@ def messages_for_trace(
     system: str,
     user: str,
     images: list[PageImage] | None = None,
+    *,
+    pdf_paths: list[Path] | None = None,
 ) -> list[dict]:
-    """Trace payload without JPEG / data-URL bytes."""
-    if not images:
+    """Trace payload without JPEG / data-URL bytes.
+
+    Attachment fingerprints are prefixed (not suffixed) so Langfuse's truncated
+    input preview still shows that native PDF / page-image parts were sent.
+    """
+    if not images and not pdf_paths:
         return [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
-    labels = ", ".join(f"[{img.index}] p.{img.page}" for img in images)
+    labels = ", ".join(f"[{img.index}] p.{img.page}" for img in (images or []))
+    pdf_note = ""
+    if pdf_paths:
+        names = ", ".join(Path(p).name for p in pdf_paths)
+        pdf_note = f"; {len(pdf_paths)} PDF page-range file(s): {names}"
+    img_note = f"; {len(images)} page images: {labels}" if images else ""
     return [
         {"role": "system", "content": system},
-        {"role": "user", "content": f"{user}\n\n[{len(images)} page images attached: {labels}]"},
+        {
+            "role": "user",
+            # Prefix: long evidence packs are truncated at the *end* in the UI.
+            "content": f"[attachments{pdf_note}{img_note}]\n\n{user}",
+        },
     ]
+
+
+def langfuse_pdf_media(pdf_paths: list[Path]) -> dict[str, Any]:
+    """Wrap native PDF page-range files for Langfuse multi-modal upload.
+
+    Returns ``{filename: LangfuseMedia}``. Empty when tracing is off, the SDK
+    media type is unavailable, or no readable files remain.
+    """
+    from repair_assistant.observability.langfuse_tracing import tracing_enabled
+
+    if not pdf_paths or not tracing_enabled():
+        return {}
+    try:
+        from langfuse.media import LangfuseMedia
+    except Exception:  # noqa: BLE001 — optional path
+        return {}
+    out: dict[str, Any] = {}
+    for path in pdf_paths:
+        try:
+            out[Path(path).name] = LangfuseMedia(
+                content_bytes=Path(path).read_bytes(),
+                content_type="application/pdf",
+            )
+        except OSError:
+            _log.warning("Could not read evidence PDF for Langfuse: %s", path)
+    return out
+
+
+def generation_trace_input(
+    system: str,
+    user: str,
+    images: list[PageImage] | None = None,
+    *,
+    pdf_paths: list[Path] | None = None,
+) -> dict[str, Any]:
+    """Langfuse generation input: text messages plus native PDF media parts."""
+    payload: dict[str, Any] = {
+        "messages": messages_for_trace(system, user, images, pdf_paths=pdf_paths),
+    }
+    media = langfuse_pdf_media(list(pdf_paths or []))
+    if media:
+        payload["native_pdf_parts"] = media
+    return payload
 
 
 def invoke_complete(
@@ -203,12 +266,24 @@ def invoke_complete(
     system: str,
     user: str,
     images: list[PageImage] | None = None,
+    *,
+    pdf_paths: list[Path] | None = None,
 ) -> str:
-    if not images:
+    kwargs: dict[str, Any] = {}
+    if images:
+        kwargs["images"] = images
+    if pdf_paths:
+        kwargs["pdf_paths"] = pdf_paths
+    if not kwargs:
         return llm.complete(system, user)
     try:
-        return llm.complete(system, user, images=images)  # type: ignore[call-arg]
+        return llm.complete(system, user, **kwargs)  # type: ignore[call-arg]
     except TypeError:
+        if images and not pdf_paths:
+            try:
+                return llm.complete(system, user, images=images)  # type: ignore[call-arg]
+            except TypeError:
+                pass
         return llm.complete(system, user)
 
 
@@ -245,6 +320,8 @@ class OpenAIClient:
     max_tokens: int | None = None
     prompt_name: str | None = None
     response_format: dict | None = None
+    #: OpenAI-compatible endpoint (e.g. local LLM). None = OpenAI default.
+    base_url: str | None = None
 
     def _timeout_seconds(self) -> float:
         if self.timeout is not None:
@@ -254,7 +331,10 @@ class OpenAIClient:
     def _client(self):
         from openai import OpenAI
 
-        return OpenAI(api_key=self.api_key, timeout=self._timeout_seconds())
+        kwargs: dict = {"api_key": self.api_key, "timeout": self._timeout_seconds()}
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+        return OpenAI(**kwargs)
 
     def _attempts(self) -> int:
         return self.max_attempts if self.max_attempts is not None else llm_max_attempts()
@@ -324,7 +404,18 @@ class OpenAIClient:
         user: str,
         *,
         images: list[PageImage] | None = None,
+        pdf_path: Path | str | None = None,
+        pdf_paths: list[Path] | list[str] | None = None,
     ) -> str:
+        paths: list[Path] = []
+        if pdf_path is not None:
+            paths.append(Path(pdf_path))
+        if pdf_paths:
+            paths.extend(Path(p) for p in pdf_paths)
+        if paths:
+            return self._complete_with_files(
+                system, user, pdf_paths=paths, images=images
+            )
         messages = build_chat_messages(system, user, images)
         model = self._model_for_images(images)
         with generation(
@@ -337,6 +428,98 @@ class OpenAIClient:
             text = (response.choices[0].message.content or "").strip()
             update_span(span, output={"content": text}, usage=usage_from_openai(response))
             return text
+
+    def _complete_with_files(
+        self,
+        system: str,
+        user: str,
+        *,
+        pdf_paths: list[Path],
+        images: list[PageImage] | None = None,
+    ) -> str:
+        """Native PDF page-range file parts (ADR-0049 curator + ADR-0050 generate)."""
+        import base64
+
+        missing = [p for p in pdf_paths if not p.is_file()]
+        if missing:
+            raise LLMRequestError(f"PDF not found: {missing[0]}")
+        client = self._client()
+        uploaded: list[Any] = []
+        try:
+            content: list[dict[str, Any]] = [{"type": "text", "text": user}]
+            for path in pdf_paths:
+                with path.open("rb") as handle:
+                    file_obj = client.files.create(file=handle, purpose="user_data")
+                uploaded.append(file_obj)
+                content.append(
+                    {
+                        "type": "text",
+                        "text": f"PDF page-range for evidence ({path.name}):",
+                    }
+                )
+                content.append(
+                    {
+                        "type": "file",
+                        "file": {"file_id": file_obj.id},
+                    }
+                )
+            for image in images or []:
+                content.append(
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Figure for evidence [{image.index}] "
+                            f"(PDF page {image.page}):"
+                        ),
+                    }
+                )
+                encoded = base64.b64encode(image.jpeg_bytes).decode("ascii")
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{encoded}",
+                            "detail": "low",
+                        },
+                    }
+                )
+            messages: list[dict[str, Any]] = [
+                {"role": "system", "content": system},
+                {"role": "user", "content": content},
+            ]
+            model = self._model_for_images(images)
+            meta = dict(self._prompt_metadata(system))
+            meta["semantic_pdf_parts"] = str(len(pdf_paths))
+            if images:
+                meta["page_images"] = str(len(images))
+            with generation(
+                "llm",
+                model=model,
+                input=generation_trace_input(
+                    system, user, images, pdf_paths=pdf_paths
+                ),
+                metadata=meta,
+            ) as span:
+                response = self._create(messages, stream=False, model=model)
+                text = (response.choices[0].message.content or "").strip()
+                update_span(
+                    span, output={"content": text}, usage=usage_from_openai(response)
+                )
+                return text
+        except Exception as exc:  # noqa: BLE001
+            mapped = classify_llm_error(exc, timeout_seconds=self._timeout_seconds())
+            if isinstance(mapped, LLMError):
+                raise mapped from exc
+            raise LLMRequestError(f"PDF evidence call failed: {exc}") from exc
+        finally:
+            for file_obj in uploaded:
+                try:
+                    client.files.delete(file_obj.id)
+                except Exception:  # noqa: BLE001
+                    _log.warning(
+                        "Could not delete uploaded PDF file %s",
+                        getattr(file_obj, "id", "?"),
+                    )
 
     def _model_for_images(self, images: list[PageImage] | None) -> str:
         if images:
@@ -519,7 +702,7 @@ def _trace_evidence(
     query: str,
     manifest: Manifest | None = None,
     appliance: Appliance | None = None,
-) -> tuple[str, list[Citation], list[PageImage]]:
+) -> tuple[str, list[Citation], list[PageImage], SemanticEvidenceAttach]:
     evidence_text, available = format_evidence(hits, query=query, manifest=manifest)
     evidence_text, available, images = attach_gated_images(
         hits,
@@ -529,6 +712,11 @@ def _trace_evidence(
         query=query,
         enabled=bool(llm_vision_model()),
     )
+    semantic = attach_semantic_pdf_evidence(hits, available, manifest)
+    if semantic.page_images:
+        images = list(images) + list(semantic.page_images)
+    if semantic.notes:
+        evidence_text = f"{evidence_text}\n\n" + "\n".join(semantic.notes)
     parts = related_parts_note(hits, manifest, appliance)
     if parts:
         evidence_text = f"{evidence_text}\n\n{parts}"
@@ -536,8 +724,10 @@ def _trace_evidence(
         evidence_text,
         retrieval_count=len(hits),
         labels=[format_label(h) for h in hits],
+        pdf_count=len(semantic.pdf_paths),
+        raster_count=len(semantic.page_images),
     )
-    return evidence_text, available, images
+    return evidence_text, available, images, semantic
 
 
 def _trace_evidence_prompt(
@@ -545,11 +735,18 @@ def _trace_evidence_prompt(
     *,
     retrieval_count: int,
     labels: list[str] | None = None,
+    pdf_count: int = 0,
+    raster_count: int = 0,
 ) -> None:
+    meta: dict[str, Any] = {"citation_labels": labels or []}
+    if pdf_count:
+        meta["semantic_pdf_parts"] = pdf_count
+    if raster_count:
+        meta["semantic_page_rasters"] = raster_count
     with child_observation(
         "evidence",
         input={"retrieval_count": retrieval_count},
-        metadata={"citation_labels": labels or []},
+        metadata=meta,
     ) as span:
         update_span(span, output={"evidence_text": evidence_text})
 
@@ -660,6 +857,8 @@ class AskPrep:
     evidence_text: str = ""
     available: list[Citation] = field(default_factory=list)
     page_images: list[PageImage] = field(default_factory=list)
+    evidence_pdfs: list[Path] = field(default_factory=list)
+    _evidence_attach: SemanticEvidenceAttach | None = field(default=None, repr=False)
     system: str = ""
     user_prompt: str = ""
 
@@ -774,7 +973,7 @@ def prepare_ask(
             _clarification_result(question, fit.clarify_question, assessment=assessment),
         )
 
-    evidence_text, available, page_images = _trace_evidence(
+    evidence_text, available, page_images, semantic = _trace_evidence(
         result.hits, query=question, manifest=manifest, appliance=appliance
     )
     assessment = apply_owner_evidence_policy(assessment, evidence_text)
@@ -796,6 +995,8 @@ def prepare_ask(
         evidence_text=evidence_text,
         available=available,
         page_images=page_images,
+        evidence_pdfs=list(semantic.pdf_paths),
+        _evidence_attach=semantic,
         system=system,
         user_prompt=user_prompt,
     )
@@ -810,7 +1011,13 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
         api_key=openai_api_key(), model=llm_model(), prompt_name="ask_system"
     )
     try:
-        raw = invoke_complete(llm, prep.system, prep.user_prompt, prep.page_images)
+        raw = invoke_complete(
+            llm,
+            prep.system,
+            prep.user_prompt,
+            prep.page_images or None,
+            pdf_paths=prep.evidence_pdfs or None,
+        )
     except (LLMError, LLMTimeoutError) as exc:
         _log.warning("Generation failed; returning retrieved evidence instead: %s", exc)
         return _degraded_answer(
@@ -820,6 +1027,10 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
             assessment=prep.assessment,
             exc=exc,
         )
+    finally:
+        if prep._evidence_attach is not None:
+            prep._evidence_attach.cleanup()
+            prep._evidence_attach = None
 
     bound = bind_generation(raw, prep.available)
     blocks = evidence_blocks_from_citations(prep.available)
@@ -911,9 +1122,23 @@ def stream_from_prep(
     client = llm or OpenAIClient(
         api_key=openai_api_key(), model=llm_model(), prompt_name="ask_system"
     )
-    stream_tokens = may_stream(prep.assessment)
+    stream_tokens = may_stream(prep.assessment) and not prep.evidence_pdfs
     try:
-        raw = "".join(invoke_stream(client, prep.system, prep.user_prompt, prep.page_images)).strip()
+        if prep.evidence_pdfs:
+            # Native PDF file parts are not on the streaming path (ADR-0050).
+            raw = invoke_complete(
+                client,
+                prep.system,
+                prep.user_prompt,
+                prep.page_images or None,
+                pdf_paths=prep.evidence_pdfs,
+            ).strip()
+        else:
+            raw = "".join(
+                invoke_stream(
+                    client, prep.system, prep.user_prompt, prep.page_images or None
+                )
+            ).strip()
     except (LLMError, LLMTimeoutError) as exc:
         _log.warning("Streamed generation failed; returning evidence: %s", exc)
         degraded = _degraded_answer(
@@ -925,6 +1150,10 @@ def stream_from_prep(
         )
         yield _answer_result_to_done(degraded)
         return
+    finally:
+        if prep._evidence_attach is not None:
+            prep._evidence_attach.cleanup()
+            prep._evidence_attach = None
 
     bound = bind_generation(raw, prep.available)
     blocks = evidence_blocks_from_citations(prep.available)
@@ -1088,6 +1317,9 @@ __all__ = [
     "ask_stream",
     "build_user_prompt",
     "complete_ask",
+    "generation_trace_input",
+    "langfuse_pdf_media",
+    "messages_for_trace",
     "prepare_ask",
     "stream_from_prep",
 ]

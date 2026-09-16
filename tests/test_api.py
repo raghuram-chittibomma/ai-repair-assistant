@@ -564,3 +564,11 @@ def test_ui_page(client: TestClient) -> None:
     root = client.get("/", follow_redirects=False)
     assert root.status_code in {307, 308}
     assert "/ui" in root.headers.get("location", "")
+
+
+def test_corpus_ui_page(client: TestClient) -> None:
+    response = client.get("/ui/corpus", follow_redirects=False)
+    assert response.status_code == 200
+    assert "Corpus review" in response.text
+    assert "Process with semantic ingestion" in response.text
+    assert "/v1/corpus/documents" in response.text

@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Corpus review — AI Repair Assistant</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    :root {
+      --bg: #101418; --panel: #1a222c; --text: #e8edf4; --muted: #8b97a8;
+      --accent: #3d8bfd; --ok: #3dd68c; --warn: #ffb020; --danger: #ff6b6b;
+      --border: #2a3544; --mark: rgba(61, 139, 253, 0.22);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    header { display: flex; gap: 1rem; align-items: center; justify-content: space-between; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--panel); }
+    header h1 { margin: 0; font-size: 1.05rem; }
+    header p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.8rem; }
+    input, select, button { background: #141b24; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.55rem; font: inherit; }
+    button { cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.approved { background: #1e3d32; border-color: var(--ok); color: var(--ok); }
+    .layout { display: grid; grid-template-columns: 280px 1fr 340px; height: calc(100vh - 64px); }
+    .pane { overflow: auto; border-right: 1px solid var(--border); padding: 0.75rem; }
+    .pane:last-child { border-right: none; }
+    .doc { padding: 0.55rem 0.6rem; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+    .doc:hover, .doc.active { background: #222b38; border-color: var(--border); }
+    .doc .meta { color: var(--muted); font-size: 0.75rem; }
+    #pdf-host { position: relative; background: #0a0d11; min-height: 100%; }
+    .page-wrap { position: relative; margin: 0.75rem auto; width: fit-content; }
+    .page-wrap canvas { display: block; box-shadow: 0 0 0 1px var(--border); }
+    .marker { position: absolute; left: 0; right: 0; border-top: 2px solid currentColor; border-bottom: 2px solid currentColor; pointer-events: none; }
+    .marker.c0 { color: #3d8bfd; background: rgba(61, 139, 253, 0.28); }
+    .marker.c1 { color: #2db48c; background: rgba(45, 180, 140, 0.28); }
+    .marker.c2 { color: #e8a838; background: rgba(232, 168, 56, 0.30); }
+    .marker.c3 { color: #ba6ed2; background: rgba(186, 110, 210, 0.28); }
+    .marker.active { outline: 2px solid #fff; outline-offset: -2px; pointer-events: auto; cursor: crosshair; filter: brightness(1.15); }
+    .handle { position: absolute; left: 0; right: 0; height: 10px; margin-top: -5px; background: currentColor; cursor: ns-resize; pointer-events: auto; opacity: 0.95; }
+    .handle.end { bottom: -5px; top: auto; margin-top: 0; }
+    .unit { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; margin-bottom: 0.55rem; background: #141b24; }
+    .unit.active { border-color: var(--accent); }
+    .unit h3 { margin: 0 0 0.25rem; font-size: 0.92rem; }
+    .unit .meta { color: var(--muted); font-size: 0.75rem; }
+    .row { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.45rem; }
+    .issue { color: var(--danger); font-size: 0.8rem; margin: 0.25rem 0; }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .status { font-size: 0.8rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Corpus review</h1>
+      <p>PDF-native semantic markers (ADR-0049). Drag handles across pages to push neighbors; click a selected marker to split.</p>
+    </div>
+    <div class="row">
+      <input id="api-key" type="password" placeholder="API key" style="width:11rem" />
+      <button id="btn-refresh">Refresh</button>
+      <button id="btn-propose" class="primary" disabled>Propose semantic</button>
+      <button id="btn-revise" disabled title="Clone live markers into a new editable candidate (retrieval stays on the active set)">Revise</button>
+      <button id="btn-finalize" disabled title="Generate search representations and mark this version ready to Activate">Finalize</button>
+      <button id="btn-activate" disabled title="Cut over live retrieval to this semantic version">Activate</button>
+      <span id="status" class="status"></span>
+    </div>
+  </header>
+  <div class="layout">
+    <div class="pane" id="docs"></div>
+    <div class="pane" id="pdf-host"><p class="status" style="padding:1rem">Select a document.</p></div>
+    <div class="pane" id="units"><p class="status">No units loaded.</p></div>
+  </div>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const state = {
+  docs: [], docId: null, version: null, units: [], pageCount: 0, pdf: null,
+  selected: null, scale: 1.15, loadToken: 0, proposing: false, dragMoved: false,
+  editable: false,
+};
+
+function isEditable() {
+  const d = selectedDoc();
+  if (d && typeof d.review_editable === "boolean") return d.review_editable;
+  return state.editable;
+}
+
+function key() { return document.getElementById("api-key").value.trim(); }
+function headers() {
+  const h = { "Content-Type": "application/json" };
+  if (key()) h["X-API-Key"] = key();
+  return h;
+}
+function setStatus(msg, cls) {
+  const el = document.getElementById("status");
+  el.className = "status " + (cls || "");
+  el.textContent = msg || "";
+}
+
+function selectedDoc() {
+  return state.docs.find(d => d.doc_id === state.docId) || null;
+}
+
+/** Propose only when there is no semantic board yet; Revise when viewing live active. */
+function syncActionButtons(doc) {
+  const d = doc || selectedDoc();
+  const hasBoard = state.version != null || (d && d.review_version != null);
+  const editable = d ? !!d.review_editable : state.editable;
+  const status = d && d.review_status;
+  document.getElementById("btn-propose").disabled =
+    !state.docId || state.proposing || !!hasBoard;
+  document.getElementById("btn-revise").disabled =
+    !state.docId || state.proposing || status !== "active";
+  // Finalize/Activate refined in loadVersion once ready_to_approve is known.
+  document.getElementById("btn-finalize").disabled =
+    !(editable && status === "candidate" && state.version != null);
+  document.getElementById("btn-activate").disabled =
+    !(editable && status === "ready" && state.version != null);
+  if (status === "ready") {
+    document.getElementById("btn-finalize").title =
+      "Already finalized — use Activate to cut over";
+  } else if (status === "active") {
+    document.getElementById("btn-finalize").title =
+      "Live markers are read-only — click Revise to edit a candidate copy";
+  } else {
+    document.getElementById("btn-finalize").title =
+      "Generate search representations and mark this version ready to Activate";
+  }
+}
+
+async function api(path, opts={}) {
+  const res = await fetch(path, { ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
+  const text = await res.text();
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = { detail: text }; }
+  if (!res.ok) throw new Error((body && body.detail) || res.statusText);
+  return body;
+}
+
+async function refreshDocs() {
+  const data = await api("/v1/corpus/documents");
+  state.docs = data.documents || [];
+  const host = document.getElementById("docs");
+  host.innerHTML = "";
+  for (const d of state.docs) {
+    const el = document.createElement("div");
+    el.className = "doc" + (d.doc_id === state.docId ? " active" : "");
+    el.innerHTML = `<strong>${d.title || d.doc_id}</strong><div class="meta">${d.doc_id} · ${d.active_strategy || "—"}`
+      + (d.review_version != null ? ` · review v${d.review_version}` : "") + `</div>`;
+    el.onclick = () => selectDoc(d);
+    host.appendChild(el);
+  }
+}
+
+async function selectDoc(d) {
+  const token = ++state.loadToken;
+  state.docId = d.doc_id;
+  state.version = d.review_version;
+  state.editable = !!d.review_editable;
+  state.units = [];
+  state.selected = null;
+  setStatus("");
+  document.getElementById("units").innerHTML = "<p class='status'>Loading…</p>";
+  syncActionButtons(d);
+  await refreshDocs();
+  if (token !== state.loadToken) return;
+  const fresh = selectedDoc() || d;
+  state.version = fresh.review_version;
+  state.editable = !!fresh.review_editable;
+  syncActionButtons(fresh);
+  await loadPdf(d.doc_id, token);
+  if (token !== state.loadToken) return;
+  if (state.version != null) await loadVersion(d.doc_id, state.version, token);
+  else {
+    state.units = [];
+    paintMarkers();
+    document.getElementById("units").innerHTML =
+      "<p class='status'>No semantic markers yet — propose semantic units.</p>";
+  }
+}
+
+async function loadPdf(docId, token) {
+  const host = document.getElementById("pdf-host");
+  host.innerHTML = "<p class='status' style='padding:1rem'>Loading PDF…</p>";
+  const url = `/v1/corpus/documents/${encodeURIComponent(docId)}/pdf`;
+  let res;
+  try {
+    res = await fetch(url, { headers: headers() });
+  } catch (err) {
+    if (token !== state.loadToken) return;
+    host.innerHTML = `<p class='issue'>PDF fetch failed (${err.message || err})</p>`;
+    return;
+  }
+  if (token !== state.loadToken) return;
+  if (!res.ok) {
+    let detail = `PDF unavailable (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body && body.detail) detail = body.detail;
+    } catch { /* keep status text */ }
+    host.innerHTML = `<p class='issue'>${detail}</p>`;
+    return;
+  }
+  const buf = await res.arrayBuffer();
+  if (token !== state.loadToken) return;
+  const head = new Uint8Array(buf.slice(0, 5));
+  const magic = String.fromCharCode(head[0], head[1], head[2], head[3], head[4]);
+  if (magic !== "%PDF-") {
+    host.innerHTML = "<p class='issue'>Not a PDF. Semantic review needs a manufacturer PDF (KB .mhtml saves are not supported here).</p>";
+    return;
+  }
+  try {
+    state.pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  } catch (err) {
+    if (token !== state.loadToken) return;
+    host.innerHTML = `<p class='issue'>PDF failed to render (${err.message || err})</p>`;
+    return;
+  }
+  if (token !== state.loadToken) return;
+  state.pageCount = state.pdf.numPages;
+  host.innerHTML = "";
+  for (let p = 1; p <= state.pageCount; p++) {
+    if (token !== state.loadToken) return;
+    const page = await state.pdf.getPage(p);
+    const viewport = page.getViewport({ scale: state.scale });
+    const wrap = document.createElement("div");
+    wrap.className = "page-wrap";
+    wrap.dataset.page = String(p);
+    wrap.style.width = viewport.width + "px";
+    wrap.style.height = viewport.height + "px";
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    wrap.appendChild(canvas);
+    host.appendChild(wrap);
+    await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+  }
+  if (token !== state.loadToken) return;
+  paintMarkers();
+}
+
+function posCmp(pageA, yA, pageB, yB) {
+  if (pageA !== pageB) return pageA < pageB ? -1 : 1;
+  if (yA === yB) return 0;
+  return yA < yB ? -1 : 1;
+}
+
+function pointerToPageY(clientY) {
+  const wraps = [...document.querySelectorAll(".page-wrap")];
+  if (!wraps.length) return null;
+  for (const wrap of wraps) {
+    const r = wrap.getBoundingClientRect();
+    if (clientY >= r.top && clientY <= r.bottom) {
+      return {
+        page: parseInt(wrap.dataset.page, 10),
+        y: Math.min(1, Math.max(0, (clientY - r.top) / r.height)),
+      };
+    }
+  }
+  const first = wraps[0].getBoundingClientRect();
+  const last = wraps[wraps.length - 1].getBoundingClientRect();
+  if (clientY < first.top) {
+    return { page: parseInt(wraps[0].dataset.page, 10), y: 0 };
+  }
+  if (clientY > last.bottom) {
+    return { page: parseInt(wraps[wraps.length - 1].dataset.page, 10), y: 1 };
+  }
+  // Between pages: snap to nearer page edge
+  for (let i = 0; i < wraps.length - 1; i++) {
+    const a = wraps[i].getBoundingClientRect();
+    const b = wraps[i + 1].getBoundingClientRect();
+    if (clientY > a.bottom && clientY < b.top) {
+      const mid = (a.bottom + b.top) / 2;
+      if (clientY < mid) return { page: parseInt(wraps[i].dataset.page, 10), y: 1 };
+      return { page: parseInt(wraps[i + 1].dataset.page, 10), y: 0 };
+    }
+  }
+  return null;
+}
+
+function scrollToUnit(unit) {
+  const page = unit.page_start;
+  if (!page) return;
+  const wrap = document.querySelector(`.page-wrap[data-page="${page}"]`);
+  if (!wrap) return;
+  const host = document.getElementById("pdf-host");
+  const topY = unit.start_y ?? 0;
+  const targetTop = wrap.offsetTop + (wrap.offsetHeight * topY) - 24;
+  host.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+}
+
+function selectUnit(unit) {
+  state.selected = unit.unit_key;
+  paintMarkers();
+  scrollToUnit(unit);
+  // Refresh the unit list active styling without a full reload.
+  document.querySelectorAll(".unit").forEach(el => {
+    const key = el.dataset.unitKey;
+    el.classList.toggle("active", key === unit.unit_key);
+  });
+}
+
+function paintMarkers() {
+  document.querySelectorAll(".marker").forEach(n => n.remove());
+  const editable = isEditable();
+  state.units.forEach((u, index) => {
+    if (u._hidden) return;
+    const start = u.page_start, end = u.page_end;
+    if (!start || !end) return;
+    const color = "c" + (index % 4);
+    for (let p = start; p <= end; p++) {
+      const wrap = document.querySelector(`.page-wrap[data-page="${p}"]`);
+      if (!wrap) continue;
+      const topY = (p === start) ? (u.start_y ?? 0) : 0;
+      const botY = (p === end) ? (u.end_y ?? 1) : 1;
+      if (botY <= topY) continue;
+      const mark = document.createElement("div");
+      mark.className = "marker " + color + (u.unit_key === state.selected ? " active" : "");
+      mark.style.top = (topY * 100) + "%";
+      mark.style.height = ((botY - topY) * 100) + "%";
+      mark.dataset.unit = u.unit_key;
+      if (editable && u.unit_key === state.selected) {
+        mark.title = "Click to split at this point";
+        mark.onclick = (ev) => splitAtClick(ev, u, wrap, p);
+      }
+      if (editable && p === start) {
+        const h = document.createElement("div");
+        h.className = "handle";
+        h.onpointerdown = (ev) => beginDrag(ev, u, "start");
+        mark.appendChild(h);
+      }
+      if (editable && p === end) {
+        const h = document.createElement("div");
+        h.className = "handle end";
+        h.onpointerdown = (ev) => beginDrag(ev, u, "end");
+        mark.appendChild(h);
+      }
+      wrap.appendChild(mark);
+    }
+  });
+}
+
+async function splitAtClick(ev, unit, wrap, page) {
+  if (ev.target.classList.contains("handle")) return;
+  if (state.dragMoved) return;
+  ev.stopPropagation();
+  const rect = wrap.getBoundingClientRect();
+  const atY = Math.min(1, Math.max(0, (ev.clientY - rect.top) / rect.height));
+  try {
+    await api(`/v1/corpus/documents/${state.docId}/semantic/versions/${state.version}/units/${encodeURIComponent(unit.unit_key)}/split`, {
+      method: "POST",
+      body: JSON.stringify({ at_page: page, at_y: atY }),
+    });
+    setStatus(`Split at p.${page}`, "ok");
+    await loadVersion(state.docId, state.version, state.loadToken);
+  } catch (err) {
+    setStatus(String(err.message || err), "issue");
+  }
+}
+
+function beginDrag(ev, unit, which) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  state.dragMoved = false;
+  const snapshot = state.units.map(u => ({
+    unit_key: u.unit_key,
+    page_start: u.page_start,
+    page_end: u.page_end,
+    start_y: u.start_y,
+    end_y: u.end_y,
+    _hidden: false,
+  }));
+  const key = unit.unit_key;
+
+  const restore = () => {
+    for (const s of snapshot) {
+      const u = state.units.find(x => x.unit_key === s.unit_key);
+      if (!u) continue;
+      u.page_start = s.page_start;
+      u.page_end = s.page_end;
+      u.start_y = s.start_y;
+      u.end_y = s.end_y;
+      u._hidden = false;
+    }
+  };
+
+  const move = (e) => {
+    const hit = pointerToPageY(e.clientY);
+    if (!hit) return;
+    state.dragMoved = true;
+    restore();
+    const live = state.units.find(x => x.unit_key === key);
+    if (!live) return;
+    const idx = state.units.findIndex(x => x.unit_key === key);
+
+    if (which === "end") {
+      if (posCmp(hit.page, hit.y, live.page_start, live.start_y ?? 0) <= 0) return;
+      live.page_end = hit.page;
+      live.end_y = hit.y;
+      // Push / preview-absorb following units
+      for (let i = idx + 1; i < state.units.length; i++) {
+        const nxt = state.units[i];
+        if (posCmp(live.page_end, live.end_y, nxt.page_start, nxt.start_y ?? 0) <= 0) break;
+        if (posCmp(live.page_end, live.end_y, nxt.page_end, nxt.end_y ?? 1) >= 0) {
+          nxt._hidden = true;
+          continue;
+        }
+        nxt.page_start = live.page_end;
+        nxt.start_y = live.end_y;
+        break;
+      }
+    } else {
+      if (posCmp(hit.page, hit.y, live.page_end, live.end_y ?? 1) >= 0) return;
+      live.page_start = hit.page;
+      live.start_y = hit.y;
+      for (let i = idx - 1; i >= 0; i--) {
+        const prev = state.units[i];
+        if (posCmp(live.page_start, live.start_y, prev.page_end, prev.end_y ?? 1) >= 0) break;
+        if (posCmp(live.page_start, live.start_y, prev.page_start, prev.start_y ?? 0) <= 0) {
+          prev._hidden = true;
+          continue;
+        }
+        prev.page_end = live.page_start;
+        prev.end_y = live.start_y;
+        break;
+      }
+    }
+    paintMarkers();
+  };
+
+  const up = async () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    if (!state.dragMoved) {
+      restore();
+      paintMarkers();
+      return;
+    }
+    const live = state.units.find(x => x.unit_key === key);
+    if (!live) return;
+    try {
+      const res = await api(`/v1/corpus/documents/${state.docId}/semantic/versions/${state.version}/units/${encodeURIComponent(key)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          start_page: live.page_start,
+          end_page: live.page_end,
+          start_y: live.start_y,
+          end_y: live.end_y,
+        }),
+      });
+      const absorbed = (res && res.removed && res.removed.length)
+        ? `; absorbed ${res.removed.join(", ")}`
+        : "";
+      setStatus("Boundary saved" + absorbed, "ok");
+      await loadVersion(state.docId, state.version, state.loadToken);
+    } catch (err) {
+      restore();
+      paintMarkers();
+      setStatus(String(err.message || err), "issue");
+    }
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+
+async function joinUnit(unit, direction) {
+  try {
+    await api(`/v1/corpus/documents/${state.docId}/semantic/versions/${state.version}/units/${encodeURIComponent(unit.unit_key)}/merge`, {
+      method: "POST",
+      body: JSON.stringify({ with_unit: direction }),
+    });
+    setStatus(`Joined ${direction}`, "ok");
+    await loadVersion(state.docId, state.version, state.loadToken);
+  } catch (err) {
+    setStatus(String(err.message || err), "issue");
+  }
+}
+
+async function addUnitAfterSelection() {
+  if (state.version == null || !state.docId) return;
+  const title = window.prompt("Title for the new unit");
+  if (!title || !title.trim()) return;
+  const selected = state.units.find(u => u.unit_key === state.selected);
+  let startPage = 1;
+  if (selected && selected.page_end) startPage = selected.page_end;
+  else if (state.units.length) {
+    const last = state.units[state.units.length - 1];
+    startPage = (last.page_end || 1) + 1;
+  }
+  if (state.pageCount && startPage > state.pageCount) startPage = state.pageCount;
+  try {
+    await api(`/v1/corpus/documents/${state.docId}/semantic/versions/${state.version}/units`, {
+      method: "POST",
+      body: JSON.stringify({
+        title: title.trim(),
+        start_page: startPage,
+        end_page: startPage,
+        start_y: 0.0,
+        end_y: 1.0,
+        unit_type: "other",
+      }),
+    });
+    setStatus("Unit added — drag handles to size it", "ok");
+    await loadVersion(state.docId, state.version, state.loadToken);
+  } catch (err) {
+    setStatus(String(err.message || err), "issue");
+  }
+}
+
+async function loadVersion(docId, version, token) {
+  if (token == null) token = state.loadToken;
+  const data = await api(`/v1/corpus/documents/${encodeURIComponent(docId)}/semantic/versions/${version}`);
+  if (token !== state.loadToken || state.docId !== docId) return;
+  state.units = data.units || [];
+  state.version = data.version;
+  const doc = selectedDoc();
+  state.editable = doc ? !!doc.review_editable : state.editable;
+  const editable = isEditable();
+  const host = document.getElementById("units");
+  host.innerHTML = "";
+
+  if (!editable) {
+    const banner = document.createElement("p");
+    banner.className = "ok";
+    banner.textContent =
+      "Live approved markers (read-only). Click Revise to edit a candidate copy — retrieval stays on this set until you Finalize + Activate again.";
+    host.appendChild(banner);
+  } else {
+    const tools = document.createElement("div");
+    tools.className = "row";
+    tools.style.marginBottom = "0.55rem";
+    tools.innerHTML = `<button type="button" id="btn-add-unit">Add unit</button>
+      <span class="status">Select a unit, then click inside its marker to split.</span>`;
+    host.appendChild(tools);
+    tools.querySelector("#btn-add-unit").onclick = () => addUnitAfterSelection();
+  }
+
+  if (data.issues && data.issues.length) {
+    for (const i of data.issues) {
+      const p = document.createElement("p");
+      p.className = "issue";
+      p.textContent = `${i.code}: ${i.detail}`;
+      host.appendChild(p);
+    }
+  } else if (editable) {
+    const p = document.createElement("p");
+    p.className = "ok";
+    p.textContent = data.ready_to_approve ? "Ready to finalize" : "Markers cover the PDF";
+    host.appendChild(p);
+  }
+  for (let i = 0; i < state.units.length; i++) {
+    const u = state.units[i];
+    const el = document.createElement("div");
+    const isApproved = u.review_status === "approved";
+    el.className = "unit" + (u.unit_key === state.selected ? " active" : "");
+    el.dataset.unitKey = u.unit_key;
+    el.innerHTML = `<h3>${u.title || u.unit_key}</h3>
+      <div class="meta">${u.page_label || ""} · ${u.unit_type}${u.needs_ocr ? " · needs OCR" : ""}</div>
+      <div class="row">
+        <button data-act="select">Select</button>
+        <button data-act="approve-unit" class="${isApproved ? "approved" : ""}" ${!editable || isApproved ? "disabled" : ""}>${isApproved ? "Approved" : "Approve"}</button>
+        <button data-act="join-prev" ${!editable || i === 0 ? "disabled" : ""}>Join prev</button>
+        <button data-act="join-next" ${!editable || i >= state.units.length - 1 ? "disabled" : ""}>Join next</button>
+      </div>`;
+    el.querySelector('[data-act="select"]').onclick = (ev) => { ev.stopPropagation(); selectUnit(u); };
+    el.onclick = (ev) => {
+      if (ev.target.closest("button")) return;
+      selectUnit(u);
+    };
+    const approveBtn = el.querySelector('[data-act="approve-unit"]');
+    if (editable && !isApproved) {
+      approveBtn.onclick = async () => {
+        await api(`/v1/corpus/documents/${docId}/semantic/versions/${version}/units/${encodeURIComponent(u.unit_key)}`, {
+          method: "PATCH", body: JSON.stringify({ review_status: "approved" }),
+        });
+        await loadVersion(docId, version, token);
+      };
+    }
+    if (editable) {
+      el.querySelector('[data-act="join-prev"]').onclick = () => joinUnit(u, "previous");
+      el.querySelector('[data-act="join-next"]').onclick = () => joinUnit(u, "next");
+    }
+    host.appendChild(el);
+  }
+  paintMarkers();
+  syncActionButtons(selectedDoc());
+  if (editable && doc && doc.review_status === "ready") {
+    const banner = document.createElement("p");
+    banner.className = "ok";
+    banner.textContent = "Finalized — click Activate to cut over live retrieval.";
+    host.insertBefore(banner, host.firstChild);
+    document.getElementById("btn-finalize").disabled = true;
+    document.getElementById("btn-activate").disabled = false;
+  } else if (editable && doc && doc.review_status === "candidate") {
+    document.getElementById("btn-finalize").disabled = !data.ready_to_approve;
+    document.getElementById("btn-activate").disabled = true;
+  }
+}
+
+document.getElementById("btn-refresh").onclick = () => refreshDocs().then(() => syncActionButtons()).catch(e => setStatus(e.message, "issue"));
+document.getElementById("btn-propose").onclick = async () => {
+  if (state.proposing || !state.docId) return;
+  state.proposing = true;
+  syncActionButtons();
+  try {
+    setStatus("Proposing…");
+    const token = state.loadToken;
+    const docId = state.docId;
+    const res = await api(`/v1/corpus/documents/${encodeURIComponent(docId)}/semantic/propose`, {
+      method: "POST", body: JSON.stringify({ repair_gaps: true }),
+    });
+    if (token !== state.loadToken || state.docId !== docId) return;
+    setStatus(res.detail || res.status, res.status === "proposed" ? "ok" : "warn");
+    state.version = res.version;
+    state.editable = true;
+    await refreshDocs();
+    if (res.version != null) await loadVersion(docId, res.version, token);
+  } catch (e) {
+    setStatus(e.message, "issue");
+  } finally {
+    state.proposing = false;
+    syncActionButtons();
+  }
+};
+document.getElementById("btn-revise").onclick = async () => {
+  if (state.proposing || !state.docId) return;
+  state.proposing = true;
+  syncActionButtons();
+  try {
+    setStatus("Opening editable candidate…");
+    const token = state.loadToken;
+    const docId = state.docId;
+    const res = await api(`/v1/corpus/documents/${encodeURIComponent(docId)}/semantic/revise`, {
+      method: "POST",
+    });
+    if (token !== state.loadToken || state.docId !== docId) return;
+    setStatus(res.detail || "candidate opened", "ok");
+    state.version = res.version;
+    state.editable = true;
+    await refreshDocs();
+    if (res.version != null) await loadVersion(docId, res.version, token);
+    syncActionButtons(selectedDoc());
+  } catch (e) {
+    setStatus(e.message, "issue");
+  } finally {
+    state.proposing = false;
+    syncActionButtons();
+  }
+};
+document.getElementById("btn-finalize").onclick = async () => {
+  const btn = document.getElementById("btn-finalize");
+  if (btn.disabled || !state.docId || state.version == null || !isEditable()) return;
+  btn.disabled = true;
+  setStatus("Finalizing… generating search representations (may take a minute)", "warn");
+  try {
+    const res = await api(`/v1/corpus/documents/${encodeURIComponent(state.docId)}/semantic/versions/${state.version}/approve`, { method: "POST" });
+    setStatus(res.detail || "Finalized — click Activate to cut over live retrieval", "ok");
+    await refreshDocs();
+    syncActionButtons(selectedDoc());
+    if (state.version != null) await loadVersion(state.docId, state.version, state.loadToken);
+    const banner = document.createElement("p");
+    banner.className = "ok";
+    banner.textContent = "Finalized. Review units below, then click Activate to switch live retrieval.";
+    const host = document.getElementById("units");
+    if (host.firstChild) host.insertBefore(banner, host.firstChild);
+    else host.appendChild(banner);
+  } catch (e) {
+    setStatus(e.message, "issue");
+    btn.disabled = false;
+  }
+};
+document.getElementById("btn-activate").onclick = async () => {
+  if (!state.docId || state.version == null) return;
+  try {
+    const res = await api(`/v1/corpus/documents/${encodeURIComponent(state.docId)}/semantic/versions/${state.version}/activate`, { method: "POST" });
+    setStatus(res.detail || "activated", "ok");
+    await refreshDocs();
+    const doc = selectedDoc();
+    if (doc) await selectDoc(doc);
+    else syncActionButtons();
+  } catch (e) { setStatus(e.message, "issue"); }
+};
+
+refreshDocs().catch(e => setStatus(e.message, "issue"));
+</script>
+</body>
+</html>

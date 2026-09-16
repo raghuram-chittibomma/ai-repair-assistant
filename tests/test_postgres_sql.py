@@ -6,8 +6,6 @@ and points that env at it. Local pytest without the env stays offline.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from repair_assistant.ingest.embeddings import (
@@ -15,31 +13,15 @@ from repair_assistant.ingest.embeddings import (
     assert_embedding_model,
     clear_embeddings_for_other_models,
 )
-from repair_assistant.ingest.parsed import ParsedDocument
 from repair_assistant.retrieval.search import code_fetch, connector_fetch, vector_fetch
 from repair_assistant.retrieval.synthetic import ensure_synthetic_ingested
-from tests.postgres_support import FixedEmbedder, make_chunk
+from tests.postgres_support import FixedEmbedder, make_chunk, upsert_structured
 
 pytestmark = pytest.mark.postgres
 
 
 def _upsert(db, doc_id: str, chunks, embedder: FixedEmbedder | None = None) -> None:
-    parsed = ParsedDocument(
-        doc_id=doc_id,
-        path=Path("ci"),
-        meta={"publication_number": chunks[0].publication_number, "extractor": "ci"},
-        chunks=chunks,
-    )
-    db.upsert_document(parsed, corpus_sha256=None)
-    db.replace_chunks(doc_id, chunks)
-    if embedder is not None:
-        vectors = embedder.embed([c.text for c in chunks])
-        db.set_embeddings(
-            doc_id,
-            [(c.chunk_id, v) for c, v in zip(chunks, vectors, strict=True)],
-            embedder.model,
-        )
-    db.commit()
+    upsert_structured(db, doc_id, chunks, embedder)
 
 
 def test_migrations_create_pgvector_chunks(pg_db) -> None:

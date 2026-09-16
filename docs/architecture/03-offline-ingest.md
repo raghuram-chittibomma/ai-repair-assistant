@@ -3,8 +3,8 @@
 Build-time path from manufacturer files to searchable chunks. No downloader in
 the repo — you acquire PDFs yourself, then `parse` → `ingest`.
 
-This page has three views: **end-to-end**, **hybrid parse** (page-scoped router),
-and **chunking + bounded quality repair**.
+This page has four views: **end-to-end**, **hybrid parse** (page-scoped router),
+**chunking + bounded quality repair**, and the opt-in **semantic curator** path.
 
 ## End-to-end
 
@@ -28,6 +28,7 @@ flowchart LR
 - **No fetch:** Verify-only tooling; PDFs never enter git ([ADR-0003](../adr/0003-no-downloader.md)).
 - **Parse ≠ chunk:** Layout routing and table extraction are separate from RAG chunk boundaries ([ADR-0024](../adr/0024-hybrid-parse-architecture.md), [ADR-0007](../adr/0007-parser-and-chunker.md)).
 - **Ingest:** Fingerprint skip for unchanged docs; local `BAAI/bge-base-en-v1.5` ([ADR-0008](../adr/0008-incremental-ingestion.md), [ADR-0009](../adr/0009-local-open-embeddings.md)).
+- **Versioned output:** Every chunk belongs to an `ingestion_versions` row. `ingest` writes the document's `structured` version and refuses to overwrite a document whose active version is `semantic_llm` ([ADR-0047](../adr/0047-ingestion-versions.md)).
 
 ## Hybrid parse (per page)
 
@@ -133,6 +134,59 @@ flowchart TD
 
 **Modules:** `parsing/chunker.py`, `parsing/chunk_quality.py`, `parsing/write.py`
 
+## Semantic curator (opt-in, per document)
+
+Structured chunking above stays the default for every document. A document may
+instead be **promoted** to `semantic_llm`, where an LLM proposes PDF page-range
+markers (native PDF, or vision rasters when scanned), a human checks them on
+the real PDF, and the new representation replaces the old one in a single
+transaction
+([ADR-0047](../adr/0047-ingestion-versions.md), [ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md)).
+
+```mermaid
+flowchart TD
+  pdf[Manufacturer_PDF]
+  route{looks_scanned}
+  native[Native_PDF_parts]
+  vision[Page_rasters]
+  candidate[ingestion_version_candidate]
+  llm[LLM_page_range_markers]
+  validate[Deterministic_page_validation]
+  units[semantic_units_thin_PDF_extract]
+  reps[Overview_facts_questions]
+  budget{Within_512_tokens}
+  embed[Local_BGE_embed_rep_rows]
+  review[PDF_js_review_board]
+  ready[status_ready]
+  cutover[Activate_supersede_structured]
+  legacy[Structured_version_keeps_serving]
+
+  pdf --> route
+  route -->|no| native
+  route -->|yes| vision
+  native --> candidate
+  vision --> candidate
+  candidate --> llm
+  llm --> validate
+  validate -->|fail| legacy
+  validate -->|pass| units
+  units --> reps
+  reps --> budget
+  budget -->|no| reps
+  budget -->|yes| embed
+  embed --> review
+  review --> ready
+  ready --> cutover
+```
+
+- **PDF page markers, not parsed anchors:** The model returns `{start_page, end_page, start_y, end_y, title, unit_type}` over the PDF part it was given ([ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md)).
+- **Validation is the gate:** pages in bounds, ordered, no overlap, full window coverage. A failure leaves the candidate in place and the structured version serving traffic.
+- **Unit vs representation:** `semantic_units.source_text` is a thin PDF extract of the page range (not hybrid-parse enrichment) and is what reaches the answer LLM. The searchable `chunks` rows are compact `overview` / `facts` / `questions` surfaces carrying `unit_id` + `rep_kind`. An over-budget representation is regenerated, then surfaced to the reviewer — never truncated. Empty extracts on scanned units block activate until OCR exists.
+- **Cutover:** `approve` marks the version `ready`; `activate` flips it to `active` and supersedes the structured version in one transaction. `revert` activates the structured version again without re-parsing.
+- **Key-free ingest:** `parse` and `ingest` never call OpenAI. Only `repair-corpus segment` and the review board do (charter [D9](../CHARTER.md#deviations-from-this-charter)).
+
+**Modules:** `semantic/segment.py`, `semantic/pdf_extract.py`, `semantic/validate.py`, `semantic/units.py`, `semantic/representations.py`, `semantic/tokens.py`, `semantic/review.py`, `semantic/curate.py`, `semantic/lifecycle.py`, `semantic/store.py`
+
 ---
 
-**CLI:** `repair-corpus parse` · `repair-corpus ingest` · `repair-corpus bench-layout` · [Reference corpus build](../REFERENCE_CORPUS_BUILD.md)
+**CLI:** `repair-corpus parse` · `repair-corpus ingest` · `repair-corpus segment` · `repair-corpus ingestion-status` · `repair-corpus ingestion-revert` · `repair-corpus bench-layout` · [Reference corpus build](../REFERENCE_CORPUS_BUILD.md)

@@ -55,6 +55,9 @@ class Database:
     def commit(self) -> None:
         self._conn.commit()
 
+    def rollback(self) -> None:
+        self._conn.rollback()
+
     def get_document(self, doc_id: str) -> DocumentRow | None:
         row = self.fetchone(
             "SELECT doc_id, content_fingerprint, chunk_count FROM documents WHERE doc_id = %s",
@@ -64,16 +67,23 @@ class Database:
             return None
         return DocumentRow(doc_id=row[0], content_fingerprint=row[1], chunk_count=row[2])
 
-    def update_chunk_metadata(self, doc_id: str, chunks: Sequence[ParsedChunk]) -> int:
+    def update_chunk_metadata(
+        self,
+        doc_id: str,
+        chunks: Sequence[ParsedChunk],
+        *,
+        version_id: int,
+    ) -> int:
         """Replace metadata when content_hash matches (bbox-only re-parse)."""
         updated = 0
         for chunk in chunks:
             row = self.fetchone(
                 """
                 SELECT metadata FROM chunks
-                WHERE doc_id = %s AND chunk_id = %s AND content_hash = %s
+                WHERE doc_id = %s AND ingestion_version_id = %s
+                  AND chunk_id = %s AND content_hash = %s
                 """,
-                (doc_id, chunk.chunk_id, chunk.content_hash),
+                (doc_id, version_id, chunk.chunk_id, chunk.content_hash),
             )
             if row is None:
                 continue
@@ -83,30 +93,45 @@ class Database:
             self.execute(
                 """
                 UPDATE chunks SET metadata = %s::jsonb
-                WHERE doc_id = %s AND chunk_id = %s AND content_hash = %s
+                WHERE doc_id = %s AND ingestion_version_id = %s
+                  AND chunk_id = %s AND content_hash = %s
                 """,
-                (json.dumps(chunk.metadata), doc_id, chunk.chunk_id, chunk.content_hash),
+                (
+                    json.dumps(chunk.metadata),
+                    doc_id,
+                    version_id,
+                    chunk.chunk_id,
+                    chunk.content_hash,
+                ),
             )
             updated += 1
         return updated
 
-    def existing_chunk_hashes(self, doc_id: str) -> dict[str, str]:
-        """Map chunk_id → content_hash for a document."""
+    def existing_chunk_hashes(self, doc_id: str, *, version_id: int) -> dict[str, str]:
+        """Map chunk_id → content_hash within one ingestion version."""
         rows = self.fetchall(
-            "SELECT chunk_id, content_hash FROM chunks WHERE doc_id = %s",
-            (doc_id,),
+            """
+            SELECT chunk_id, content_hash FROM chunks
+            WHERE doc_id = %s AND ingestion_version_id = %s
+            """,
+            (doc_id, version_id),
         )
         return {r[0]: r[1] for r in rows}
 
-    def chunks_missing_embeddings(self, doc_id: str) -> list[tuple[str, str]]:
+    def chunks_missing_embeddings(
+        self,
+        doc_id: str,
+        *,
+        version_id: int,
+    ) -> list[tuple[str, str]]:
         """Return (chunk_id, text) for rows with NULL embedding."""
         rows = self.fetchall(
             """
             SELECT chunk_id, text FROM chunks
-            WHERE doc_id = %s AND embedding IS NULL
+            WHERE doc_id = %s AND ingestion_version_id = %s AND embedding IS NULL
               AND (language IS NULL OR language ILIKE 'en%%')
             """,
-            (doc_id,),
+            (doc_id, version_id),
         )
         return [(r[0], r[1]) for r in rows]
 
@@ -150,17 +175,26 @@ class Database:
         doc_id: str,
         chunks: list[ParsedChunk],
         *,
+        version_id: int,
         keep_embeddings_for: set[str] | None = None,
     ) -> None:
-        """Delete stale chunk_ids; upsert current rows. Optionally preserve embeddings."""
+        """Delete stale chunk_ids; upsert current rows. Optionally preserve embeddings.
+
+        Scoped to one ingestion version (ADR-0047): a promoted document holds a
+        superseded structured set alongside its semantic set, and neither pass
+        may touch the other's rows.
+        """
         keep_embeddings_for = keep_embeddings_for or set()
         wanted = {c.chunk_id for c in chunks}
-        existing = self.existing_chunk_hashes(doc_id)
+        existing = self.existing_chunk_hashes(doc_id, version_id=version_id)
         stale = set(existing) - wanted
         if stale:
             self.execute(
-                "DELETE FROM chunks WHERE doc_id = %s AND chunk_id = ANY(%s)",
-                (doc_id, list(stale)),
+                """
+                DELETE FROM chunks
+                WHERE doc_id = %s AND ingestion_version_id = %s AND chunk_id = ANY(%s)
+                """,
+                (doc_id, version_id, list(stale)),
             )
 
         for chunk in chunks:
@@ -169,12 +203,12 @@ class Database:
                 self.execute(
                     """
                     INSERT INTO chunks (
-                        doc_id, chunk_id, content_hash, text, page, kind, error_codes,
-                        language, publication_number, revision, metadata
+                        doc_id, ingestion_version_id, chunk_id, content_hash, text, page,
+                        kind, error_codes, language, publication_number, revision, metadata
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb
                     )
-                    ON CONFLICT (doc_id, chunk_id) DO UPDATE SET
+                    ON CONFLICT (doc_id, ingestion_version_id, chunk_id) DO UPDATE SET
                         content_hash = EXCLUDED.content_hash,
                         text = EXCLUDED.text,
                         page = EXCLUDED.page,
@@ -187,6 +221,7 @@ class Database:
                     """,
                     (
                         doc_id,
+                        version_id,
                         chunk.chunk_id,
                         chunk.content_hash,
                         chunk.text,
@@ -203,12 +238,13 @@ class Database:
                 self.execute(
                     """
                     INSERT INTO chunks (
-                        doc_id, chunk_id, content_hash, text, page, kind, error_codes,
-                        language, publication_number, revision, metadata, embedding, embedding_model
+                        doc_id, ingestion_version_id, chunk_id, content_hash, text, page,
+                        kind, error_codes, language, publication_number, revision, metadata,
+                        embedding, embedding_model
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, NULL, NULL
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, NULL, NULL
                     )
-                    ON CONFLICT (doc_id, chunk_id) DO UPDATE SET
+                    ON CONFLICT (doc_id, ingestion_version_id, chunk_id) DO UPDATE SET
                         content_hash = EXCLUDED.content_hash,
                         text = EXCLUDED.text,
                         page = EXCLUDED.page,
@@ -223,6 +259,7 @@ class Database:
                     """,
                     (
                         doc_id,
+                        version_id,
                         chunk.chunk_id,
                         chunk.content_hash,
                         chunk.text,
@@ -241,6 +278,8 @@ class Database:
         doc_id: str,
         vectors: Sequence[tuple[str, list[float]]],
         model: str,
+        *,
+        version_id: int,
     ) -> None:
         for chunk_id, vector in vectors:
             if not vector:
@@ -249,9 +288,9 @@ class Database:
                 """
                 UPDATE chunks
                 SET embedding = %s::vector, embedding_model = %s
-                WHERE doc_id = %s AND chunk_id = %s
+                WHERE doc_id = %s AND ingestion_version_id = %s AND chunk_id = %s
                 """,
-                (str(vector), model, doc_id, chunk_id),
+                (str(vector), model, doc_id, version_id, chunk_id),
             )
 
 

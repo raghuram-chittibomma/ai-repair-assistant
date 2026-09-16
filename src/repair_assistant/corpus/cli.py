@@ -706,6 +706,226 @@ def ingest_cmd(doc_id: str | None, ingest_all: bool, force: bool, skip_embed: bo
         raise SystemExit(1)
 
 
+def _ingestion_db():
+    """Open the live database for ingestion-version commands."""
+    from repair_assistant.ingest.env import database_url
+    from repair_assistant.ingest.store import Database
+
+    try:
+        return Database(database_url())
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@main.command("ingestion-status")
+@click.argument("doc_id", required=False)
+@click.option("--history", is_flag=True, help="Show every version, not just the active one.")
+def ingestion_status_cmd(doc_id: str | None, history: bool) -> None:
+    """Show which ingestion strategy is active per document (ADR-0047)."""
+    from repair_assistant.semantic.lifecycle import list_versions
+
+    corpus = _load()
+    with _ingestion_db() as db:
+        rows = db.fetchall("SELECT doc_id FROM documents ORDER BY doc_id")
+        doc_ids = [str(r[0]) for r in rows]
+        if doc_id:
+            matches = [
+                d.doc_id
+                for d in corpus.documents
+                if d.doc_id == doc_id or d.publication_number == doc_id
+            ]
+            wanted = set(matches) if matches else {doc_id}
+            doc_ids = [d for d in doc_ids if d in wanted]
+            if not doc_ids:
+                raise click.ClickException(f"{doc_id}: not ingested")
+
+        semantic = 0
+        for did in doc_ids:
+            versions = list_versions(db, did)
+            active = next((v for v in versions if v.status == "active"), None)
+            if active is not None and active.is_semantic:
+                semantic += 1
+            label = f"{did:<40} {(active.strategy if active else 'none'):<14}"
+            detail = f"v{active.version}" if active else "no active version"
+            _echo_status("ok" if active else "missing", label, detail)
+            if history:
+                for v in versions:
+                    marker = "*" if v.status == "active" else " "
+                    superseded = f" -> v{v.superseded_by}" if v.superseded_by else ""
+                    click.echo(
+                        f"    {marker} v{v.version:<3} {v.strategy:<14} "
+                        f"{v.status:<11}{superseded}"
+                    )
+
+    click.echo()
+    click.echo(
+        f"{len(doc_ids) - semantic} legacy (structured), {semantic} semantic "
+        f"of {len(doc_ids)} ingested documents."
+    )
+
+
+@main.command("segment")
+@click.argument("doc_id")
+@click.option(
+    "--repair-gaps",
+    is_flag=True,
+    help=(
+        "Attach pages the model left uncovered to the neighbouring unit. "
+        "Recorded as a repair on the proposal; never silent."
+    ),
+)
+@click.option(
+    "--with-reps",
+    "with_reps",
+    is_flag=True,
+    help=(
+        "Also generate retrieval representations now. Default is to defer "
+        "them until approve in /ui/corpus, so boundary edits do not waste "
+        "summary tokens."
+    ),
+)
+@click.option(
+    "--skip-embed",
+    is_flag=True,
+    help="With --with-reps, write representation rows but leave vectors NULL.",
+)
+def segment_cmd(
+    doc_id: str, repair_gaps: bool, with_reps: bool, skip_embed: bool
+) -> None:
+    """Propose semantic knowledge units for one document (ADR-0049).
+
+    The curator step. This is the only ingestion-side command that calls OpenAI;
+    `parse` and `ingest` stay key-free. Sends the manufacturer PDF (or page
+    images when scanned). Representations are deferred until approve unless
+    `--with-reps` is set.
+    """
+    from repair_assistant.ingest.embeddings import build_embedder
+    from repair_assistant.ingest.env import embedding_model
+    from repair_assistant.qa.page_images import document_pdf_path
+    from repair_assistant.semantic import representations as reps_mod
+    from repair_assistant.semantic import segment as segment_mod
+    from repair_assistant.semantic.curate import propose_semantic_version
+    from repair_assistant.semantic.lifecycle import LifecycleError
+
+    corpus = _load()
+    matches = [
+        d
+        for d in corpus.documents
+        if d.doc_id == doc_id or d.publication_number == doc_id
+    ]
+    if not matches:
+        raise click.ClickException(f"{doc_id}: no manifest entry")
+    document = matches[0]
+
+    pdf = document_pdf_path(corpus, document.doc_id)
+    if pdf is None or not pdf.is_file():
+        raise click.ClickException(
+            f"{document.doc_id}: PDF not found under corpus/documents/"
+        )
+
+    try:
+        segmenter = segment_mod.build_client()
+        representer = reps_mod.build_client() if with_reps else None
+        embedder = (
+            build_embedder(skip=skip_embed, model=embedding_model())
+            if with_reps
+            else None
+        )
+    except RuntimeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    # Discover curate generate_* param
+    from repair_assistant.semantic import curate as _curate
+    import inspect
+    gen_param = "generate_reps"
+    for name in inspect.signature(_curate.propose_semantic_version).parameters:
+        if name.startswith("generate_"):
+            gen_param = name
+            break
+
+    with _ingestion_db() as db:
+        try:
+            kwargs = {
+                "doc_id": document.doc_id,
+                "pdf_path": pdf,
+                "segmenter": segmenter,
+                "representer": representer,
+                "embedder": embedder,
+                "doc_title": document.title,
+                "publication_number": document.publication_number,
+                "revision": document.revision,
+                "repair_gaps": repair_gaps,
+                gen_param: with_reps,
+            }
+            result = propose_semantic_version(db, **kwargs)
+        except LifecycleError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+    if not result.ok:
+        _echo_status("mismatch", result.doc_id, result.detail)
+        click.echo()
+        click.secho(
+            "Proposal rejected; the active representation is unchanged.", fg="yellow"
+        )
+        raise SystemExit(1)
+
+    _echo_status("ok", result.doc_id, result.detail)
+    if result.report and result.report.repairs:
+        for repair in result.report.repairs:
+            click.secho(f"  repaired: {repair}", fg="cyan")
+    for entry in result.over_limit:
+        click.secho(f"  over embedder limit, not indexed: {entry}", fg="yellow")
+
+    click.echo()
+    if with_reps:
+        click.echo(
+            f"Candidate v{result.version.version} for {result.doc_id}: "
+            f"{len(result.units)} units, {result.indexed} representations, "
+            f"{result.embedded} embedded."
+        )
+    else:
+        click.echo(
+            f"Candidate v{result.version.version} for {result.doc_id}: "
+            f"{len(result.units)} units (reps deferred until approve)."
+        )
+    click.echo("Review at /ui/corpus, then approve and activate.")
+
+
+@main.command("ingestion-revert")
+@click.argument("doc_id")
+@click.option("--version", type=int, default=None, help="Version to activate (default: latest structured).")
+def ingestion_revert_cmd(doc_id: str, version: int | None) -> None:
+    """Activate an earlier ingestion version. A rollback, not a re-parse."""
+    from repair_assistant.semantic.lifecycle import (
+        STRATEGY_STRUCTURED,
+        LifecycleError,
+        list_versions,
+        revert_to,
+    )
+
+    with _ingestion_db() as db:
+        versions = list_versions(db, doc_id)
+        if not versions:
+            raise click.ClickException(f"{doc_id}: no ingestion versions")
+        if version is None:
+            structured = [
+                v
+                for v in versions
+                if v.strategy == STRATEGY_STRUCTURED and v.status != "abandoned"
+            ]
+            if not structured:
+                raise click.ClickException(
+                    f"{doc_id}: no structured version to revert to; pass --version"
+                )
+            version = structured[-1].version
+        try:
+            active = revert_to(db, doc_id, version)
+        except LifecycleError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+    _echo_status("ok", doc_id, f"v{active.version} ({active.strategy}) is now active")
+
+
 @main.command("bench-retrieve")
 @click.option("--write/--no-write", default=False, help="Write scorecard under evals/retrieval/results/")
 @click.option("--k", default=None, type=int, help="Override top-K (default from fixtures.yaml).")

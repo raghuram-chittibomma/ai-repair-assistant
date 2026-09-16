@@ -16,6 +16,7 @@ from repair_assistant.ingest.embeddings import Embedder
 from repair_assistant.ingest.env import embedding_model
 from repair_assistant.ingest.parsed import ParsedChunk, ParsedDocument
 from repair_assistant.ingest.store import Database
+from repair_assistant.semantic.lifecycle import ensure_structured_active
 
 SYNTH_DOC_PREFIX = "synth-"
 SYNTH_PUB_PREFIX = "SYNTH-"
@@ -126,21 +127,33 @@ def ensure_synthetic_ingested(
     for doc in load_synthetic_documents(root):
         parsed = _parsed_from_manifest(doc, root)
         existing = db.get_document(doc.doc_id)
+        db.upsert_document(parsed, corpus_sha256=None)
+        version = ensure_structured_active(
+            db,
+            doc.doc_id,
+            source_fingerprint=parsed.content_fingerprint,
+        )
         keep: set[str] = set()
         if existing and existing.content_fingerprint == parsed.content_fingerprint:
-            missing = db.chunks_missing_embeddings(doc.doc_id)
+            missing = db.chunks_missing_embeddings(doc.doc_id, version_id=version.id)
             if not missing:
+                db.commit()
                 continue
             keep = {c.chunk_id for c in parsed.chunks}
-        db.upsert_document(parsed, corpus_sha256=None)
-        db.replace_chunks(doc.doc_id, parsed.chunks, keep_embeddings_for=keep)
-        need = db.chunks_missing_embeddings(doc.doc_id)
+        db.replace_chunks(
+            doc.doc_id,
+            parsed.chunks,
+            version_id=version.id,
+            keep_embeddings_for=keep,
+        )
+        need = db.chunks_missing_embeddings(doc.doc_id, version_id=version.id)
         if need:
             vectors = embedder.embed([text for _, text in need])
             db.set_embeddings(
                 doc.doc_id,
                 [(cid, vec) for (cid, _), vec in zip(need, vectors, strict=True)],
                 model,
+                version_id=version.id,
             )
         db.commit()
         touched.append(doc.doc_id)
