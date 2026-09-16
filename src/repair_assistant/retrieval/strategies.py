@@ -160,7 +160,7 @@ def lexical_fetch(db: Database, query: str, *, limit: int, include_synthetic: bo
                 to_tsvector('english', coalesce(text, '')),
                 plainto_tsquery('english', %s)
             ) AS score
-        FROM chunks
+        FROM active_chunks
         WHERE to_tsvector('english', coalesce(text, ''))
               @@ plainto_tsquery('english', %s)
           {synth_clause}
@@ -225,7 +225,7 @@ def lexical_or_fetch(db: Database, query: str, *, limit: int) -> list[dict]:
         )
         SELECT {_LEXICAL_COLUMNS},
                ts_rank_cd(to_tsvector('english', coalesce(text, '')), q.tsq) AS score
-        FROM chunks, q
+        FROM active_chunks, q
         WHERE q.tsq IS NOT NULL
           AND to_tsvector('english', coalesce(text, '')) @@ q.tsq
         ORDER BY score DESC
@@ -256,7 +256,7 @@ def literal_fetch(
     for literal in query_literals(query):
         pattern = f"%{literal}%"
         (count_row,) = db.fetchall(
-            "SELECT count(*) FROM chunks WHERE text ILIKE %s", (pattern,)
+            "SELECT count(*) FROM active_chunks WHERE text ILIKE %s", (pattern,)
         )
         frequency = int(count_row[0] or 0)
         if frequency == 0 or frequency > max_chunks:
@@ -264,7 +264,7 @@ def literal_fetch(
         rows = db.fetchall(
             f"""
             SELECT {_LEXICAL_COLUMNS}, 0.95 AS score
-            FROM chunks
+            FROM active_chunks
             WHERE text ILIKE %s
             LIMIT %s
             """,

@@ -21,7 +21,7 @@ _FIRST_REMEDY = re.compile(
 _SIBLING_SQL = """
 SELECT doc_id, chunk_id, text, page, kind, error_codes,
        publication_number, revision, metadata
-FROM chunks
+FROM active_chunks
 WHERE doc_id = %s AND page = %s AND kind = 'table_row'
   AND metadata->>'problem_title' = %s
 """
@@ -222,6 +222,9 @@ def coalesce_problem_hits(hits: list[Hit]) -> list[Hit]:
                 score=max(float(h.score) for h in group),
                 apply_reason=first.apply_reason,
                 metadata=meta,
+                unit_id=first.unit_id,
+                rep_kind=first.rep_kind,
+                strategy=first.strategy,
             )
         )
     return out

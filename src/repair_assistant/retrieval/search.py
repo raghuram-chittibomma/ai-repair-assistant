@@ -1,4 +1,9 @@
-"""Vector search over ingested chunks (pgvector + local BGE)."""
+"""Vector search over ingested chunks (pgvector + local BGE).
+
+Every arm reads the ``active_chunks`` view, never ``chunks`` directly: a
+document's superseded ingestion versions stay stored for audit but must not
+reach vector search, the lexical arms, reranking, or generation (ADR-0047).
+"""
 
 from __future__ import annotations
 
@@ -43,6 +48,17 @@ class Hit:
     score: float
     apply_reason: str = ""
     metadata: dict = field(default_factory=dict)
+    #: Set when this hit came from a semantic retrieval representation, which is
+    #: resolved to its parent unit before generation (ADR-0048).
+    unit_id: int | None = None
+    rep_kind: str | None = None
+    #: Which ingestion strategy produced the row. Recorded on every hit so a
+    #: later strategy comparison has the data it needs (ADR-0047 decision 7).
+    strategy: str | None = None
+
+    @property
+    def is_semantic_unit(self) -> bool:
+        return bool(self.unit_id) and self.rep_kind is None
 
 
 @dataclass
@@ -95,7 +111,7 @@ def vector_fetch(
             publication_number,
             revision,
             1 - (embedding <=> %s::vector) AS score
-        FROM chunks
+        FROM active_chunks
         WHERE embedding IS NOT NULL
         {synth_clause}
         ORDER BY embedding <=> %s::vector
@@ -123,7 +139,7 @@ def code_fetch(db: Database, codes: list[str], *, limit: int = 30) -> list[dict]
             publication_number,
             revision,
             1.0 AS score
-        FROM chunks
+        FROM active_chunks
         WHERE error_codes && %s::text[]
            OR text ~* %s
         ORDER BY
@@ -165,7 +181,7 @@ def connector_fetch(db: Database, connectors: list[str], *, limit: int = 20) -> 
             publication_number,
             revision,
             1.0 AS score
-        FROM chunks
+        FROM active_chunks
         WHERE text ~* %s
         ORDER BY
             CASE WHEN text ~* 'motor|stator|harness' THEN 0 ELSE 1 END,
@@ -195,7 +211,7 @@ def connector_fetch(db: Database, connectors: list[str], *, limit: int = 20) -> 
             publication_number,
             revision,
             0.95 AS score
-        FROM chunks
+        FROM active_chunks
         WHERE doc_id = ANY(%s::text[])
           AND page = ANY(%s::int[])
           AND kind IN ('heading', 'prose', 'procedure')
@@ -243,7 +259,7 @@ def reference_fetch(
             publication_number,
             revision,
             0.85 AS score
-        FROM chunks
+        FROM active_chunks
         WHERE publication_number = ANY(%s::text[])
         ORDER BY
             CASE WHEN coalesce(language, 'en') = 'en' THEN 0 ELSE 1 END,
@@ -298,7 +314,7 @@ def manual_rev_fetch(
             publication_number,
             revision,
             0.88 AS score
-        FROM chunks
+        FROM active_chunks
         WHERE publication_number = ANY(%s::text[])
           AND upper(revision) = upper(%s)
         ORDER BY
@@ -501,8 +517,12 @@ def search(
 
     attach_hit_layout_metadata(db, hits)
     from repair_assistant.retrieval.siblings import expand_problem_siblings
+    from repair_assistant.retrieval.units import collapse_semantic_units
 
     hits = expand_problem_siblings(db, hits)
+    # Several representations of one semantic unit are one piece of
+    # documentation; collapse them and hand generation the unit's own text.
+    hits = collapse_semantic_units(db, hits)
     return SearchResult(
         query=query,
         hits=hits,
@@ -512,13 +532,20 @@ def search(
 
 
 def attach_hit_layout_metadata(db: Database, hits: list[Hit]) -> None:
-    """Copy chunk.metadata (bbox) onto hits. Failures must not hide results."""
+    """Copy chunk metadata and version provenance onto hits.
+
+    One query resolves the bbox used for page highlighting plus the
+    ``unit_id`` / ``rep_kind`` / ``strategy`` that
+    :func:`repair_assistant.retrieval.units.collapse_semantic_units` needs.
+    Failures must not hide results, so everything here is best-effort.
+    """
     if not hits:
         return
     try:
         rows = db.fetchall(
             """
-            SELECT doc_id, chunk_id, metadata FROM chunks
+            SELECT doc_id, chunk_id, metadata, unit_id, rep_kind, strategy
+            FROM active_chunks
             WHERE doc_id = ANY(%s::text[]) AND chunk_id = ANY(%s::text[])
             """,
             ([h.doc_id for h in hits], [h.chunk_id for h in hits]),
@@ -526,15 +553,21 @@ def attach_hit_layout_metadata(db: Database, hits: list[Hit]) -> None:
     except Exception:
         return
     wanted = {(h.doc_id, h.chunk_id) for h in hits}
-    by_key: dict[tuple[str, str], dict] = {}
-    for doc_id, chunk_id, metadata in rows:
-        if (doc_id, chunk_id) not in wanted or not isinstance(metadata, dict):
+    by_key: dict[tuple[str, str], tuple] = {}
+    for row in rows:
+        key = (row[0], row[1])
+        if key not in wanted:
             continue
-        by_key[(doc_id, chunk_id)] = metadata
+        by_key[key] = row
     for hit in hits:
-        meta = by_key.get((hit.doc_id, hit.chunk_id))
-        if meta:
-            hit.metadata = meta
+        row = by_key.get((hit.doc_id, hit.chunk_id))
+        if row is None:
+            continue
+        if isinstance(row[2], dict):
+            hit.metadata = row[2]
+        hit.unit_id = int(row[3]) if row[3] is not None else None
+        hit.rep_kind = row[4]
+        hit.strategy = row[5]
 
 
 __all__ = [
