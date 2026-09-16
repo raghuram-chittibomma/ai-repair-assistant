@@ -62,3 +62,11 @@ def safety_technician() -> str:
 
 def safety_classifier() -> str:
     return load_prompt("safety_classifier")
+
+
+def semantic_segment() -> str:
+    return load_prompt("semantic_segment")
+
+
+def semantic_representations() -> str:
+    return load_prompt("semantic_representations")

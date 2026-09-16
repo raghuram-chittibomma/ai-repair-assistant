@@ -633,6 +633,25 @@ def create_app(
     def diagnose_delete(session_id: str) -> dict[str, bool]:
         return {"deleted": store.delete(session_id)}
 
+    # Corpus review (ADR-0047 / ADR-0048). The segmentation clients are built
+    # per request so a server with no SEMANTIC_OPENAI_API_KEY still serves the
+    # document list, the review board, and cutover — only proposing needs the key.
+    from repair_assistant.api.corpus_routes import build_corpus_router
+    from repair_assistant.semantic import representations as semantic_reps
+    from repair_assistant.semantic import segment as semantic_segment
+
+    app.include_router(
+        build_corpus_router(
+            get_db=get_db,
+            require_api_key=require_api_key,
+            manifest=_manifest,
+            repo_root=lambda: _manifest().root,
+            embedder=get_shared_embedder,
+            segmenter=semantic_segment.build_client,
+            representer=semantic_reps.build_client,
+        )
+    )
+
     app.state.session_store = store
 
     static_dir = Path(__file__).resolve().parent / "static"
@@ -642,6 +661,11 @@ def create_app(
         @app.get("/ui")
         def ui_page() -> FileResponse:
             return FileResponse(static_dir / "index.html")
+
+        @app.get("/ui/corpus")
+        def corpus_ui_page() -> FileResponse:
+            """Boundary review board. A different task from the chat UI."""
+            return FileResponse(static_dir / "corpus.html")
 
         @app.get("/")
         def root() -> RedirectResponse:
