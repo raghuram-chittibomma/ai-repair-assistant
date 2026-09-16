@@ -42,6 +42,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0047](0047-ingestion-versions.md) | Per-document ingestion strategy over versioned derived data; one DB-enforced active version; retrieval reads `active_chunks` | Promote a document without duplicate or missing retrieval |
 | [0048](0048-semantic-knowledge-units.md) | *(partially superseded by 0049)* Unit vs representations; over-limit reps rejected; curator opt-in | 512-token BGE limit split procedures from their warnings |
 | [0049](0049-pdf-native-semantic-boundaries.md) | PDF page-range markers (native PDF or vision when scanned); thin PDF extract for `source_text`; real-PDF review UI | Parser/anchor path diverged from product intent |
+| [0050](0050-generate-hybrid-pdf-evidence.md) | Generate attaches native PDF page-ranges (text) or rasters (scanned); no structured 2k excerpt | Layout missing from text-only evidence pack |
 
 ## Phase 4 — Retrieval
 

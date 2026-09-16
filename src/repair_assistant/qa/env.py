@@ -119,3 +119,43 @@ def llm_max_tokens() -> int:
     except ValueError:
         return DEFAULT_LLM_MAX_TOKENS
     return value if value > 0 else DEFAULT_LLM_MAX_TOKENS
+
+
+def evidence_max_chars() -> int | None:
+    """Character budget for the generate evidence pack.
+
+    ``REPAIR_EVIDENCE_MAX_CHARS`` — unset or ``0`` means no cap (every retrieved
+    hit that survives packing is included). A positive integer is the hard
+    character budget used by :func:`repair_assistant.qa.context.format_evidence`.
+    """
+    load_dotenv_files()
+    raw = os.environ.get("REPAIR_EVIDENCE_MAX_CHARS", "").strip()
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(
+            f"REPAIR_EVIDENCE_MAX_CHARS must be an integer (got {raw!r})"
+        ) from exc
+    if value < 0:
+        raise RuntimeError("REPAIR_EVIDENCE_MAX_CHARS must be >= 0")
+    if value == 0:
+        return None
+    return value
+
+
+DEFAULT_SEMANTIC_EVIDENCE_MAX_PAGES = 8
+
+
+def semantic_evidence_max_pages() -> int:
+    """Max PDF pages attached as rasters for scanned semantic units."""
+    load_dotenv_files()
+    raw = os.environ.get("REPAIR_SEMANTIC_EVIDENCE_MAX_PAGES", "").strip()
+    if not raw:
+        return DEFAULT_SEMANTIC_EVIDENCE_MAX_PAGES
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_SEMANTIC_EVIDENCE_MAX_PAGES
+    return value if value > 0 else DEFAULT_SEMANTIC_EVIDENCE_MAX_PAGES

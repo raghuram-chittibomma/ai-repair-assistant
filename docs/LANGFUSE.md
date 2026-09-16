@@ -105,12 +105,19 @@ ask | diagnose
 | Root (`ask` / `diagnose`) | question/message, model, appliance, abstain, citation labels, duration, `audience` / `audience_verified=false` / `technician_attested` (R2); diagnose also stamps `diagnostic_phase` / `diagnostic_step` (R31) |
 | `retrieval` | query, source counts (vector/code/connector/reference/revision), merged candidates, **selected** chunks (score, apply_reason, preview), **rejected** (applicability), **ranked_before_diversity**, **diversity_dropped** |
 | `evidence` | full `evidence_text` prompt block (truncated at `REPAIR_TRACE_MAX_CHARS`, default 12000) |
-| `llm` | `messages` array (system + user) in; `content` (full model output) out; `prompt_name` / `prompt_file_sha256` / `prompt_sha256` (ADR-0030) |
+| `llm` | `messages` array (system + user) in; when native PDF page-ranges were sent to the model, also `native_pdf_parts` (`LangfuseMedia` uploads — viewable/downloadable in the UI) plus a prefixed `[attachments; N PDF …]` fingerprint; `content` (full model output) out; `prompt_name` / `prompt_file_sha256` / `prompt_sha256` (ADR-0030); metadata may include `semantic_pdf_parts` |
 | `safety_assess` | action, rule_id, reason, prompt_directive (`llm-*` rule ids mean the classifier raised severity — ADR-0032) |
 | `safety_gate` | raw preview, blocked, notice, gated text preview |
 
 Long strings are truncated automatically. Override with `REPAIR_TRACE_MAX_CHARS` in
-`.env.local` if you need longer prompt captures.
+`.env.local` if you need longer prompt captures. ``LangfuseMedia`` PDF attachments
+are **not** truncated — they upload to Langfuse media storage (requires
+`LANGFUSE_S3_MEDIA_UPLOAD_*` on self-hosted deployments; see
+[multi-modality docs](https://langfuse.com/docs/observability/features/multi-modality)).
+For LAN Langfuse, set `LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT` to a URL the **laptop**
+can reach (e.g. `http://192.168.4.52:9090`), not `localhost` or `minio:9000`, or
+the UI shows “Media not yet uploaded” while the API logs connection refused.
+Page-range slices are manufacturer literature; keep Langfuse LAN-only.
 
 When `bench-qa` / `bench-candidates` run with Langfuse keys set, spans also carry
 `eval_bench`, `eval_run_id` (matches the JSON filename stamp), and `scenario_id`

@@ -75,16 +75,52 @@ def evidence_blocks_from_citations(citations: list[Citation]) -> dict[int, str]:
     return {c.index: (c.block_text or c.excerpt or "") for c in citations}
 
 
+def unit_page_label(hit: Hit) -> str:
+    """Page range for a semantic unit, which may cover several pages."""
+    meta = getattr(hit, "metadata", None) or {}
+    if not isinstance(meta, dict):
+        return ""
+    label = meta.get("page_label")
+    if isinstance(label, str) and label:
+        return label
+    start, end = meta.get("page_start"), meta.get("page_end")
+    if start is None:
+        return ""
+    if end is None or end == start:
+        return f"p.{start}"
+    return f"pp.{start}-{end}"
+
+
 def format_label(hit: Hit) -> str:
     cite = hit.publication_number or hit.doc_id
     if hit.revision:
         cite = f"{cite} Rev {hit.revision}"
-    if hit.page:
+    pages = unit_page_label(hit) if getattr(hit, "is_semantic_unit", False) else ""
+    if pages:
+        cite = f"{cite} {pages}"
+    elif hit.page:
         cite = f"{cite} p.{hit.page}"
+    cite = f"{cite} [{_ingestion_tag(hit)}]"
+    if getattr(hit, "is_semantic_unit", False):
+        title = str((hit.metadata or {}).get("unit_title") or "").strip()
+        if title:
+            return f"{cite} — {title[:64]}"
     detail = _label_detail(hit.text or "")
     if detail:
         cite = f"{cite} — {detail}"
     return cite
+
+
+def _ingestion_tag(hit: Hit) -> str:
+    """Short marker for citation UI: semantic (LLM units) vs structured ingest."""
+    if getattr(hit, "is_semantic_unit", False):
+        return "semantic"
+    strategy = str(getattr(hit, "strategy", None) or "").strip()
+    if strategy == "semantic_llm":
+        return "semantic"
+    if strategy == "structured" or not strategy:
+        return "structured"
+    return strategy
 
 
 def _label_detail(text: str) -> str:
@@ -112,43 +148,6 @@ def _label_detail(text: str) -> str:
     return ""
 
 
-def _excerpt(text: str, *, max_len: int = 2000, query: str = "") -> str:
-    """Prefer a query-relevant window when truncating long procedure chunks."""
-    normalized = " ".join(text.split())
-    if len(normalized) <= max_len:
-        return normalized
-
-    needles: list[str] = []
-    query_l = query.lower()
-    for term in (
-        "status led",
-        "diagnostic led",
-        "acu led",
-        "step 10",
-        "blink",
-        "acu power check",
-        "shipping bolt",
-        "transport bolt",
-    ):
-        if term in query_l or term in normalized.lower():
-            needles.append(term)
-
-    for needle in needles:
-        pos = normalized.lower().find(needle)
-        if pos < 0:
-            continue
-        start = max(0, pos - max_len // 3)
-        end = min(len(normalized), start + max_len)
-        snippet = normalized[start:end]
-        if start > 0:
-            snippet = "..." + snippet
-        if end < len(normalized):
-            snippet = snippet + "..."
-        return snippet
-
-    return normalized[: max_len - 3] + "..."
-
-
 EVIDENCE_BEGIN = "<<<MANUFACTURER_EVIDENCE>>>"
 EVIDENCE_END = "<<<END_MANUFACTURER_EVIDENCE>>>"
 
@@ -167,32 +166,88 @@ def fence_evidence(text: str) -> str:
     return wrap_evidence(raw)
 
 
+def evidence_text(hit: Hit, *, query: str = "") -> str:
+    """The text of one evidence block.
+
+    Semantic units and structured chunks both send their full stored text.
+    Pack-level budgets (``REPAIR_EVIDENCE_MAX_CHARS``) still apply in
+    :func:`format_evidence`. ``query`` is kept for call-site compatibility.
+    """
+    del query  # no per-hit windowing (ADR-0050)
+    return (hit.text or "").strip()
+
+
+def _pack_order(hits: list[Hit]) -> list[Hit]:
+    """Keep the top hit first; among the rest, prefer rows that can highlight.
+
+    A large semantic unit can consume most of the evidence budget. Without this
+    reorder, a same-page prose banner often fills the remainder and drops the
+    table-row that carries the PDF bbox overlay.
+    """
+    if len(hits) < 2:
+        return list(hits)
+    head, *rest = hits
+    with_layout: list[Hit] = []
+    without: list[Hit] = []
+    for hit in rest:
+        box, _, _ = layout_from_hit(hit)
+        (with_layout if box is not None else without).append(hit)
+    return [head, *with_layout, *without]
+
+
 def format_evidence(
     hits: list[Hit],
     *,
     query: str = "",
-    max_chars: int = 12_000,
+    max_chars: int | None = None,
     manifest=None,
     attached_indexes: set[int] | frozenset[int] | None = None,
 ) -> tuple[str, list[Citation]]:
-    """Numbered evidence blocks for the LLM prompt."""
+    """Numbered evidence blocks for the LLM prompt.
+
+    Hits arrive best-first. When a character budget applies, a block that does
+    not fit is dropped whole and the next one is tried, so a large semantic
+    unit costs the lowest-ranked evidence rather than costing half of itself.
+    The single exception is the top-ranked hit, which is always included:
+    answering from nothing is worse than one oversize block, and truncating it
+    is the failure this whole design exists to avoid.
+
+    After that top hit, layout-bearing table rows are tried before plain prose
+    so the source-page overlay still lights up when both compete for the
+    leftover budget.
+
+    ``max_chars`` defaults to :func:`repair_assistant.qa.env.evidence_max_chars`
+    (``REPAIR_EVIDENCE_MAX_CHARS``). Unset or ``0`` means no cap.
+    """
+    from repair_assistant.qa.env import evidence_max_chars
+
+    budget = evidence_max_chars() if max_chars is None else max_chars
+    selected: list[tuple[Hit, str]] = []
+    used = 0
+    for hit in _pack_order(hits):
+        text = evidence_text(hit, query=query)
+        cost = len(text) + len(format_label(hit)) + 8
+        if (
+            selected
+            and budget is not None
+            and used + cost > budget
+        ):
+            continue
+        selected.append((hit, text))
+        used += cost
+
     blocks: list[str] = []
     citations: list[Citation] = []
-    used = 0
-    for i, hit in enumerate(hits, 1):
-        text = _excerpt(hit.text, query=query)
-        block = f"[{i}] {format_label(hit)}\n{text}"
-        if used + len(block) > max_chars and citations:
-            break
-        blocks.append(block)
-        used += len(block)
+    for index, (hit, text) in enumerate(selected, 1):
+        label = format_label(hit)
+        blocks.append(f"[{index}] {label}\n{text}")
         bbox, page_width, page_height = layout_from_hit(hit)
         citations.append(
             Citation(
-                index=i,
+                index=index,
                 doc_id=hit.doc_id,
                 chunk_id=hit.chunk_id,
-                label=format_label(hit),
+                label=label,
                 page=hit.page,
                 excerpt=text[:280],
                 block_text=text,
@@ -204,7 +259,7 @@ def format_evidence(
     if not blocks:
         return "", citations
     body = wrap_evidence("\n\n".join(blocks))
-    cited_hits = hits[: len(citations)]
+    cited_hits = [hit for hit, _ in selected]
     notes: list[str] = []
     attached = {int(i) for i in (attached_indexes or ())}
     if attached:

@@ -36,7 +36,14 @@ def redact_for_trace(value: Any) -> Any:
     return _walk(value, extras)
 
 
+def _is_opaque_media(value: Any) -> bool:
+    """Skip LangfuseMedia — do not stringify or walk content bytes."""
+    return type(value).__name__ == "LangfuseMedia"
+
+
 def _collect_serials(value: Any, found: list[str]) -> None:
+    if _is_opaque_media(value):
+        return
     if isinstance(value, dict):
         for key, item in value.items():
             if key in _SERIAL_KEYS and item:
@@ -58,6 +65,8 @@ def _redact_text(text: str, extras: list[str]) -> str:
 
 
 def _walk(value: Any, extras: list[str]) -> Any:
+    if _is_opaque_media(value):
+        return value
     if isinstance(value, str):
         return _redact_text(value, extras)
     if isinstance(value, dict):

@@ -33,6 +33,7 @@ class DiagnosticGraphState(TypedDict):
     claims: NotRequired[list[dict]]
     evidence_blocks: NotRequired[dict[int, str]]
     figure_pages: NotRequired[list[dict]]
+    evidence_pdf_paths: NotRequired[list[str]]
     diagnostic: NotRequired[dict]
     last_cite_doc_ids: NotRequired[list[str]]
     retrieve_label: NotRequired[str]
