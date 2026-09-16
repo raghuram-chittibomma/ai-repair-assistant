@@ -957,6 +957,42 @@ def bench_retrieve_cmd(write: bool, k: int | None) -> None:
         )
 
 
+@main.command("bench-semantic-embed")
+@click.option(
+    "--write/--no-write",
+    default=True,
+    help="Write scorecard under evals/retrieval/results/",
+)
+@click.option(
+    "--fixtures",
+    "fixtures_path",
+    default=None,
+    type=click.Path(path_type=Path, exists=True),
+    help="Experiment YAML (default: evals/retrieval/experiments/semantic_embed_bakeoff.yaml).",
+)
+def bench_semantic_embed_cmd(write: bool, fixtures_path: Path | None) -> None:
+    """Experiment: semantic_rep vectors vs source_text windows (not production)."""
+    from repair_assistant.retrieval import semantic_embed_bench as seb
+
+    try:
+        report = seb.run_bakeoff(spec_path=fixtures_path)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    card = seb.scorecard_markdown(report)
+    click.echo(card)
+    if write:
+        corpus = _load()
+        out = corpus.root / "evals" / "retrieval" / "results"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "semantic_embed_scorecard.md").write_text(
+            card, encoding="utf-8", newline="\n"
+        )
+        seb.write_json(report, out / "semantic_embed_scorecard.json")
+        click.echo(f"Wrote {out / 'semantic_embed_scorecard.md'}")
+        click.echo(f"Wrote {out / 'semantic_embed_scorecard.json'}")
+
+
 @main.command("search")
 @click.argument("query")
 @click.option("--model", default=None, help="Appliance model for applicability filter.")

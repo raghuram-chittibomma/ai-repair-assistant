@@ -1,0 +1,481 @@
+{
+  "doc_id": "installation-instructions-w11156977",
+  "k": 5,
+  "budget": 480,
+  "embedding_model": "BAAI/bge-base-en-v1.5",
+  "index_stats": [
+    {
+      "arm": "semantic_reps",
+      "records": 25,
+      "embed_calls": 0,
+      "embed_tokens": 2190,
+      "wall_ms": 49.093799985712394,
+      "reused_db_vectors": 25,
+      "units": 9,
+      "over_budget_units": 0
+    },
+    {
+      "arm": "source_text_windows",
+      "records": 29,
+      "embed_calls": 29,
+      "embed_tokens": 11558,
+      "wall_ms": 18472.160000004806,
+      "reused_db_vectors": 0,
+      "units": 9,
+      "over_budget_units": 6
+    },
+    {
+      "arm": "source_text_truncate",
+      "records": 9,
+      "embed_calls": 9,
+      "embed_tokens": 3580,
+      "wall_ms": 6902.762800018536,
+      "reused_db_vectors": 0,
+      "units": 9,
+      "over_budget_units": 6
+    }
+  ],
+  "curator_estimate": {
+    "model": "gpt-4o-mini",
+    "prompt_tokens_est": 11616,
+    "completion_tokens_est": 2190,
+    "usd_est": 0.0509,
+    "price_in_per_mtok": 2.5,
+    "price_out_per_mtok": 10.0,
+    "note": "Estimate only \u2014 extract/window arms skip this curator LLM call. Local BGE embed cost is $0 for all arms."
+  },
+  "query_results": [
+    {
+      "fixture_id": "transport-bolt-shipping-vocab",
+      "arm": "semantic_reps",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 90.99830000195652,
+      "hit_at_k": true,
+      "mrr": 0.5,
+      "first_rank": 2,
+      "top_keys": [
+        "008-installation-instructions-french",
+        "005-installation-instructions",
+        "009-complete-installation-checklist",
+        "005-installation-instructions-b",
+        "001-washer-installation-instructions"
+      ]
+    },
+    {
+      "fixture_id": "transport-bolt-shipping-vocab",
+      "arm": "source_text_windows",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 90.69690000615083,
+      "hit_at_k": true,
+      "mrr": 0.5,
+      "first_rank": 2,
+      "top_keys": [
+        "005-installation-instructions-b",
+        "005-installation-instructions",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "008-installation-instructions-french"
+      ]
+    },
+    {
+      "fixture_id": "transport-bolt-shipping-vocab",
+      "arm": "source_text_truncate",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 88.08370001497678,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions",
+        "005-installation-instructions-b",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "008-installation-instructions-french"
+      ]
+    },
+    {
+      "fixture_id": "remove-transport-bolts-oem",
+      "arm": "semantic_reps",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 67.14940001256764,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions",
+        "008-installation-instructions-french",
+        "005-installation-instructions-b",
+        "001-washer-installation-instructions",
+        "002-installation-requirements-tools-and-parts"
+      ]
+    },
+    {
+      "fixture_id": "remove-transport-bolts-oem",
+      "arm": "source_text_windows",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 66.37230003252625,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions",
+        "005-installation-instructions-b",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "008-installation-instructions-french"
+      ]
+    },
+    {
+      "fixture_id": "remove-transport-bolts-oem",
+      "arm": "source_text_truncate",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 62.497800012351945,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions",
+        "005-installation-instructions-b",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "008-installation-instructions-french"
+      ]
+    },
+    {
+      "fixture_id": "connect-drain-hose",
+      "arm": "semantic_reps",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 77.5316999934148,
+      "hit_at_k": true,
+      "mrr": 0.5,
+      "first_rank": 2,
+      "top_keys": [
+        "001-washer-installation-instructions",
+        "005-installation-instructions-b",
+        "005-installation-instructions",
+        "008-installation-instructions-french",
+        "002-installation-requirements-tools-and-parts"
+      ]
+    },
+    {
+      "fixture_id": "connect-drain-hose",
+      "arm": "source_text_windows",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 77.80729999649338,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions",
+        "005-installation-instructions-b",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "006-washer-safety-and-installation-requirements-fren"
+      ]
+    },
+    {
+      "fixture_id": "connect-drain-hose",
+      "arm": "source_text_truncate",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 76.54500001808628,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions",
+        "005-installation-instructions-b",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "009-complete-installation-checklist"
+      ]
+    },
+    {
+      "fixture_id": "tools-and-parts",
+      "arm": "semantic_reps",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 120.91370002599433,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "006-washer-safety-and-installation-requirements-fren",
+        "008-installation-instructions-french",
+        "009-complete-installation-checklist"
+      ]
+    },
+    {
+      "fixture_id": "tools-and-parts",
+      "arm": "source_text_windows",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 122.0671999908518,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "002-installation-requirements-tools-and-parts",
+        "005-installation-instructions",
+        "005-installation-instructions-b",
+        "001-washer-installation-instructions",
+        "006-washer-safety-and-installation-requirements-fren"
+      ]
+    },
+    {
+      "fixture_id": "tools-and-parts",
+      "arm": "source_text_truncate",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 117.29320001904853,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "002-installation-requirements-tools-and-parts",
+        "005-installation-instructions",
+        "005-installation-instructions-b",
+        "001-washer-installation-instructions",
+        "009-complete-installation-checklist"
+      ]
+    },
+    {
+      "fixture_id": "level-washer",
+      "arm": "semantic_reps",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 229.78750002221204,
+      "hit_at_k": true,
+      "mrr": 0.5,
+      "first_rank": 2,
+      "top_keys": [
+        "001-washer-installation-instructions",
+        "005-installation-instructions-b",
+        "008-installation-instructions-french",
+        "009-complete-installation-checklist",
+        "002-installation-requirements-tools-and-parts"
+      ]
+    },
+    {
+      "fixture_id": "level-washer",
+      "arm": "source_text_windows",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 229.30540001834743,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions-b",
+        "005-installation-instructions",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "008-installation-instructions-french"
+      ]
+    },
+    {
+      "fixture_id": "level-washer",
+      "arm": "source_text_truncate",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 225.21960001904517,
+      "hit_at_k": true,
+      "mrr": 0.5,
+      "first_rank": 2,
+      "top_keys": [
+        "005-installation-instructions",
+        "005-installation-instructions-b",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "008-installation-instructions-french"
+      ]
+    },
+    {
+      "fixture_id": "installation-checklist",
+      "arm": "semantic_reps",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 313.99699999019504,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "009-complete-installation-checklist",
+        "001-washer-installation-instructions",
+        "002-installation-requirements-tools-and-parts",
+        "008-installation-instructions-french",
+        "006-washer-safety-and-installation-requirements-fren"
+      ]
+    },
+    {
+      "fixture_id": "installation-checklist",
+      "arm": "source_text_windows",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 314.69520000973716,
+      "hit_at_k": true,
+      "mrr": 0.2,
+      "first_rank": 5,
+      "top_keys": [
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "005-installation-instructions-b",
+        "008-installation-instructions-french",
+        "009-complete-installation-checklist"
+      ]
+    },
+    {
+      "fixture_id": "installation-checklist",
+      "arm": "source_text_truncate",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 311.39710001298226,
+      "hit_at_k": true,
+      "mrr": 0.25,
+      "first_rank": 4,
+      "top_keys": [
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "008-installation-instructions-french",
+        "009-complete-installation-checklist",
+        "005-installation-instructions-b"
+      ]
+    },
+    {
+      "fixture_id": "shipping-materials-requirements",
+      "arm": "semantic_reps",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 136.7197999788914,
+      "hit_at_k": true,
+      "mrr": 0.2,
+      "first_rank": 5,
+      "top_keys": [
+        "008-installation-instructions-french",
+        "009-complete-installation-checklist",
+        "005-installation-instructions",
+        "006-washer-safety-and-installation-requirements-fren",
+        "002-installation-requirements-tools-and-parts"
+      ]
+    },
+    {
+      "fixture_id": "shipping-materials-requirements",
+      "arm": "source_text_windows",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 136.0456999973394,
+      "hit_at_k": true,
+      "mrr": 0.3333333333333333,
+      "first_rank": 3,
+      "top_keys": [
+        "005-installation-instructions-b",
+        "005-installation-instructions",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "009-complete-installation-checklist"
+      ]
+    },
+    {
+      "fixture_id": "shipping-materials-requirements",
+      "arm": "source_text_truncate",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 132.71249996614642,
+      "hit_at_k": true,
+      "mrr": 0.5,
+      "first_rank": 2,
+      "top_keys": [
+        "005-installation-instructions",
+        "002-installation-requirements-tools-and-parts",
+        "005-installation-instructions-b",
+        "001-washer-installation-instructions",
+        "009-complete-installation-checklist"
+      ]
+    },
+    {
+      "fixture_id": "drain-hose-standpipe",
+      "arm": "semantic_reps",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 90.06729995599017,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions-b",
+        "007-electrical-specifications-and-drain-system-frenc",
+        "002-installation-requirements-tools-and-parts",
+        "005-installation-instructions",
+        "006-washer-safety-and-installation-requirements-fren"
+      ]
+    },
+    {
+      "fixture_id": "drain-hose-standpipe",
+      "arm": "source_text_windows",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 92.93719998095185,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions-b",
+        "002-installation-requirements-tools-and-parts",
+        "005-installation-instructions",
+        "001-washer-installation-instructions",
+        "007-electrical-specifications-and-drain-system-frenc"
+      ]
+    },
+    {
+      "fixture_id": "drain-hose-standpipe",
+      "arm": "source_text_truncate",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "latency_ms": 88.12559998477809,
+      "hit_at_k": true,
+      "mrr": 1.0,
+      "first_rank": 1,
+      "top_keys": [
+        "005-installation-instructions-b",
+        "005-installation-instructions",
+        "002-installation-requirements-tools-and-parts",
+        "001-washer-installation-instructions",
+        "009-complete-installation-checklist"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+# Experiment bake-off: semantic representation embeddings vs thin PDF source_text.
+# NOT part of the S4 decision set (evals/retrieval/fixtures.yaml).
+# Graded on unit_key (and optionally publication). Live DB required.
+# 2026-09-16: all arms tied on Hit@K for W11156977 install PDF — no production change.
+#
+# Arms (see repair_assistant.retrieval.semantic_embed_bench):
+#   semantic_reps          — existing overview/facts/questions vectors
+#   source_text_windows    — embed source_text split to ≤ BGE budget
+#   source_text_truncate   — one vector per unit, first budget tokens only
+#
+# Run: python -m repair_assistant.corpus.cli bench-semantic-embed --write
+
+version: 1
+k: 5
+doc_id: installation-instructions-w11156977
+publication: W11156977
+
+fixtures:
+  - id: transport-bolt-shipping-vocab
+    family: term-mismatch
+    question: >-
+      My newly installed washer shakes violently during the spin cycle. Did I
+      forget to remove the shipping bolts?
+    must_cite: [005-installation-instructions]
+    must_cite_any_pub: [W11156977]
+    hard: true
+
+  - id: remove-transport-bolts-oem
+    family: oem-wording
+    question: How do I remove the transport bolts from the back of the washer?
+    must_cite: [005-installation-instructions]
+    hard: true
+
+  - id: connect-drain-hose
+    family: procedure-symptom
+    question: How do I connect the drain hose when installing my front-load washer?
+    must_cite_any: [005-installation-instructions, 005-installation-instructions-b]
+    hard: true
+
+  - id: tools-and-parts
+    family: requirements
+    question: What tools and parts do I need before installing the washer?
+    must_cite: [002-installation-requirements-tools-and-parts]
+    hard: true
+
+  - id: level-washer
+    family: procedure-symptom
+    question: How do I level the washer after installation?
+    must_cite_any:
+      - 005-installation-instructions-b
+      - 002-installation-requirements-tools-and-parts
+      - 009-complete-installation-checklist
+    hard: true
+
+  - id: installation-checklist
+    family: checklist
+    question: What is on the complete installation checklist?
+    must_cite: [009-complete-installation-checklist]
+    hard: true
+
+  - id: shipping-materials-requirements
+    family: requirements
+    question: Why must I remove all shipping materials before using the washer?
+    must_cite: [002-installation-requirements-tools-and-parts]
+    hard: true
+
+  - id: drain-hose-standpipe
+    family: procedure-detail
+    question: How much drain hose should be in the standpipe and how do I secure it?
+    must_cite: [005-installation-instructions-b]
+    hard: true
