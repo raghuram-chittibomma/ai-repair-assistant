@@ -1,0 +1,967 @@
+{
+  "k": 8,
+  "overfetch": 40,
+  "bge_model": "BAAI/bge-base-en-v1.5",
+  "jasper_model": "infgrad/Jasper-Token-Compression-600M",
+  "index_stats": [
+    {
+      "arm": "bge_vector_apply_boost",
+      "chunks": 2327,
+      "dims": 768,
+      "embed_wall_ms": 0.0,
+      "cache_hit": true,
+      "model": "BAAI/bge-base-en-v1.5",
+      "notes": "Postgres active_chunks vectors (production)"
+    },
+    {
+      "arm": "jasper_vector_apply_boost",
+      "chunks": 2327,
+      "dims": 2048,
+      "embed_wall_ms": 4788813.307900011,
+      "cache_hit": false,
+      "model": "infgrad/Jasper-Token-Compression-600M",
+      "notes": "wrote jasper_a55b2577c205180a.npy"
+    }
+  ],
+  "results": [
+    {
+      "fixture_id": "acu-led-step-10",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "W11375982",
+        "tsp-w11375982",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B"
+      ],
+      "latency_ms": 1024.17270001024,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.3333333333333333,
+        "ndcg_at_k": 0.5,
+        "precision_at_k": 0.25,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "door-locks-wont-run-wrong-platform",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "service-manual-w11169652",
+        "W11169652 Rev A"
+      ],
+      "latency_ms": 140.682299999753,
+      "metrics": {
+        "hit_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "precision_at_k": null,
+        "recall_at_k": null
+      }
+    },
+    {
+      "fixture_id": "f5e2-front-load-not-top-load",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "kb-f5e2-front-load",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "kb-error-codes-front-load"
+      ],
+      "latency_ms": 177.62319999746978,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "error-code-f6e1",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "service-manual-w11169652",
+        "W11169652 Rev A",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989"
+      ],
+      "latency_ms": 135.76790000661276,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.5,
+        "ndcg_at_k": 0.6309297535714575,
+        "precision_at_k": 0.6,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "connector-j36-motor-harness",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "service-manual-w11169652",
+        "W11169652 Rev A",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989"
+      ],
+      "latency_ms": 113.45539998728782,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.4,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "part-number-door-lock",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "W11320547 Rev C",
+        "parts-list-w11320547",
+        "W11320547",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "cycle-guide-w11366248",
+        "W11366248 Rev D",
+        "W11366248",
+        "W11156977",
+        "installation-instructions-w11156977",
+        "W11156977 Rev D"
+      ],
+      "latency_ms": 132.74770000134595,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.5,
+        "ndcg_at_k": 0.6309297535714575,
+        "precision_at_k": 0.16666666666666666,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "transport-bolt-vocabulary",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "W11156977",
+        "installation-instructions-w11156977",
+        "W11156977 Rev D"
+      ],
+      "latency_ms": 114.19210000894964,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.2,
+        "ndcg_at_k": 0.38685280723454163,
+        "precision_at_k": 0.25,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "serial-inside-door-lock-tsp",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": false,
+      "detail": "ok",
+      "cited": [
+        "W11395614",
+        "tsp-w11395614"
+      ],
+      "latency_ms": 98.56220000074245,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "serial-outside-door-lock-tsp",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": false,
+      "detail": "ok",
+      "cited": [],
+      "latency_ms": 103.05040000821464,
+      "metrics": {
+        "hit_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "precision_at_k": null,
+        "recall_at_k": null
+      }
+    },
+    {
+      "fixture_id": "part-number-pressure-switch",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": false,
+      "detail": "ok",
+      "cited": [
+        "W11320547 Rev C",
+        "parts-list-w11320547",
+        "W11320547",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "W11375982",
+        "tsp-w11375982",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "cycle-guide-w11366248",
+        "W11366248 Rev D",
+        "W11366248"
+      ],
+      "latency_ms": 142.81899997149594,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "test-10a-measured-values",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": false,
+      "detail": "ok",
+      "cited": [
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989"
+      ],
+      "latency_ms": 97.46669998276047,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.75,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "tech-sheet-page1-by-pub",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B"
+      ],
+      "latency_ms": 96.06660000281408,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "manual-rev-b-acu-led",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "service-manual-w11169652",
+        "W11169652 Rev A",
+        "W11375982",
+        "tsp-w11375982"
+      ],
+      "latency_ms": 120.9200999874156,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.16666666666666666,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "f5e2-tech-sheet-not-kb",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "service-manual-w11169652",
+        "W11169652 Rev A",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989"
+      ],
+      "latency_ms": 128.20050001027994,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.3333333333333333,
+        "ndcg_at_k": 0.5,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "publication-what-is-w11375982",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11375982",
+        "tsp-w11375982"
+      ],
+      "latency_ms": 97.93309998349287,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "adjacent-model-parts-exclude",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [],
+      "latency_ms": 96.02259998791851,
+      "metrics": {
+        "hit_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "precision_at_k": null,
+        "recall_at_k": null
+      }
+    },
+    {
+      "fixture_id": "maytag-mhw-platform-manual",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "service-manual-w11169652",
+        "W11169652 Rev A",
+        "W11375982",
+        "tsp-w11375982"
+      ],
+      "latency_ms": 94.42120001767762,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.6666666666666666,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "synth-owners-manual-supersession",
+      "strategy": "bge_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "SYNTH-UC-200",
+        "SYNTH-UC-200 Rev A",
+        "synth-owners-manual-v2",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "cycle-guide-w11366248",
+        "W11366248 Rev D",
+        "W11366248"
+      ],
+      "latency_ms": 94.3183999916073,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "acu-led-step-10",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11375982",
+        "tsp-w11375982",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B"
+      ],
+      "latency_ms": 554.4105999870226,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "door-locks-wont-run-wrong-platform",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "service-manual-w11169652",
+        "W11169652 Rev A"
+      ],
+      "latency_ms": 458.361099998001,
+      "metrics": {
+        "hit_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "precision_at_k": null,
+        "recall_at_k": null
+      }
+    },
+    {
+      "fixture_id": "f5e2-front-load-not-top-load",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "kb-f5e2-front-load",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "kb-error-codes-front-load"
+      ],
+      "latency_ms": 415.64600000856444,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "error-code-f6e1",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "service-manual-w11169652",
+        "W11169652 Rev A",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989"
+      ],
+      "latency_ms": 364.22550000133924,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.5,
+        "ndcg_at_k": 0.6309297535714575,
+        "precision_at_k": 0.6,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "connector-j36-motor-harness",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "W11375982",
+        "tsp-w11375982"
+      ],
+      "latency_ms": 387.9529999976512,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.25,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "part-number-door-lock",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "W11320547 Rev C",
+        "parts-list-w11320547",
+        "W11320547",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989"
+      ],
+      "latency_ms": 419.48199999751523,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.14285714285714285,
+        "ndcg_at_k": 0.3333333333333333,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "transport-bolt-vocabulary",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "W11156977",
+        "installation-instructions-w11156977",
+        "W11156977 Rev D",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "quick-start-w11355381",
+        "W11355381 Rev A",
+        "W11355381"
+      ],
+      "latency_ms": 405.6836999952793,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.25,
+        "ndcg_at_k": 0.43067655807339306,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "serial-inside-door-lock-tsp",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": false,
+      "hard": false,
+      "detail": "must_cite missing 'W11395614'; got []",
+      "cited": [],
+      "latency_ms": 378.4993000153918,
+      "metrics": {
+        "hit_at_k": false,
+        "mrr": 0.0,
+        "ndcg_at_k": 0.0,
+        "precision_at_k": null,
+        "recall_at_k": 0.0
+      }
+    },
+    {
+      "fixture_id": "serial-outside-door-lock-tsp",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": false,
+      "detail": "ok",
+      "cited": [],
+      "latency_ms": 448.2830000051763,
+      "metrics": {
+        "hit_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "precision_at_k": null,
+        "recall_at_k": null
+      }
+    },
+    {
+      "fixture_id": "part-number-pressure-switch",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": false,
+      "detail": "ok",
+      "cited": [
+        "W11375982",
+        "tsp-w11375982",
+        "W11320547 Rev C",
+        "parts-list-w11320547",
+        "W11320547",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "dimension-guide-w11466162",
+        "W11466162 Rev A",
+        "W11466162"
+      ],
+      "latency_ms": 445.3403999796137,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.5,
+        "ndcg_at_k": 0.6309297535714575,
+        "precision_at_k": 0.25,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "test-10a-measured-values",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": false,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "service-manual-w11169652",
+        "W11169652 Rev A"
+      ],
+      "latency_ms": 351.54859998147003,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.3333333333333333,
+        "ndcg_at_k": 0.5,
+        "precision_at_k": 0.5,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "tech-sheet-page1-by-pub",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B"
+      ],
+      "latency_ms": 418.0652000068221,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "manual-rev-b-acu-led",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "W11156989",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "service-manual-w11169652",
+        "W11169652 Rev A",
+        "W11375982",
+        "tsp-w11375982"
+      ],
+      "latency_ms": 396.46190000348724,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.16666666666666666,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "f5e2-tech-sheet-not-kb",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "service-manual-w11169652",
+        "W11169652 Rev A",
+        "W11156989 Rev A",
+        "tech-sheet-w11156989"
+      ],
+      "latency_ms": 587.995600013528,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 0.3333333333333333,
+        "ndcg_at_k": 0.5,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "publication-what-is-w11375982",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11375982",
+        "tsp-w11375982"
+      ],
+      "latency_ms": 465.8456999750342,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "adjacent-model-parts-exclude",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [],
+      "latency_ms": 437.7837000065483,
+      "metrics": {
+        "hit_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null,
+        "precision_at_k": null,
+        "recall_at_k": null
+      }
+    },
+    {
+      "fixture_id": "maytag-mhw-platform-manual",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "service-manual-w11169652",
+        "W11169652 Rev A"
+      ],
+      "latency_ms": 389.7593000147026,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0
+      }
+    },
+    {
+      "fixture_id": "synth-owners-manual-supersession",
+      "strategy": "jasper_vector_apply_boost",
+      "passed": true,
+      "hard": true,
+      "detail": "ok",
+      "cited": [
+        "SYNTH-UC-200",
+        "SYNTH-UC-200 Rev A",
+        "synth-owners-manual-v2",
+        "W11169652",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B",
+        "tech-sheet-w11320651",
+        "W11320651",
+        "W11320651 Rev B",
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D",
+        "W11156989",
+        "cycle-guide-w11366248",
+        "W11366248 Rev D",
+        "W11366248"
+      ],
+      "latency_ms": 397.3120999871753,
+      "metrics": {
+        "hit_at_k": true,
+        "mrr": 1.0,
+        "ndcg_at_k": 1.0,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1.0
+      }
+    }
+  ]
+}

@@ -993,6 +993,56 @@ def bench_semantic_embed_cmd(write: bool, fixtures_path: Path | None) -> None:
         click.echo(f"Wrote {out / 'semantic_embed_scorecard.json'}")
 
 
+@main.command("bench-embedder-ab")
+@click.option(
+    "--write/--no-write",
+    default=True,
+    help="Write scorecard under evals/retrieval/results/",
+)
+@click.option("--k", default=None, type=int, help="Override top-K (default from fixtures).")
+@click.option("--overfetch", default=40, show_default=True, type=int)
+@click.option(
+    "--compression-ratio",
+    default=0.5,
+    show_default=True,
+    type=float,
+    help="Jasper token compression ratio (HF recommends ~0.3–0.8).",
+)
+@click.option("--batch-size", default=8, show_default=True, type=int)
+def bench_embedder_ab_cmd(
+    write: bool,
+    k: int | None,
+    overfetch: int,
+    compression_ratio: float,
+    batch_size: int,
+) -> None:
+    """Experiment: BGE-base vs Jasper-Token-Compression-600M (not production)."""
+    from repair_assistant.retrieval import embedder_ab_bench as eab
+
+    try:
+        report = eab.run_bakeoff(
+            k=k,
+            overfetch=overfetch,
+            compression_ratio=compression_ratio,
+            batch_size=batch_size,
+        )
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    card = eab.scorecard_markdown(report)
+    click.echo(card)
+    if write:
+        corpus = _load()
+        out = corpus.root / "evals" / "retrieval" / "results"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "embedder_ab_scorecard.md").write_text(
+            card, encoding="utf-8", newline="\n"
+        )
+        eab.write_json(report, out / "embedder_ab_scorecard.json")
+        click.echo(f"Wrote {out / 'embedder_ab_scorecard.md'}")
+        click.echo(f"Wrote {out / 'embedder_ab_scorecard.json'}")
+
+
 @main.command("search")
 @click.argument("query")
 @click.option("--model", default=None, help="Appliance model for applicability filter.")
