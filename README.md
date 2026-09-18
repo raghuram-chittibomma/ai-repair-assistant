@@ -27,7 +27,7 @@ Each pipeline layer went through the same loop: **charter phase → measure → 
 | Retrieval arms | Hybrid re-test kept the product gate at 14/14 hard ([ADR-0010](docs/adr/0010-retrieval-applicability.md), [ADR-0020](docs/adr/0020-hybrid-retrieval-retest.md)) |
 | Safety | Deterministic allow / warn / escalate / block — not LLM-only ([ADR-0014](docs/adr/0014-safety-policy.md)) |
 | Traces → evals | Langfuse spans mined into human-reviewed draft scenarios ([ADR-0018](docs/adr/0018-langfuse-observability.md), [ADR-0023](docs/adr/0023-trace-driven-eval-mining.md)) |
-| Semantic curator | Opt-in LLM page-range units for high-risk PDFs; human board before cutover; generate sees layout ([ADR-0047](docs/adr/0047-ingestion-versions.md)–[ADR-0050](docs/adr/0050-generate-hybrid-pdf-evidence.md)) |
+| Semantic curator | Opt-in LLM page-range units for high-risk PDFs; human board before cutover; generate is PDF-primary for semantic cites ([ADR-0047](docs/adr/0047-ingestion-versions.md)–[ADR-0051](docs/adr/0051-pdf-primary-semantic-evidence.md)) |
 
 Full decision log: [Architecture decision records](docs/adr/README.md).
 Manual benches at every layer: [Evaluation](docs/EVALS.md).
@@ -56,11 +56,84 @@ flowchart LR
 
 - **Parsing** — hybrid page router (matrix / TOC / schematic / photo-access / multi-column), quality overrides ([ADR-0024](docs/adr/0024-hybrid-parse-architecture.md))
 - **Chunking (default)** — table-row / matrix / contextual enrichment; Guide #1 title-case or ALL-CAPS anchors ([ADR-0007](docs/adr/0007-parser-and-chunker.md), [ADR-0022](docs/adr/0022-contextual-chunk-enrichment.md), [ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md))
-- **Semantic chunking (opt-in)** — spend a **highly capable LLM once at corpus build** on high-risk manuals (install / repair procedures) so units keep warnings with their TEST steps; a human reviews markers on the real PDF before activate; retrieval indexes compact reps; **generate sees full page-range layout** (native PDF or rasters) plus claim-binding `source_text` ([ADR-0047](docs/adr/0047-ingestion-versions.md)–[ADR-0050](docs/adr/0050-generate-hybrid-pdf-evidence.md), [architecture/08](docs/architecture/08-semantic-curator-to-generate.md))
-- **Retrieval** — vector + codes/connectors, applicability, owner-preferring literature when feasible; door polarity is grammar, not slang YAML; same-problem rows coalesce into one citation; semantic hits collapse to unit text ([ADR-0010](docs/adr/0010-retrieval-applicability.md), [ADR-0040](docs/adr/0040-door-polarity-grammar.md), [ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md), [ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md))
+- **Semantic chunking (opt-in)** — spend a **highly capable LLM once at corpus build** on high-risk manuals (install / repair procedures) so units keep warnings with their TEST steps; a human reviews markers on the real PDF before activate; retrieval indexes compact reps; **generate treats native PDF/rasters as primary** (stub in the text fence; `source_text` is audit/fallback only) ([ADR-0047](docs/adr/0047-ingestion-versions.md)–[ADR-0051](docs/adr/0051-pdf-primary-semantic-evidence.md), [architecture/08](docs/architecture/08-semantic-curator-to-generate.md))
+- **Retrieval** — vector + codes/connectors, applicability, owner-preferring literature when feasible; door polarity is grammar, not slang YAML; same-problem rows coalesce into one citation; semantic hits collapse to a unit cite ([ADR-0010](docs/adr/0010-retrieval-applicability.md), [ADR-0040](docs/adr/0040-door-polarity-grammar.md), [ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md), [ADR-0042](docs/adr/0042-guide1-anchor-and-checklist-coalesce.md))
 - **Grounded Q&A / diagnose** — citations, abstain, checklist path discipline, gated source-page overlay and row/prose highlight, diagnose session tally ([ADR-0012](docs/adr/0012-grounded-qa.md), [ADR-0013](docs/adr/0013-langgraph-diagnostic.md), [ADR-0036](docs/adr/0036-ui-source-page-images.md)–[ADR-0038](docs/adr/0038-paragraph-highlight.md), [ADR-0044](docs/adr/0044-diagnose-session-tally.md)–[ADR-0046](docs/adr/0046-current-span-protocol.md))
 - **Safety** — block / escalate / post-LLM gates; owner vs technician ([ADR-0014](docs/adr/0014-safety-policy.md))
 - **Improve from traces** — Langfuse → `mine-traces` reports → human promote ([ADR-0018](docs/adr/0018-langfuse-observability.md), [ADR-0023](docs/adr/0023-trace-driven-eval-mining.md))
+
+### Shared retrieve → generate fork
+
+Structured and `semantic_llm` docs share the same query plan, fetch arms, and
+ranking. What differs is the row type in `active_chunks` and the generate
+payload: full chunk text vs locator stub + native PDF page-range
+([ADR-0051](docs/adr/0051-pdf-primary-semantic-evidence.md)). Drill-down:
+[architecture/04](docs/architecture/04-retrieval.md).
+
+```mermaid
+flowchart TD
+  q[Query]
+  plan[plan_for_query]
+  db[(active_chunks)]
+  vec[vector_fetch]
+  code[code_fetch]
+  conn[connector_fetch]
+  ref[reference_fetch]
+  rev[manual_rev_fetch]
+  merge[merge_hits]
+  apply[document_applies]
+  boost[Light_boosts_plus_owner_pref]
+  ranked[Final_ranked_list]
+  fork{Hit_strategy}
+  structHit[Structured_chunk_text]
+  semReps[Semantic_rep_hits]
+  collapse[collapse_semantic_units]
+  unitCite[One_unit_cite_source_text_on_ledger]
+  packS[format_evidence_full_text]
+  packU[format_evidence_stub]
+  packF[format_evidence_source_text_fallback]
+  attach[attach_semantic_pdf_or_rasters]
+  gen[Answer_LLM]
+
+  q --> plan
+  plan --> vec
+  plan --> code
+  plan --> conn
+  plan --> ref
+  plan --> rev
+  db -.->|structured_rows_or_reps| vec
+  db -.-> code
+  db -.-> conn
+  db -.-> ref
+  db -.-> rev
+  vec --> merge
+  code --> merge
+  conn --> merge
+  ref --> merge
+  rev --> merge
+  merge --> apply
+  apply --> boost
+  boost --> ranked
+  ranked --> fork
+  fork -->|structured| structHit
+  fork -->|semantic_llm| semReps
+  structHit --> packS
+  semReps --> collapse
+  collapse --> unitCite
+  unitCite --> attach
+  attach -->|ok| packU
+  attach -->|fail| packF
+  packS --> gen
+  packU --> gen
+  packF --> gen
+  attach -->|PDF_primary_body| gen
+```
+
+| Stage | Structured | `semantic_llm` |
+| --- | --- | --- |
+| Arms match | Enriched chunk text | Compact reps (search surface only) |
+| Ranking | Shared applicability → boosts → owner pref | Same |
+| Generate | Full text in fence | Stub + native PDF/rasters (primary); `source_text` is audit/fallback |
 
 **Architecture (drill-down):** [System context](docs/architecture/01-system-context.md) · [Deployment](docs/architecture/02-deployment.md) · [Offline ingest](docs/architecture/03-offline-ingest.md) · [Retrieval](docs/architecture/04-retrieval.md) · [Ask vs diagnose](docs/architecture/05-runtime-ask-diagnose.md) · [Safety](docs/architecture/06-safety.md) · [Observability](docs/architecture/07-observability-improve.md) · [Semantic curator → generate](docs/architecture/08-semantic-curator-to-generate.md) — index: [docs/architecture/](docs/architecture/)
 

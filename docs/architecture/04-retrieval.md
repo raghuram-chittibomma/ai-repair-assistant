@@ -76,7 +76,76 @@ flowchart TD
 
 ### Structured vs curated semantic hits
 
-Same fetch arms; different rows in `active_chunks`:
+Same fetch arms and the same ranking stack; different rows in `active_chunks`.
+Compact reps are a **search surface only** — they never become the generate
+payload. After rank, semantic hits collapse to one unit cite; generate then
+attaches the native PDF page-range (ADR-0051) instead of sending those reps.
+
+```mermaid
+flowchart TD
+  q[Query]
+  plan[plan_for_query]
+  db[(active_chunks)]
+  vec[vector_fetch]
+  code[code_fetch]
+  conn[connector_fetch]
+  ref[reference_fetch]
+  rev[manual_rev_fetch]
+  merge[merge_hits]
+  apply[document_applies]
+  boost[Light_boosts_plus_owner_pref]
+  ranked[Final_ranked_list]
+  fork{Hit_strategy}
+  structHit[Structured_chunk_text]
+  semReps[Semantic_rep_hits]
+  collapse[collapse_semantic_units]
+  unitCite[One_unit_cite_source_text_on_ledger]
+  packS[format_evidence_full_text]
+  packU[format_evidence_stub]
+  packF[format_evidence_source_text_fallback]
+  attach[attach_semantic_pdf_or_rasters]
+  gen[Answer_LLM]
+
+  q --> plan
+  plan --> vec
+  plan --> code
+  plan --> conn
+  plan --> ref
+  plan --> rev
+  db -.->|structured_rows_or_reps| vec
+  db -.-> code
+  db -.-> conn
+  db -.-> ref
+  db -.-> rev
+  vec --> merge
+  code --> merge
+  conn --> merge
+  ref --> merge
+  rev --> merge
+  merge --> apply
+  apply --> boost
+  boost --> ranked
+  ranked --> fork
+  fork -->|structured| structHit
+  fork -->|semantic_llm| semReps
+  structHit --> packS
+  semReps --> collapse
+  collapse --> unitCite
+  unitCite --> attach
+  attach -->|ok| packU
+  attach -->|fail| packF
+  packS --> gen
+  packU --> gen
+  packF --> gen
+  attach -->|PDF_primary_body| gen
+```
+
+| Stage | Structured | `semantic_llm` |
+| --- | --- | --- |
+| What BGE / arms match | Enriched chunk text | Compact reps (`overview` / `facts` / `questions`) |
+| Ranking | Shared: applicability → light boosts → owner pref (`vector_apply_boost`) | Same |
+| After rank | Chunk stays as-is (plus same-problem coalesce) | Collapse reps → one unit cite; ledger keeps `source_text` |
+| Generate payload | Full text in fence (`modality: structured_text`) | Stub in fence + **native PDF/rasters** as primary (`modality: semantic_pdf`) |
 
 | Active strategy | What is embedded / matched | Text evidence pack (`format_evidence`) | Also at generate ([ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md) / [ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md)) |
 | --- | --- | --- | --- |
