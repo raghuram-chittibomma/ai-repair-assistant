@@ -66,8 +66,10 @@ flowchart LR
 
 Structured and `semantic_llm` docs share the same query plan, fetch arms, and
 ranking. What differs is the row type in `active_chunks` and the generate
-payload: full chunk text vs locator stub + native PDF page-range
-([ADR-0051](docs/adr/0051-pdf-primary-semantic-evidence.md)). Drill-down:
+payload: full chunk text (plus optional gated figure-page JPEGs) vs locator
+stub + native PDF page-range
+([ADR-0051](docs/adr/0051-pdf-primary-semantic-evidence.md),
+[ADR-0035](docs/adr/0035-multimodal-figure-evidence.md)). Drill-down:
 [architecture/04](docs/architecture/04-retrieval.md).
 
 ```mermaid
@@ -90,6 +92,7 @@ flowchart TD
   collapse[collapse_semantic_units]
   unitCite[One_unit_cite_source_text_on_ledger]
   packS[format_evidence_full_text]
+  gated[attach_gated_images_optional]
   packU[format_evidence_stub]
   packF[format_evidence_source_text_fallback]
   attach[attach_semantic_pdf_or_rasters]
@@ -118,12 +121,14 @@ flowchart TD
   fork -->|structured| structHit
   fork -->|semantic_llm| semReps
   structHit --> packS
+  structHit -->|figure_schematic_cite| gated
+  packS --> gen
+  gated -->|page_JPEG_rasters| gen
   semReps --> collapse
   collapse --> unitCite
   unitCite --> attach
   attach -->|ok| packU
   attach -->|fail| packF
-  packS --> gen
   packU --> gen
   packF --> gen
   attach -->|PDF_primary_body| gen
@@ -133,7 +138,7 @@ flowchart TD
 | --- | --- | --- |
 | Arms match | Enriched chunk text | Compact reps (search surface only) |
 | Ranking | Shared applicability → boosts → owner pref | Same |
-| Generate | Full text in fence | Stub + native PDF/rasters (primary); `source_text` is audit/fallback |
+| Generate | Full text in fence; **optional** gated page JPEGs for figure/schematic cites | Stub + native PDF/rasters (primary); `source_text` is audit/fallback |
 
 **Architecture (drill-down):** [System context](docs/architecture/01-system-context.md) · [Deployment](docs/architecture/02-deployment.md) · [Offline ingest](docs/architecture/03-offline-ingest.md) · [Retrieval](docs/architecture/04-retrieval.md) · [Ask vs diagnose](docs/architecture/05-runtime-ask-diagnose.md) · [Safety](docs/architecture/06-safety.md) · [Observability](docs/architecture/07-observability-improve.md) · [Semantic curator → generate](docs/architecture/08-semantic-curator-to-generate.md) — index: [docs/architecture/](docs/architecture/)
 

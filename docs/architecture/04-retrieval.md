@@ -101,6 +101,7 @@ flowchart TD
   collapse[collapse_semantic_units]
   unitCite[One_unit_cite_source_text_on_ledger]
   packS[format_evidence_full_text]
+  gated[attach_gated_images_optional]
   packU[format_evidence_stub]
   packF[format_evidence_source_text_fallback]
   attach[attach_semantic_pdf_or_rasters]
@@ -129,12 +130,14 @@ flowchart TD
   fork -->|structured| structHit
   fork -->|semantic_llm| semReps
   structHit --> packS
+  structHit -->|figure_schematic_cite| gated
+  packS --> gen
+  gated -->|page_JPEG_rasters| gen
   semReps --> collapse
   collapse --> unitCite
   unitCite --> attach
   attach -->|ok| packU
   attach -->|fail| packF
-  packS --> gen
   packU --> gen
   packF --> gen
   attach -->|PDF_primary_body| gen
@@ -145,7 +148,7 @@ flowchart TD
 | What BGE / arms match | Enriched chunk text | Compact reps (`overview` / `facts` / `questions`) |
 | Ranking | Shared: applicability → light boosts → owner pref (`vector_apply_boost`) | Same |
 | After rank | Chunk stays as-is (plus same-problem coalesce) | Collapse reps → one unit cite; ledger keeps `source_text` |
-| Generate payload | Full text in fence (`modality: structured_text`) | Stub in fence + **native PDF/rasters** as primary (`modality: semantic_pdf`) |
+| Generate payload | Full text in fence (`modality: structured_text`); **optional** gated page JPEGs for figure/schematic cites ([ADR-0035](../adr/0035-multimodal-figure-evidence.md)) | Stub in fence + **native PDF/rasters** as primary (`modality: semantic_pdf`) |
 
 | Active strategy | What is embedded / matched | Text evidence pack (`format_evidence`) | Also at generate ([ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md) / [ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md)) |
 | --- | --- | --- | --- |
