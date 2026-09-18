@@ -159,3 +159,20 @@ def semantic_evidence_max_pages() -> int:
     except ValueError:
         return DEFAULT_SEMANTIC_EVIDENCE_MAX_PAGES
     return value if value > 0 else DEFAULT_SEMANTIC_EVIDENCE_MAX_PAGES
+
+
+def weak_evidence_min_score() -> float | None:
+    """Cosine/score floor for the pre-LLM weak-pack gate (ADR-0052).
+
+    Unset, empty, or ``<= 0`` disables the gate (default until ``T`` is
+    calibrated). Positive float enables abstain when the pack is weak.
+    """
+    load_dotenv_files()
+    raw = os.environ.get("REPAIR_WEAK_EVIDENCE_MIN_SCORE", "").strip()
+    if not raw:
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    return value if value > 0 else None

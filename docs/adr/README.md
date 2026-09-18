@@ -59,6 +59,7 @@ End-to-end diagram (propose → human board → retrieve → generate with layou
 | [0040](0040-door-polarity-grammar.md) | Door unlock/lock polarity is negation × lemma, not `when_user_says` contractions | `doesn't open` cited Door Won't Lock |
 | [0041](0041-unlock-family-no-fault-code.md) | Unlock retrieve is stuck-closed OEM; F5E2 is user-typed, not a polarity hint | Unlock expand fetched TEST #4 |
 | [0042](0042-guide1-anchor-and-checklist-coalesce.md) | Same-page `problem_title` siblings expand and coalesce into one citation (not a ranking constant) | Mid-table hit hid first remedies |
+| [0052](0052-weak-evidence-abstain-gate.md) | Pre-LLM abstain when top‑K is weak cosine only; precision arms exempt; env `T` off by default | Top‑K filled with off-topic OEM after applicability |
 
 ## Phase 5 — Grounded Q&A
 

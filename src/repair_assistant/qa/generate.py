@@ -16,9 +16,12 @@ from repair_assistant.corpus.manifest import Manifest
 from repair_assistant.corpus.support import (
     ABSTAIN_NO_EVIDENCE,
     ABSTAIN_UNSUPPORTED_MODEL,
+    ABSTAIN_WEAK_EVIDENCE,
+    WEAK_EVIDENCE_REASON,
     corpus_supports_appliance,
     no_evidence_message,
     unsupported_appliance_message,
+    weak_evidence_message,
 )
 from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import (
@@ -47,6 +50,7 @@ from repair_assistant.qa.env import (
     llm_timeout_seconds,
     llm_vision_model,
     openai_api_key,
+    weak_evidence_min_score,
 )
 from repair_assistant.qa.page_images import PageImage, attach_gated_images
 from repair_assistant.qa.parts import related_parts_note
@@ -61,6 +65,7 @@ from repair_assistant.qa.structured import (
     claims_as_dicts,
 )
 from repair_assistant.retrieval.search import search
+from repair_assistant.retrieval.weak_evidence import assess_weak_evidence_pack
 from repair_assistant.safety.audience_claim import record_audience_claim
 from repair_assistant.safety.classifier import assess_layered
 from repair_assistant.safety.gate import gate_answer
@@ -682,6 +687,21 @@ def _no_evidence_answer(question: str, appliance: Appliance | None, *, assessmen
     )
 
 
+def _weak_evidence_answer(question: str, appliance: Appliance | None, *, assessment) -> AnswerResult:
+    msg = weak_evidence_message(appliance)
+    return AnswerResult(
+        question=question,
+        answer=msg,
+        abstained=True,
+        abstain_reason=WEAK_EVIDENCE_REASON,
+        abstain_code=ABSTAIN_WEAK_EVIDENCE,
+        citations=[],
+        retrieval_count=0,
+        safety_action=assessment.action.value,
+        safety_notice=assessment.reason,
+    )
+
+
 #: Marks an answer that carries evidence but no generated prose (review R36).
 ABSTAIN_LLM_UNAVAILABLE = "llm_unavailable"
 
@@ -1023,6 +1043,24 @@ def prepare_ask(
             appliance,
             assessment,
             _no_evidence_answer(question, appliance, assessment=assessment),
+        )
+
+    weak = assess_weak_evidence_pack(
+        result.hits,
+        query=question,
+        min_score=weak_evidence_min_score(),
+    )
+    with child_observation(
+        "weak_evidence_gate",
+        input={"hit_count": len(result.hits), "query": question},
+    ) as span:
+        update_span(span, output=weak.as_trace_dict())
+    if weak.weak:
+        return _early_prep(
+            question,
+            appliance,
+            assessment,
+            _weak_evidence_answer(question, appliance, assessment=assessment),
         )
 
     fit = check_evidence_fit(intent, [h.text for h in result.hits])

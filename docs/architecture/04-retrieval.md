@@ -37,6 +37,7 @@ flowchart TD
 - **Over-fetch then drop:** Neighbours come back broad; applicability removes wrong-platform hits before boosts can resurrect them.
 - **Product gate:** Hybrid re-test kept ADR-0010 as default ([ADR-0020](../adr/0020-hybrid-retrieval-retest.md)).
 - **Into generate:** Ranked hits become a numbered **text** evidence pack via `format_evidence`, then ask/diagnose call the LLM ([05 — Ask vs diagnose](05-runtime-ask-diagnose.md)). For semantic cites with a successful PDF/raster attach, the fence is a **locator stub** and the attachment is primary ([ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md); attach mechanics [ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md)).
+- **Weak pack gate (optional):** When `REPAIR_WEAK_EVIDENCE_MIN_SCORE` is set, ask and diagnose **search** turns abstain before the LLM if the pack is only weak cosine and has no precision-arm hit ([ADR-0052](../adr/0052-weak-evidence-abstain-gate.md)). Progress reuse skips the gate ([ADR-0043](../adr/0043-session-evidence-reuse.md)).
 
 ## Retrieval plan and fetch arms
 

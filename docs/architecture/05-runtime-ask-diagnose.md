@@ -60,6 +60,7 @@ flowchart TD
   assess -->|block| block
   assess -->|continue| search
   search -->|no_hits| empty
+  search -->|weak_pack| weak[Abstain_weak_evidence]
   search --> fmt
   fmt --> ownerPol
   ownerPol --> gen
@@ -68,7 +69,7 @@ flowchart TD
   citeCheck --> out
 ```
 
-- **Abstain paths:** Unsupported model, no applicable evidence, or procedural answer missing `[n]` citations ([ADR-0012](../adr/0012-grounded-qa.md)).
+- **Abstain paths:** Unsupported model, no applicable evidence, weak evidence when the env floor is set ([ADR-0052](../adr/0052-weak-evidence-abstain-gate.md)), or procedural answer missing `[n]` citations ([ADR-0012](../adr/0012-grounded-qa.md)).
 - **Owner evidence policy:** Injects a directive when retrieved text looks like service-only literature so the model stays owner-safe.
 - **Streaming:** SSE status / token / done events; disconnect cancels generation.
   The model returns structured JSON ([ADR-0028](../adr/0028-structured-claim-evidence.md));

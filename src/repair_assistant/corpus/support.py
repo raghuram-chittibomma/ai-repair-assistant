@@ -9,6 +9,11 @@ from repair_assistant.corpus.manifest import Manifest
 
 ABSTAIN_UNSUPPORTED_MODEL = "unsupported_model"
 ABSTAIN_NO_EVIDENCE = "no_evidence"
+ABSTAIN_WEAK_EVIDENCE = "weak_evidence"
+
+WEAK_EVIDENCE_REASON = (
+    "Documentation set has no sufficiently matching evidence for this question."
+)
 
 
 @dataclass(frozen=True)
@@ -72,11 +77,29 @@ def no_evidence_message(appliance: Appliance | None) -> str:
     )
 
 
+def weak_evidence_message(appliance: Appliance | None) -> str:
+    """Owner-facing message when retrieval returned only weak / off-topic hits."""
+    if appliance:
+        return (
+            f"We don't have sufficiently matching manufacturer documentation for "
+            f"this question on model {appliance.model}. Try rephrasing, include an "
+            f"error code if one is displayed, or contact Whirlpool Customer Care "
+            f"with your model and serial number."
+        )
+    return (
+        "We don't have sufficiently matching manufacturer documentation for this "
+        "question. Specify an appliance model or rephrase your question."
+    )
+
+
 __all__ = [
     "ABSTAIN_NO_EVIDENCE",
     "ABSTAIN_UNSUPPORTED_MODEL",
+    "ABSTAIN_WEAK_EVIDENCE",
     "CorpusSupportResult",
+    "WEAK_EVIDENCE_REASON",
     "corpus_supports_appliance",
     "no_evidence_message",
     "unsupported_appliance_message",
+    "weak_evidence_message",
 ]

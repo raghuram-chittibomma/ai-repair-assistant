@@ -13,9 +13,12 @@ from repair_assistant.corpus.manifest import Manifest
 from repair_assistant.corpus.support import (
     ABSTAIN_NO_EVIDENCE,
     ABSTAIN_UNSUPPORTED_MODEL,
+    ABSTAIN_WEAK_EVIDENCE,
+    WEAK_EVIDENCE_REASON,
     corpus_supports_appliance,
     no_evidence_message,
     unsupported_appliance_message,
+    weak_evidence_message,
 )
 from repair_assistant.diagnostic.board import (
     board_from_mapping,
@@ -50,7 +53,12 @@ from repair_assistant.qa.acks import (
     is_unresolved_followup,
 )
 from repair_assistant.qa.context import format_evidence, resolve_citations
-from repair_assistant.qa.env import llm_model, llm_vision_model, openai_api_key
+from repair_assistant.qa.env import (
+    llm_model,
+    llm_vision_model,
+    openai_api_key,
+    weak_evidence_min_score,
+)
 from repair_assistant.qa.generate import (
     LLMClient,
     OpenAIClient,
@@ -77,6 +85,7 @@ from repair_assistant.qa.structured import (
 )
 from repair_assistant.retrieval.query_expand import is_mid_cycle_stop_query
 from repair_assistant.retrieval.search import search
+from repair_assistant.retrieval.weak_evidence import assess_weak_evidence_pack
 from repair_assistant.safety.classifier import assess_layered
 from repair_assistant.safety.gate import gate_answer
 from repair_assistant.safety.models import Audience, SafetyAction, SafetyAssessment
@@ -168,6 +177,29 @@ def _stamp_board(
     phase_hint: str | None = None,
 ) -> DiagnosticGraphState:
     return _apply_delta(state, _attach_board(state, {}, raw=raw, phase_hint=phase_hint))
+
+
+def _appliance_from_state(state: DiagnosticGraphState) -> Appliance | None:
+    if not state.get("appliance_model"):
+        return None
+    return Appliance(
+        model=state["appliance_model"],
+        serial=state.get("appliance_serial"),
+    )
+
+
+def _empty_pack_abstain_message(state: DiagnosticGraphState) -> tuple[str, str, str]:
+    """Message, reason, and code when retrieve abstained with no evidence text."""
+    appliance = _appliance_from_state(state)
+    code = str(state.get("abstain_code") or "")
+    reason = str(state.get("abstain_reason") or "")
+    if code == ABSTAIN_WEAK_EVIDENCE or reason == WEAK_EVIDENCE_REASON:
+        return weak_evidence_message(appliance), WEAK_EVIDENCE_REASON, ABSTAIN_WEAK_EVIDENCE
+    return (
+        no_evidence_message(appliance),
+        "No matching manufacturer evidence for this question.",
+        ABSTAIN_NO_EVIDENCE,
+    )
 
 
 def _done_payload(
@@ -468,6 +500,30 @@ def make_retrieve_node(
                 "retrieval_count": 0,
                 "abstained": True,
                 "abstain_reason": "No matching manufacturer evidence for this question.",
+                "abstain_code": ABSTAIN_NO_EVIDENCE,
+                "figure_pages": [],
+                "evidence_pdf_paths": [],
+                "retrieve_label": label or "",
+            }
+        weak = assess_weak_evidence_pack(
+            hits,
+            query=query,
+            min_score=weak_evidence_min_score(),
+        )
+        with child_observation(
+            "weak_evidence_gate",
+            input={"hit_count": len(hits), "query": query},
+        ) as span:
+            update_span(span, output=weak.as_trace_dict())
+        if weak.weak:
+            return {
+                "retrieval_query": query,
+                "evidence_text": "",
+                "citations_available": [],
+                "retrieval_count": len(hits),
+                "abstained": True,
+                "abstain_reason": WEAK_EVIDENCE_REASON,
+                "abstain_code": ABSTAIN_WEAK_EVIDENCE,
                 "figure_pages": [],
                 "evidence_pdf_paths": [],
                 "retrieve_label": label or "",
@@ -603,19 +659,14 @@ def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
             return closed
 
         if state.get("abstained") and not state.get("evidence_text"):
-            appliance = None
-            if state.get("appliance_model"):
-                appliance = Appliance(
-                    model=state["appliance_model"],
-                    serial=state.get("appliance_serial"),
-                )
-            content = no_evidence_message(appliance)
+            content, reason, _code = _empty_pack_abstain_message(state)
             return _attach_board(
                 state,
                 {
                     "messages": [AIMessage(content=content)],
                     "abstained": True,
-                    "abstain_reason": "No matching manufacturer evidence for this question.",
+                    "abstain_reason": reason,
+                    "abstain_code": _code,
                 },
                 phase_hint="close",
             )
@@ -794,23 +845,18 @@ def diagnose_turn_stream(
         return
 
     if state.get("abstained") and not state.get("evidence_text"):
-        appliance = None
-        if state.get("appliance_model"):
-            appliance = Appliance(
-                model=state["appliance_model"],
-                serial=state.get("appliance_serial"),
-            )
-        msg = no_evidence_message(appliance)
+        msg, reason, code = _empty_pack_abstain_message(state)
         state = _apply_delta(
             state,
             {
                 "messages": [AIMessage(content=msg)],
                 "abstained": True,
-                "abstain_reason": "No matching manufacturer evidence for this question.",
+                "abstain_reason": reason,
+                "abstain_code": code,
             },
         )
         state = _stamp_board(state, phase_hint="close")
-        yield _done_payload(state, msg, abstain_code=ABSTAIN_NO_EVIDENCE)
+        yield _done_payload(state, msg, abstain_code=code)
         return
 
     _trace_evidence_prompt(
