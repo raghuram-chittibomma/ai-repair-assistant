@@ -412,6 +412,7 @@ def fetch_langfuse_traces(*, since: datetime, limit: int = 50) -> list[TraceReco
     """
     load_dotenv_files()
     from langfuse import Langfuse
+
     from repair_assistant.observability.langfuse_tracing import langfuse_host
 
     host = langfuse_host()
