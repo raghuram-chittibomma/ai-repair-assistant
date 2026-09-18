@@ -155,6 +155,15 @@ flowchart LR
   [ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md),
   [LANGFUSE.md](../LANGFUSE.md)).
 
+What the answer LLM sees by hit kind (full table in
+[ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md)):
+
+| Hit kind | Fence | Primary authority |
+| --- | --- | --- |
+| Structured | Full text | Text body |
+| Semantic + attach OK | Locator stub | PDF / rasters for `[n]` |
+| Semantic + attach failed | Full `source_text` | Text body |
+
 ## Surfaces
 
 | Surface | Role |

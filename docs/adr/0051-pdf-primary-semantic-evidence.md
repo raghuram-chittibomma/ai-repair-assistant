@@ -14,6 +14,35 @@ unit `source_text` in `<<<MANUFACTURER_EVIDENCE>>>`. That duplicated content
 and biased the answer model toward the easier text channel, undermining the
 reason for PDF attach (layout the extract loses).
 
+## Target behavior
+
+```mermaid
+flowchart TD
+  retrieve[Retrieve_and_rank]
+  pack[format_evidence]
+  attach[attach_semantic_pdf_evidence]
+  llm[Answer_LLM]
+  audit[Hidden_source_text_for_UI_judge]
+
+  retrieve --> pack
+  retrieve --> attach
+  pack -->|"structured: full text"| llm
+  pack -->|"semantic: stub only if PDF attached"| llm
+  attach -->|"PDF or rasters labeled by n"| llm
+  retrieve --> audit
+```
+
+| Hit kind | What the answer LLM sees for `[n]` | Primary authority |
+| --- | --- | --- |
+| Structured | Full chunk text in the fence (`modality: structured_text`) | Text body |
+| Semantic + PDF/raster OK | **Stub only** (label, pages, unit title/type, `modality: semantic_pdf`) + file/image part tagged `[n]` | Attachment |
+| Semantic + attach failed | Full `source_text` in the fence (`modality: semantic_text_fallback`) | Text body |
+
+Defaults locked with this ADR:
+
+- Attach failure → **fallback to full `source_text` for that `[n]` only** (do not abstain the whole turn).
+- Claim groundedness / `bench-qa` → score against **hidden** `source_text` on `Citation.block_text` (audit ledger). No multimodal judge in this slice.
+
 ## Decision
 
 1. **Semantic + attach OK → stub in the fence, attachment is primary.** The
