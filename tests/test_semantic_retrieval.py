@@ -242,47 +242,72 @@ def test_a_legacy_chunk_sends_full_text() -> None:
     assert len(text) > 2000
 
 
-def test_generation_receives_source_text_not_the_representation() -> None:
-    body, citations = format_evidence([_unit_hit()], query="washer will not drain")
+def test_generation_receives_stub_when_pdf_attached_not_full_extract() -> None:
+    body, citations = format_evidence(
+        [_unit_hit()],
+        query="washer will not drain",
+        semantic_attached_indexes={1},
+    )
 
-    assert "WARNING: Disconnect power" in body
-    assert "TEST #7: Drain Pump" in body
-    assert "1.4 to 1.9 ohms" in body
+    assert "modality: semantic_pdf" in body
+    assert "Authority for [1]" in body
+    assert "WARNING: Disconnect power" not in body
+    assert "1.4 to 1.9 ohms" not in body
     assert "generated overview text" not in body
     assert citations[0].chunk_id == "001-test-7-drain-pump", "unit_key citation"
     assert citations[0].block_text == UNIT_SOURCE
+    assert "WARNING: Disconnect power" in citations[0].block_text
 
 
-def test_an_oversize_unit_drops_the_lowest_ranked_evidence_not_its_own_tail() -> None:
+def test_generation_falls_back_to_source_text_when_attach_fails() -> None:
+    body, citations = format_evidence(
+        [_unit_hit()],
+        query="washer will not drain",
+        semantic_attached_indexes=frozenset(),
+    )
+    assert "modality: semantic_text_fallback" in body
+    assert "WARNING: Disconnect power" in body
+    assert "TEST #7: Drain Pump" in body
+    assert citations[0].block_text == UNIT_SOURCE
+
+
+def test_an_oversize_unit_stub_leaves_room_for_lower_ranked_evidence() -> None:
     big = _unit_hit("PROCEDURE START. " + ("step detail. " * 700) + " PROCEDURE END.", 0.95)
     small = _legacy_hit("p8-table_row-a", 0.40)
-    body, citations = format_evidence([big, small], max_chars=9_000)
+    body, citations = format_evidence(
+        [big, small], max_chars=9_000, semantic_attached_indexes={1}
+    )
 
-    assert len(citations) == 1, "the lowest-ranked block was dropped whole"
-    assert citations[0].index == 1
-    assert "PROCEDURE START" in body
-    assert "PROCEDURE END" in body, "the unit kept its tail"
-    assert "F5E2 |" not in body
+    assert len(citations) == 2, "stub-cost unit no longer crowds out the table row"
+    assert citations[0].block_text.startswith("PROCEDURE START")
+    assert "PROCEDURE END" in citations[0].block_text
+    assert "modality: semantic_pdf" in body
+    assert "PROCEDURE START" not in body
+    assert "F5E2 |" in body
 
 
 def test_smaller_evidence_after_an_oversize_unit_still_fits() -> None:
     big = _unit_hit("PROCEDURE. " + ("step detail. " * 400), 0.95)
     huge = _unit_hit("SECOND UNIT. " + ("more detail. " * 800), 0.80)
     small = _legacy_hit("p8-table_row-a", 0.40)
-    body, citations = format_evidence([big, huge, small], max_chars=6_000)
+    body, citations = format_evidence(
+        [big, huge, small], max_chars=6_000, semantic_attached_indexes={1, 2}
+    )
 
     labels = [c.label for c in citations]
-    assert len(citations) == 2, "the unit that did not fit was skipped, not the tail"
+    assert len(citations) == 3, "stub costs let both units and the row fit"
     assert "SECOND UNIT" not in body
     assert "F5E2 |" in body
-    assert [c.index for c in citations] == [1, 2], "indices stay contiguous"
+    assert [c.index for c in citations] == [1, 2, 3], "indices stay contiguous"
     assert all(labels)
 
 
 def test_the_top_hit_is_included_even_when_it_alone_exceeds_the_budget() -> None:
-    """Answering from nothing is worse than one oversize block."""
-    big = _unit_hit("PROCEDURE. " + ("step detail. " * 900), 0.95)
-    body, citations = format_evidence([big, _legacy_hit()], max_chars=1_000)
+    """Answering from nothing is worse than one oversize structured block."""
+    big = _legacy_hit()
+    big.text = "PROCEDURE. " + ("step detail. " * 900)
+    big.score = 0.95
+    body, citations = format_evidence([big, _legacy_hit("other", 0.1)], max_chars=1_000)
 
     assert len(citations) == 1
     assert citations[0].block_text == big.text.strip()
@@ -294,7 +319,9 @@ def test_evidence_blocks_stay_aligned_with_citations_after_a_drop() -> None:
 
     big = _unit_hit("PROCEDURE. " + ("step detail. " * 500), 0.95)
     small = _legacy_hit("p8-table_row-a", 0.40)
-    _, citations = format_evidence([big, small], max_chars=5_000)
+    _, citations = format_evidence(
+        [big, small], max_chars=5_000, semantic_attached_indexes={1}
+    )
     blocks = evidence_blocks_from_citations(citations)
 
     assert set(blocks) == {c.index for c in citations}

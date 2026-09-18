@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -151,37 +152,101 @@ def _retry_sleep(attempt: int, base: float) -> float:
     return base * (2 ** (attempt - 1)) * (1.0 + random.random() * 0.25)
 
 
+def _cite_index_from_pdf_path(path: Path) -> int | None:
+    """Parse ``cite{n}-…`` filenames produced by semantic PDF attach."""
+    match = re.match(r"cite(\d+)-", path.name)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def interleaved_user_content(
+    user: str,
+    *,
+    images: list[PageImage] | None = None,
+    pdf_paths: list[Path] | None = None,
+    pdf_file_ids: dict[int, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Evidence fence text, then attachments ordered by citation index (ADR-0051).
+
+    ``pdf_file_ids`` maps cite index → OpenAI file id when native PDF parts are
+    uploaded. Without file ids, only image parts are interleaved (trace / vision
+    path). Each attachment group is introduced with
+    ``Attachment for evidence [n]:``.
+    """
+    import base64
+
+    content: list[dict[str, Any]] = [{"type": "text", "text": user}]
+    by_index: dict[int, dict[str, Any]] = {}
+
+    for path in pdf_paths or []:
+        index = _cite_index_from_pdf_path(Path(path))
+        if index is None:
+            continue
+        slot = by_index.setdefault(index, {"pdf": None, "images": []})
+        slot["pdf"] = Path(path)
+
+    for image in images or []:
+        slot = by_index.setdefault(int(image.index), {"pdf": None, "images": []})
+        slot["images"].append(image)
+
+    for index in sorted(by_index):
+        slot = by_index[index]
+        content.append(
+            {
+                "type": "text",
+                "text": f"Attachment for evidence [{index}]:",
+            }
+        )
+        file_id = (pdf_file_ids or {}).get(index)
+        if file_id:
+            content.append({"type": "file", "file": {"file_id": file_id}})
+        elif slot["pdf"] is not None and not pdf_file_ids:
+            # No upload map: keep a text fingerprint for tests / dry assembly.
+            content.append(
+                {
+                    "type": "text",
+                    "text": f"(PDF page-range file: {Path(slot['pdf']).name})",
+                }
+            )
+        for image in slot["images"]:
+            if image.page:
+                content.append(
+                    {
+                        "type": "text",
+                        "text": f"(PDF page {image.page})",
+                    }
+                )
+            encoded = base64.b64encode(image.jpeg_bytes).decode("ascii")
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{encoded}",
+                        "detail": "low",
+                    },
+                }
+            )
+    return content
+
+
 def build_chat_messages(
     system: str,
     user: str,
     images: list[PageImage] | None = None,
 ) -> list[dict]:
-    """OpenAI chat messages; page rasters become image_url parts (ADR-0035)."""
-    import base64
-
+    """OpenAI chat messages; page rasters become image_url parts (ADR-0035/0051)."""
     if not images:
         return [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
-    content: list[dict[str, Any]] = [{"type": "text", "text": user}]
-    for image in images:
-        content.append(
-            {
-                "type": "text",
-                "text": f"Figure for evidence [{image.index}] (PDF page {image.page}):",
-            }
-        )
-        encoded = base64.b64encode(image.jpeg_bytes).decode("ascii")
-        content.append(
-            {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/jpeg;base64,{encoded}", "detail": "low"},
-            }
-        )
     return [
         {"role": "system", "content": system},
-        {"role": "user", "content": content},
+        {
+            "role": "user",
+            "content": interleaved_user_content(user, images=images),
+        },
     ]
 
 
@@ -437,52 +502,38 @@ class OpenAIClient:
         pdf_paths: list[Path],
         images: list[PageImage] | None = None,
     ) -> str:
-        """Native PDF page-range file parts (ADR-0049 curator + ADR-0050 generate)."""
-        import base64
-
+        """Native PDF page-range file parts (ADR-0049 curator + ADR-0050/0051)."""
         missing = [p for p in pdf_paths if not p.is_file()]
         if missing:
             raise LLMRequestError(f"PDF not found: {missing[0]}")
         client = self._client()
         uploaded: list[Any] = []
         try:
-            content: list[dict[str, Any]] = [{"type": "text", "text": user}]
+            pdf_file_ids: dict[int, str] = {}
+            orphan_ids: list[tuple[Path, str]] = []
             for path in pdf_paths:
                 with path.open("rb") as handle:
                     file_obj = client.files.create(file=handle, purpose="user_data")
                 uploaded.append(file_obj)
+                index = _cite_index_from_pdf_path(Path(path))
+                if index is not None:
+                    pdf_file_ids[index] = file_obj.id
+                else:
+                    orphan_ids.append((Path(path), file_obj.id))
+            content = interleaved_user_content(
+                user,
+                images=images,
+                pdf_paths=pdf_paths,
+                pdf_file_ids=pdf_file_ids,
+            )
+            for path, file_id in orphan_ids:
                 content.append(
                     {
                         "type": "text",
-                        "text": f"PDF page-range for evidence ({path.name}):",
+                        "text": f"Attachment for evidence ({path.name}):",
                     }
                 )
-                content.append(
-                    {
-                        "type": "file",
-                        "file": {"file_id": file_obj.id},
-                    }
-                )
-            for image in images or []:
-                content.append(
-                    {
-                        "type": "text",
-                        "text": (
-                            f"Figure for evidence [{image.index}] "
-                            f"(PDF page {image.page}):"
-                        ),
-                    }
-                )
-                encoded = base64.b64encode(image.jpeg_bytes).decode("ascii")
-                content.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{encoded}",
-                            "detail": "low",
-                        },
-                    }
-                )
+                content.append({"type": "file", "file": {"file_id": file_id}})
             messages: list[dict[str, Any]] = [
                 {"role": "system", "content": system},
                 {"role": "user", "content": content},
@@ -703,7 +754,17 @@ def _trace_evidence(
     manifest: Manifest | None = None,
     appliance: Appliance | None = None,
 ) -> tuple[str, list[Citation], list[PageImage], SemanticEvidenceAttach]:
-    evidence_text, available = format_evidence(hits, query=query, manifest=manifest)
+    # Phase 1: optimistic stubs so citation indexes exist for PDF attach.
+    _, available = format_evidence(hits, query=query, manifest=manifest)
+    semantic = attach_semantic_pdf_evidence(hits, available, manifest)
+    attached_sem = frozenset(semantic.attached_indexes)
+    # Phase 2: stub only where attach succeeded; full extract fallback otherwise.
+    evidence_text, available = format_evidence(
+        hits,
+        query=query,
+        manifest=manifest,
+        semantic_attached_indexes=attached_sem,
+    )
     evidence_text, available, images = attach_gated_images(
         hits,
         available,
@@ -711,8 +772,8 @@ def _trace_evidence(
         manifest,
         query=query,
         enabled=bool(llm_vision_model()),
+        semantic_attached_indexes=attached_sem,
     )
-    semantic = attach_semantic_pdf_evidence(hits, available, manifest)
     if semantic.page_images:
         images = list(images) + list(semantic.page_images)
     if semantic.notes:

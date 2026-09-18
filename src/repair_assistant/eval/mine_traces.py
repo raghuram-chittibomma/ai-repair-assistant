@@ -412,8 +412,9 @@ def fetch_langfuse_traces(*, since: datetime, limit: int = 50) -> list[TraceReco
     """
     load_dotenv_files()
     from langfuse import Langfuse
+    from repair_assistant.observability.langfuse_tracing import langfuse_host
 
-    host = (os.environ.get("LANGFUSE_HOST") or "http://localhost:3000").strip()
+    host = langfuse_host()
     client = Langfuse(
         public_key=os.environ["LANGFUSE_PUBLIC_KEY"].strip(),
         secret_key=os.environ["LANGFUSE_SECRET_KEY"].strip(),

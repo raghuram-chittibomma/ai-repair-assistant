@@ -64,4 +64,4 @@ Segmentation input:
 
 ## See also
 
-[architecture/08 — Semantic curator → generate](../architecture/08-semantic-curator-to-generate.md) · [ADR-0050](0050-generate-hybrid-pdf-evidence.md)
+[architecture/08 — Semantic curator → generate](../architecture/08-semantic-curator-to-generate.md) · [ADR-0050](0050-generate-hybrid-pdf-evidence.md) · [ADR-0051](0051-pdf-primary-semantic-evidence.md)

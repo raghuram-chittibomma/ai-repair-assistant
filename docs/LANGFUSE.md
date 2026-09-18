@@ -41,6 +41,7 @@ In `.env.local` (see `.env.example`):
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_HOST=http://localhost:3000
+# Also accepted: LANGFUSE_BASE_URL (same meaning as LANGFUSE_HOST)
 ```
 
 ### 4. Smoke test
@@ -80,6 +81,7 @@ that Langfuse's own Compose starts.
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_HOST=http://LAN_HOST:3000
+# LANGFUSE_BASE_URL=http://LAN_HOST:3000  # alias; either name works
 ```
 
 (Replace `LAN_HOST` with your host from `INFRASTRUCTURE.local.md`.)

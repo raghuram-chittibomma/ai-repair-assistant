@@ -16,7 +16,8 @@ FIGURE_UNREADABLE_NOTE = (
 FIGURE_ATTACHED_NOTE = (
     "Note: a page image is attached for one or more evidence blocks that "
     "cite a figure. Use the image for location and orientation only; cite [n]; "
-    "do not invent pin numbers, voltages, or hold times that are not in the text block."
+    "do not invent pin numbers, voltages, or hold times that are not in the "
+    "cited modality (structured text or Attachment for evidence [n])."
 )
 
 _CITE_REF = re.compile(r"\[(\d+)\]")
@@ -167,14 +168,85 @@ def fence_evidence(text: str) -> str:
 
 
 def evidence_text(hit: Hit, *, query: str = "") -> str:
-    """The text of one evidence block.
+    """Full stored text for one hit (audit ledger / attach-failure fallback).
 
-    Semantic units and structured chunks both send their full stored text.
     Pack-level budgets (``REPAIR_EVIDENCE_MAX_CHARS``) still apply in
-    :func:`format_evidence`. ``query`` is kept for call-site compatibility.
+    :func:`format_evidence`. For semantic units with a successful PDF/raster
+    attach, the prompt fence shows a stub instead (ADR-0051); this helper
+    still returns the full extract. ``query`` is kept for call-site
+    compatibility.
     """
     del query  # no per-hit windowing (ADR-0050)
     return (hit.text or "").strip()
+
+
+def _unit_locator(hit: Hit) -> str:
+    """Stable unit id/type string for semantic stubs."""
+    meta = hit.metadata if isinstance(hit.metadata, dict) else {}
+    unit_key = str(meta.get("unit_key") or hit.chunk_id or "").strip() or "unit"
+    unit_type = str(meta.get("unit_type") or "unit").strip() or "unit"
+    return f"{unit_key} ({unit_type})"
+
+
+def semantic_stub_body(hit: Hit, index: int) -> str:
+    """Locator-only fence body when the PDF/raster attachment is primary."""
+    label = format_label(hit)
+    return (
+        f"[{index}] {label}\n"
+        f"modality: semantic_pdf\n"
+        f"unit: {_unit_locator(hit)}\n"
+        f"Authority for [{index}]: attached PDF page-range (or page images) "
+        f"labeled [{index}].\n"
+        f"Do not invent content not visible in that attachment."
+    )
+
+
+def semantic_fallback_body(hit: Hit, index: int, text: str) -> str:
+    """Full extract when PDF/raster attach failed for this cite."""
+    label = format_label(hit)
+    return (
+        f"[{index}] {label}\n"
+        f"modality: semantic_text_fallback\n"
+        f"Note: PDF/raster attach failed for [{index}]; "
+        f"authority is the extract below.\n"
+        f"{text}"
+    )
+
+
+def structured_prompt_body(hit: Hit, index: int, text: str) -> str:
+    """Full structured chunk text with modality tag."""
+    label = format_label(hit)
+    return f"[{index}] {label}\nmodality: structured_text\n{text}"
+
+
+def _prompt_body_for_hit(
+    hit: Hit,
+    index: int,
+    full_text: str,
+    *,
+    semantic_attached_indexes: set[int] | frozenset[int] | None,
+) -> str:
+    """Fence body for one hit. Citations keep full_text separately (ADR-0051)."""
+    if not getattr(hit, "is_semantic_unit", False):
+        return structured_prompt_body(hit, index, full_text)
+    # None = optimistic stub (pre-attach). Explicit set = stub only when attached.
+    use_stub = (
+        semantic_attached_indexes is None
+        or index in semantic_attached_indexes
+    )
+    if use_stub:
+        return semantic_stub_body(hit, index)
+    return semantic_fallback_body(hit, index, full_text)
+
+
+def _pack_cost(hit: Hit, full_text: str) -> int:
+    """Budget cost: stub length for semantic units so extracts do not crowd out."""
+    label_len = len(format_label(hit))
+    if getattr(hit, "is_semantic_unit", False):
+        # Index is unknown at selection time; stub length is stable aside from [n].
+        stub = semantic_stub_body(hit, 1)
+        return len(stub) + 8
+    return len(full_text) + label_len + 8 + len("modality: structured_text\n")
 
 
 def _pack_order(hits: list[Hit]) -> list[Hit]:
@@ -202,6 +274,7 @@ def format_evidence(
     max_chars: int | None = None,
     manifest=None,
     attached_indexes: set[int] | frozenset[int] | None = None,
+    semantic_attached_indexes: set[int] | frozenset[int] | None = None,
 ) -> tuple[str, list[Citation]]:
     """Numbered evidence blocks for the LLM prompt.
 
@@ -216,6 +289,12 @@ def format_evidence(
     so the source-page overlay still lights up when both compete for the
     leftover budget.
 
+    Semantic units (ADR-0051): the fence shows a locator stub when PDF/raster
+    attach succeeds (or optimistically when ``semantic_attached_indexes`` is
+    None). ``Citation.block_text`` always keeps the full ``source_text`` for
+    UI, audit, and claim groundedness. Attach failure falls back to full text
+    for that ``[n]`` only.
+
     ``max_chars`` defaults to :func:`repair_assistant.qa.env.evidence_max_chars`
     (``REPAIR_EVIDENCE_MAX_CHARS``). Unset or ``0`` means no cap.
     """
@@ -226,7 +305,7 @@ def format_evidence(
     used = 0
     for hit in _pack_order(hits):
         text = evidence_text(hit, query=query)
-        cost = len(text) + len(format_label(hit)) + 8
+        cost = _pack_cost(hit, text)
         if (
             selected
             and budget is not None
@@ -240,7 +319,14 @@ def format_evidence(
     citations: list[Citation] = []
     for index, (hit, text) in enumerate(selected, 1):
         label = format_label(hit)
-        blocks.append(f"[{index}] {label}\n{text}")
+        blocks.append(
+            _prompt_body_for_hit(
+                hit,
+                index,
+                text,
+                semantic_attached_indexes=semantic_attached_indexes,
+            )
+        )
         bbox, page_width, page_height = layout_from_hit(hit)
         citations.append(
             Citation(

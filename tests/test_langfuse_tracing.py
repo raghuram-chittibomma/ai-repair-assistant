@@ -19,6 +19,15 @@ def test_tracing_disabled_by_default(monkeypatch) -> None:
         assert isinstance(span, tracing._NoOpSpan)
 
 
+def test_langfuse_host_accepts_base_url_alias(monkeypatch) -> None:
+    monkeypatch.setattr(tracing, "load_dotenv_files", lambda: None)
+    monkeypatch.delenv("LANGFUSE_HOST", raising=False)
+    monkeypatch.setenv("LANGFUSE_BASE_URL", "http://192.168.4.52:3000")
+    assert tracing.langfuse_host() == "http://192.168.4.52:3000"
+    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:3000")
+    assert tracing.langfuse_host() == "http://localhost:3000", "HOST wins over BASE_URL"
+
+
 def test_observation_uses_langfuse_when_keys_set(monkeypatch) -> None:
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")

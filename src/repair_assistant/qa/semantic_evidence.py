@@ -1,4 +1,4 @@
-"""Attach native PDF page-ranges or page rasters for semantic evidence (ADR-0050)."""
+"""Attach native PDF page-ranges or page rasters for semantic evidence (ADR-0050/0051)."""
 
 from __future__ import annotations
 
@@ -23,9 +23,11 @@ from repair_assistant.semantic.pdf_extract import write_pdf_part
 _log = logging.getLogger("repair_assistant.qa")
 
 SEMANTIC_LAYOUT_NOTE = (
-    "Note: attached PDF page-range files and/or page images are the authoritative "
-    "layout for semantic citations; cite [n] and do not invent content that is not "
-    "in the evidence text or those attachments."
+    "Note: for evidence blocks tagged modality: semantic_pdf, the attached PDF "
+    "page-range file and/or page images labeled [n] ARE the evidence body; the "
+    "fenced stub is a locator only. Cite [n] from what is visible in that "
+    "attachment. Do not invent content that is not in the attachment (or in a "
+    "semantic_text_fallback / structured_text block)."
 )
 
 
@@ -34,7 +36,11 @@ class SemanticEvidenceAttach:
     """PDF file parts and/or rasters for semantic units in the evidence pack."""
 
     pdf_paths: list[Path] = field(default_factory=list)
+    #: Cite index → native PDF page-range path (text PDFs only).
+    pdf_by_index: dict[int, Path] = field(default_factory=dict)
     page_images: list[PageImage] = field(default_factory=list)
+    #: Cite indexes that successfully got a PDF part and/or at least one raster.
+    attached_indexes: set[int] = field(default_factory=set)
     notes: list[str] = field(default_factory=list)
     temp_dir: Path | None = None
 
@@ -108,6 +114,7 @@ def attach_semantic_pdf_evidence(
         scanned = bool(facts and facts.looks_scanned)
 
         if scanned:
+            attached_any = False
             for page in range(start, end + 1):
                 if pages_used >= max_pages:
                     out.notes.append(
@@ -127,6 +134,9 @@ def attach_semantic_pdf_evidence(
                     )
                 )
                 pages_used += 1
+                attached_any = True
+            if attached_any:
+                out.attached_indexes.add(cite.index)
             continue
 
         if temp_dir is None:
@@ -142,6 +152,8 @@ def attach_semantic_pdf_evidence(
             )
             continue
         out.pdf_paths.append(dest)
+        out.pdf_by_index[cite.index] = dest
+        out.attached_indexes.add(cite.index)
 
     if out.pdf_paths or out.page_images:
         out.notes.insert(0, SEMANTIC_LAYOUT_NOTE)

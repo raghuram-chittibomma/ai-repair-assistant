@@ -43,6 +43,7 @@ ADR-0009 supersedes the embedding provider choice in ADR-0008.
 | [0048](0048-semantic-knowledge-units.md) | *(partially superseded by 0049)* Unit vs representations; over-limit reps rejected; curator opt-in | 512-token BGE limit split procedures from their warnings |
 | [0049](0049-pdf-native-semantic-boundaries.md) | PDF page-range markers (native PDF or vision when scanned); thin PDF extract for `source_text`; real-PDF review UI | Parser/anchor path diverged from product intent |
 | [0050](0050-generate-hybrid-pdf-evidence.md) | Generate attaches native PDF page-ranges (text) or rasters (scanned); no structured 2k excerpt | Layout missing from text-only evidence pack |
+| [0051](0051-pdf-primary-semantic-evidence.md) | *(supersedes 0050 §2)* Semantic fence is stub when PDF/raster attaches; `source_text` is audit/fallback | Text pack duplicated PDF and biased the model off layout |
 
 End-to-end diagram (propose → human board → retrieve → generate with layout):
 [architecture/08](../architecture/08-semantic-curator-to-generate.md).

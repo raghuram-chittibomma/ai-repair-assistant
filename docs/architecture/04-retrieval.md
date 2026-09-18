@@ -36,7 +36,7 @@ flowchart TD
 - **One representation per document:** Every arm reads the `active_chunks` view, so only the document's active ingestion version is searchable. Superseded structured chunks stay in `chunks` but cannot be retrieved ([ADR-0047](../adr/0047-ingestion-versions.md)).
 - **Over-fetch then drop:** Neighbours come back broad; applicability removes wrong-platform hits before boosts can resurrect them.
 - **Product gate:** Hybrid re-test kept ADR-0010 as default ([ADR-0020](../adr/0020-hybrid-retrieval-retest.md)).
-- **Into the evidence pack:** Ranked hits become numbered blocks in `format_evidence` for ask/diagnose generate ([05 — Ask vs diagnose](05-runtime-ask-diagnose.md)). Structured hits contribute chunk text; semantic hits contribute unit `source_text` after collapse (below). Generate may also attach native PDF page-ranges for semantic cites ([ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md)).
+- **Into generate:** Ranked hits become a numbered **text** evidence pack via `format_evidence`, then ask/diagnose call the LLM ([05 — Ask vs diagnose](05-runtime-ask-diagnose.md)). For semantic cites with a successful PDF/raster attach, the fence is a **locator stub** and the attachment is primary ([ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md); attach mechanics [ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md)).
 
 ## Retrieval plan and fetch arms
 
@@ -78,10 +78,13 @@ flowchart TD
 
 Same fetch arms; different rows in `active_chunks`:
 
-| Active strategy | What is embedded / matched | What enters the evidence pack |
-| --- | --- | --- |
-| `structured` (default) | Hybrid-parse chunk text (enriched) | That chunk’s text |
-| `semantic_llm` (opt-in) | Compact **representations** (`overview` / `facts` / `questions`), not the PDF bytes | After collapse: unit **`source_text`** (thin PDF extract of the curated page range) |
+| Active strategy | What is embedded / matched | Text evidence pack (`format_evidence`) | Also at generate ([ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md) / [ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md)) |
+| --- | --- | --- | --- |
+| `structured` (default) | Hybrid-parse chunk text (enriched) | Full chunk text (`modality: structured_text`) | Optional page JPEGs for figures / schematics (existing late-fusion path) |
+| `semantic_llm` (opt-in) | Compact **reps** (`overview` / `facts` / `questions`), not the PDF bytes | After collapse: **stub** when PDF/raster attaches (`modality: semantic_pdf`); full **`source_text`** only on attach failure. Hidden `Citation.block_text` keeps the extract for UI/judge | **Native PDF page-range** file part (text PDFs) or page rasters (scanned) — primary authority when attach OK |
+
+For semantic cites the answer LLM treats the PDF/raster attachment as the body;
+the fenced stub is a locator. Retrieval itself never matches on native PDF bytes.
 
 ```mermaid
 flowchart LR
@@ -89,29 +92,34 @@ flowchart LR
   reps[semantic_rep_hits]
   collapse[collapse_semantic_units]
   text[Hit_text_equals_source_text]
-  pack[format_evidence]
-  pdf[Native_PDF_or_rasters_at_generate]
+  attach[attach_semantic_pdf_evidence]
+  pack[format_evidence_stub_or_fallback]
+  gen[Generate_LLM]
 
   arms --> reps
   reps --> collapse
   collapse --> text
-  text --> pack
-  pack --> pdf
+  text --> attach
+  attach --> pack
+  pack --> gen
+  attach --> gen
 ```
 
 On a `semantic_llm` document the arms match compact representations, not
 `source_text` and not native PDF. After sibling coalesce,
 `collapse_semantic_units` groups hits by `unit_id`, keeps the best score,
-records matched `rep_kind`s in `metadata.matched_representations`, and swaps
-`Hit.text` for the unit’s authoritative `source_text` — so several
-representations of one procedure arrive as **one evidence block** and generation
-reads the manual extract, not a generated summary
+records matched `rep_kind`s in `metadata.matched_reps`, and swaps
+`Hit.text` for the unit's authoritative `source_text` — so several
+reps of one procedure arrive as **one evidence cite**
 ([ADR-0048](../adr/0048-semantic-knowledge-units.md),
-[ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md)).
+[ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md)). Generate attaches
+the curated page-range first, then packs a stub (or full extract on attach
+failure) so the model ranks across text and PDF modalities
+([ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md)).
 
 That collapse is formatting after rank (same idea as
 `coalesce_problem_hits`), not a new boost. End-to-end curator → board →
-activate → retrieve → generate (including PDF attach):
+activate → retrieve → generate:
 [08 — Semantic curator → generate](08-semantic-curator-to-generate.md).
 
 **Modules:** `retrieval/planner.py`, `retrieval/intent.py`, `retrieval/query_expand.py`, `retrieval/polarity.py`, `retrieval/search.py`, `retrieval/siblings.py`, `retrieval/units.py`. Door unlock/lock polarity is compositional (negation × lemma) after contraction fold ([ADR-0040](../adr/0040-door-polarity-grammar.md)). Unlock `add_to_search` is stuck-closed OEM only — no F5E2 / lock failure ([ADR-0041](../adr/0041-unlock-family-no-fault-code.md)). After rank, same-page `problem_title` siblings expand and coalesce into one evidence hit so `[n]` is the full on-page checklist — formatting, not a new boost ([ADR-0042](../adr/0042-guide1-anchor-and-checklist-coalesce.md)). Leftover idioms (`got locked`) live in [`config/retrieval/query_expand.yaml`](../../config/retrieval/query_expand.yaml). Do not grow contraction rows in `when_user_says`. Diagnose must not add unconstrained query rewrite ([ADR-0034](../adr/0034-diagnose-nlu-split.md), [ADR-0039](../adr/0039-diagnose-retrieve-labels.md)).

@@ -34,6 +34,16 @@ class _NoOpSpan:
         return None
 
 
+def langfuse_host() -> str:
+    """Langfuse base URL. Accept ``LANGFUSE_HOST`` or ``LANGFUSE_BASE_URL``."""
+    load_dotenv_files()
+    for key in ("LANGFUSE_HOST", "LANGFUSE_BASE_URL"):
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value
+    return "http://localhost:3000"
+
+
 def tracing_enabled() -> bool:
     load_dotenv_files()
     public = os.environ.get("LANGFUSE_PUBLIC_KEY", "").strip()
@@ -189,8 +199,7 @@ def _client() -> Any:
     _langfuse_client = Langfuse(
         public_key=os.environ["LANGFUSE_PUBLIC_KEY"].strip(),
         secret_key=os.environ["LANGFUSE_SECRET_KEY"].strip(),
-        host=os.environ.get("LANGFUSE_HOST", "http://localhost:3000").strip()
-        or "http://localhost:3000",
+        host=langfuse_host(),
     )
     return _langfuse_client
 
@@ -425,6 +434,7 @@ __all__ = [
     "build_stamp_metadata",
     "child_observation",
     "generation",
+    "langfuse_host",
     "observation",
     "prepare_trace_value",
     "trace_max_chars",

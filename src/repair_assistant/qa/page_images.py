@@ -255,6 +255,7 @@ def attach_gated_images(
     *,
     query: str = "",
     enabled: bool = True,
+    semantic_attached_indexes: set[int] | frozenset[int] | None = None,
 ) -> tuple[str, list[Citation], list[PageImage]]:
     """Re-note evidence and raster gated pages when vision is enabled."""
     if not enabled or manifest is None:
@@ -270,5 +271,6 @@ def attach_gated_images(
         query=query,
         manifest=manifest,
         attached_indexes={image.index for image in images},
+        semantic_attached_indexes=semantic_attached_indexes,
     )
     return noted, cited, images

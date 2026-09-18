@@ -2,9 +2,10 @@
 
 End-to-end path for **opt-in LLM semantic chunking**: a capable model proposes
 procedure-scale units on the manufacturer PDF, a human reviews markers on that
-PDF, retrieval indexes compact representations, and generate sees both unit
-text and native PDF layout. Structured hybrid parse remains the default for
-every document until you promote one.
+PDF, retrieval indexes compact representations, and generate sees a locator stub
+plus native PDF layout as primary authority (full `source_text` on the citation
+ledger). Structured hybrid parse remains the default for every document until
+you promote one.
 
 Drill-downs: curator offline detail in [03 — Offline ingest](03-offline-ingest.md);
 retrieval collapse in [04 — Retrieval](04-retrieval.md); ask/diagnose runtime in
@@ -12,7 +13,8 @@ retrieval collapse in [04 — Retrieval](04-retrieval.md); ask/diagnose runtime 
 [ADR-0047](../adr/0047-ingestion-versions.md) ·
 [ADR-0048](../adr/0048-semantic-knowledge-units.md) ·
 [ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md) ·
-[ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md).
+[ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md) ·
+[ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md).
 
 ## Why use a strong LLM up front
 
@@ -25,9 +27,10 @@ build** (per high-risk document) to propose page-range units, then keep cheap
 local BGE + a smaller generate model at query time. Humans gate cutover on the
 real PDF so live retrieval never flips on unreviewed markers.
 
-At answer time the model gets **`source_text` for claim-binding** and, for text
-PDFs, a **native page-range file part** (or page rasters when scanned) so it
-sees the same structure the technician sees ([ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md)).
+At answer time the model gets a **locator stub** plus the **native page-range
+file part** (or page rasters when scanned) as primary authority; full
+`source_text` stays on the citation for UI/claim-binding and as attach-failure
+fallback ([ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md)).
 
 ## End-to-end (corpus → human → generate)
 
@@ -46,7 +49,7 @@ flowchart TD
   activeSem[Active_semantic_version]
   retrieve[Retrieve_overview_facts_questions]
   collapse[Collapse_to_unit_source_text]
-  pack[Evidence_pack_plus_native_PDF]
+  pack[Stub_pack_plus_native_PDF]
   answer[Grounded_ask_or_diagnose]
 
   manifest --> pdf
@@ -119,34 +122,37 @@ flowchart LR
   arms[Retrieval_arms]
   hits[Rep_hits]
   collapse[collapse_semantic_units]
-  text[Evidence_source_text]
   attach{Text_PDF_or_scan}
   pdfPart[Native_PDF_page_range]
   imgs[Page_rasters]
+  stub[Fence_stub_or_text_fallback]
   gen[Generate_LLM]
   cite[Cited_answer]
 
   q --> arms
   arms --> hits
   hits --> collapse
-  collapse --> text
-  text --> gen
-  text --> attach
+  collapse --> attach
   attach -->|text_PDF| pdfPart
   attach -->|scanned| imgs
+  attach --> stub
   pdfPart --> gen
   imgs --> gen
+  stub --> gen
   gen --> cite
 ```
 
 - Retrieval still uses `active_chunks` and applicability; only the active
   version is searchable.
-- Several reps of one unit become **one evidence block** with the unit’s
-  `source_text`.
-- Generate attaches layout for semantic citations; structured hits send full
-  chunk text (no 2k excerpt). Streaming falls back to complete when a PDF file
-  part is present. Langfuse records `native_pdf_parts` for inspection
-  ([ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md),
+- Several reps of one unit become **one evidence cite** with the unit’s
+  `source_text` on the citation ledger.
+- Generate attaches layout first; the fence shows a stub when attach OK
+  (full extract on failure). Structured hits send full chunk text (no 2k
+  excerpt). Attachments are interleaved by `[n]` rank. Streaming falls back
+  to complete when a PDF file part is present. Langfuse records
+  `native_pdf_parts` for inspection
+  ([ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md),
+  [ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md),
   [LANGFUSE.md](../LANGFUSE.md)).
 
 ## Surfaces

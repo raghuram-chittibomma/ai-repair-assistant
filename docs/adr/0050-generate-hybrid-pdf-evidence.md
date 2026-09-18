@@ -8,6 +8,10 @@ structured 2 000-character evidence `_excerpt` from [ADR-0048](0048-semantic-k
 decision 1’s legacy path. Keeps ADR-0049 boundaries, thin `source_text` for
 citations/claim-binding, and curator modality.
 
+**Decision 2 superseded by** [ADR-0051](0051-pdf-primary-semantic-evidence.md)
+(stub pack + PDF-primary when attach succeeds; `source_text` as audit ledger
+and attach-failure fallback).
+
 ## Context
 
 Semantic units are retrieved via compact representations, then collapsed to
@@ -28,6 +32,7 @@ semantic unit filled the pack budget.
      `REPAIR_SEMANTIC_EVIDENCE_MAX_PAGES`, default 8).
 2. **`source_text` stays in the fenced evidence pack** for citations, UI
    labels, and claim grounding. PDF/rasters are additional layout authority.
+   *(Superseded by ADR-0051: fence shows a stub when attach succeeds.)*
 3. **Structured chunks send full stored text** — no per-hit 2 000-character
    excerpt. Pack-level `REPAIR_EVIDENCE_MAX_CHARS` (unset/`0` = unlimited) and
    retrieval top‑N remain the only size gates.
@@ -48,4 +53,4 @@ semantic unit filled the pack budget.
 
 ## See also
 
-[architecture/08 — Semantic curator → generate](../architecture/08-semantic-curator-to-generate.md) · [LANGFUSE.md](../LANGFUSE.md)
+[architecture/08 — Semantic curator → generate](../architecture/08-semantic-curator-to-generate.md) · [LANGFUSE.md](../LANGFUSE.md) · [ADR-0051](0051-pdf-primary-semantic-evidence.md)

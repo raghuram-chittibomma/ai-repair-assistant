@@ -47,9 +47,10 @@ def test_evidence_max_chars_rejects_negative(monkeypatch) -> None:
 
 
 def test_format_evidence_honours_env_budget(monkeypatch) -> None:
-    # Labels include the [structured]/[semantic] tag (ADR-0050), so the
-    # budget must leave room for that overhead after the mandatory top hit.
-    monkeypatch.setenv("REPAIR_EVIDENCE_MAX_CHARS", "130")
+    # Labels include the [structured]/[semantic] tag and modality lines
+    # (ADR-0050/0051), so the budget must leave room for that overhead after
+    # the mandatory top hit.
+    monkeypatch.setenv("REPAIR_EVIDENCE_MAX_CHARS", "180")
     big = _hit(chunk_id="a", text="A" * 40)
     small = _hit(chunk_id="b", text="B" * 80)
     tiny = _hit(chunk_id="c", text="ok")

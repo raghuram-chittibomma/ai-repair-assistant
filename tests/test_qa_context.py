@@ -69,6 +69,7 @@ def test_format_evidence_numbers_blocks_and_truncates() -> None:
     assert text.startswith(EVIDENCE_BEGIN)
     assert text.endswith(EVIDENCE_END)
     assert "[1] W11320651 Rev A p.3 [structured]" in text
+    assert "modality: structured_text" in text
     assert "[2] kb-f5e2-front-load [structured]" in text
     assert len(citations) == 2
     assert citations[0].index == 1
@@ -150,7 +151,7 @@ def test_format_evidence_copies_table_row_bbox() -> None:
 
 
 def test_format_evidence_prefers_table_row_bbox_after_large_unit() -> None:
-    """A full semantic unit should not crowd out the highlightable table row."""
+    """Stub-cost semantic units leave room for highlightable table rows (ADR-0051)."""
     unit = _hit(
         doc_id="installation-instructions-w11156977",
         chunk_id="008-installation-instructions-french",
@@ -161,7 +162,13 @@ def test_format_evidence_prefers_table_row_bbox_after_large_unit() -> None:
         revision="D",
         unit_id=26,
         rep_kind=None,
-        metadata={"page_start": 15, "page_end": 19, "unit_title": "French"},
+        metadata={
+            "page_start": 15,
+            "page_end": 19,
+            "unit_title": "French",
+            "unit_key": "008-installation-instructions-french",
+            "unit_type": "installation",
+        },
     )
     prose = _hit(
         doc_id="use-and-care-w11156985",
@@ -187,10 +194,17 @@ def test_format_evidence_prefers_table_row_bbox_after_large_unit() -> None:
             "page_height": 792.0,
         },
     )
-    _, citations = format_evidence([unit, prose, row], max_chars=10_200)
-    assert [c.chunk_id for c in citations] == [
-        "008-installation-instructions-french",
-        "p23-table_row-shipping",
-    ]
-    assert citations[1].bbox is not None
-    assert citations[1].bbox["y0"] == 260.0
+    body, citations = format_evidence(
+        [unit, prose, row],
+        max_chars=10_200,
+        semantic_attached_indexes={1},
+    )
+    assert "modality: semantic_pdf" in body
+    assert "U" * 100 not in body, "stub must not dump the full extract"
+    assert citations[0].block_text == unit.text.strip()
+    chunk_ids = [c.chunk_id for c in citations]
+    assert "008-installation-instructions-french" in chunk_ids
+    assert "p23-table_row-shipping" in chunk_ids
+    row_cite = next(c for c in citations if c.chunk_id == "p23-table_row-shipping")
+    assert row_cite.bbox is not None
+    assert row_cite.bbox["y0"] == 260.0
