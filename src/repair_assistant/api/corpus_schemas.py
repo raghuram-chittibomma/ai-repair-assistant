@@ -212,3 +212,42 @@ class RevertRequest(BaseModel):
         default=None,
         description="Version to activate. Defaults to the latest structured version.",
     )
+
+
+class AssistSessionCreateRequest(BaseModel):
+    unit_key: str | None = None
+
+
+class AssistSessionOut(BaseModel):
+    session_id: str
+    doc_id: str
+    version: int
+    unit_key: str | None = None
+
+
+class AssistDraftIn(BaseModel):
+    """Local editor draft sent with each assist turn (may be unsaved)."""
+
+    overview: str = ""
+    facts: list[str] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+
+
+class AssistMessageRequest(BaseModel):
+    unit_key: str
+    message: str
+    draft: AssistDraftIn | None = None
+
+
+class AssistSuggestionOut(BaseModel):
+    rationale: str = ""
+    overview: str = ""
+    facts: list[str] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+
+
+class AssistMessageResponse(BaseModel):
+    session_id: str
+    unit_key: str
+    suggestion: AssistSuggestionOut
+    prompt_version: str = ""

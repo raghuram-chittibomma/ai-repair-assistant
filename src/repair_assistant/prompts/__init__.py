@@ -70,3 +70,7 @@ def semantic_segment() -> str:
 
 def semantic_representations() -> str:
     return load_prompt("semantic_representations")
+
+
+def corpus_assist_system() -> str:
+    return load_prompt("corpus_assist_system")

@@ -13,23 +13,208 @@
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
-    header { display: flex; gap: 1rem; align-items: center; justify-content: space-between; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--panel); }
+    header { display: flex; gap: 1rem; align-items: flex-start; justify-content: space-between; padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
     header h1 { margin: 0; font-size: 1.05rem; }
-    header p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.8rem; }
-    input, select, button { background: #141b24; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.55rem; font: inherit; }
+    header p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.8rem; max-width: 36rem; }
+    .header-actions { display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end; }
+    .toolbar { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+    .flow-hint { font-size: 0.78rem; color: var(--muted); text-align: right; }
+    .flow-hint strong { color: var(--text); font-weight: 600; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .seg button { border: 0; border-radius: 0; border-right: 1px solid var(--border); }
+    .seg button:last-child { border-right: 0; }
+    input, select, button, textarea { background: #141b24; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.55rem; font: inherit; }
+    textarea { width: 100%; min-height: 2.2rem; resize: vertical; line-height: 1.35; }
     button { cursor: pointer; }
     button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
     button:disabled { opacity: 0.45; cursor: not-allowed; }
     button.approved { background: #1e3d32; border-color: var(--ok); color: var(--ok); }
-    .layout { display: grid; grid-template-columns: 280px 1fr 340px; height: calc(100vh - 64px); }
-    .pane { overflow: auto; border-right: 1px solid var(--border); padding: 0.75rem; }
-    .pane:last-child { border-right: none; }
+    button.mode-on {
+      background: #243041;
+      color: var(--text);
+      box-shadow: inset 0 -2px 0 var(--accent);
+    }
+    .layout {
+      --docs-w: 260px;
+      --side-w: 56vw;
+      --assist-h: 220px;
+      display: grid;
+      grid-template-columns: var(--docs-w) 6px minmax(0, 1fr) 6px var(--side-w);
+      height: calc(100vh - 88px);
+      min-height: 0;
+    }
+    .layout.docs-collapsed {
+      grid-template-columns: 44px 0px minmax(0, 1fr) 6px var(--side-w);
+    }
+    .layout.docs-collapsed #split-docs { visibility: hidden; pointer-events: none; }
+    .layout.reps {
+      grid-template-columns: minmax(0, 1fr) 6px var(--side-w);
+    }
+    .layout.reps > #docs,
+    .layout.reps > #split-docs,
+    .layout.reps > #pdf-rail { display: none; }
+    .layout.reps.pdf-collapsed {
+      grid-template-columns: 44px minmax(0, 1fr);
+    }
+    .layout.reps.pdf-collapsed > #pdf-host,
+    .layout.reps.pdf-collapsed > #split-side { display: none; }
+    .layout.reps.pdf-collapsed > #pdf-rail { display: flex; }
+    .pdf-rail {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      width: 100%;
+      min-height: 100%;
+      padding: 0.5rem 0 0.75rem;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .pdf-rail .rail-label {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      margin-bottom: auto;
+      padding-top: 1rem;
+    }
+    .pane-fold {
+      display: none;
+      width: 1.6rem;
+      height: 1.85rem;
+      padding: 0;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      line-height: 1;
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    }
+    .pane-fold:hover { border-color: var(--accent); color: #fff; background: #243041; }
+    .layout.reps:not(.pdf-collapsed) #btn-pdf-collapse { display: inline-flex; }
+    .layout.reps.pdf-collapsed #btn-pdf-expand { display: inline-flex; }
+    #split-side {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 0.55rem;
+    }
+    .toolbar-markers { display: inline-flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }
+    .splitter {
+      background: var(--border);
+      position: relative;
+      z-index: 2;
+      transition: background 0.12s ease;
+    }
+    .splitter:hover, .splitter.dragging { background: var(--accent); }
+    .splitter-v { cursor: col-resize; }
+    .splitter-h { cursor: row-resize; flex: 0 0 6px; height: 6px; width: 100%; }
+    .side-stack {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .pane { overflow: auto; border-right: 1px solid var(--border); padding: 0.75rem; position: relative; min-width: 0; min-height: 0; }
+    .side-stack > .pane { border-right: none; }
+    #units { flex: 1 1 auto; }
+    #assist-pane {
+      display: none;
+      flex: 0 0 var(--assist-h);
+      flex-direction: column;
+      border-top: 1px solid var(--border);
+      padding: 0.55rem 0.75rem 0.65rem;
+      overflow: hidden !important;
+    }
+    .layout.reps #assist-pane:not(.hidden) { display: flex; }
+    .layout.reps #split-assist { display: block; }
+    #split-assist { display: none; }
+    #assist-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    #assist-scroll > h3 { margin: 0 0 0.15rem; font-size: 0.9rem; }
+    #assist-scroll > .status { margin: 0 0 0.35rem; }
+    #assist-log {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      overflow: visible;
+    }
+    #assist-feedback {
+      display: none;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin: 0.35rem 0 0.15rem;
+      overflow: visible;
+    }
+    #assist-feedback.has-content { display: flex; }
+    #assist-feedback-actions {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 0;
+    }
+    #assist-footer {
+      flex: 0 0 auto;
+      border-top: 1px solid var(--border);
+      margin: 0.35rem -0.75rem 0;
+      padding: 0.45rem 0.75rem 0;
+      background: var(--bg);
+    }
+    #assist-input {
+      width: 100%;
+      min-height: 4.8rem !important;
+      max-height: 9rem;
+      line-height: 1.35;
+      overflow-y: auto;
+    }
+    #assist-compose { margin-top: 0.35rem; }
+    #docs { transition: padding 0.15s ease; }
+    .layout.docs-collapsed #docs { padding: 0.4rem 0.25rem; overflow: hidden; }
+    .layout.docs-collapsed #docs-list { display: none; }
+    .docs-rail {
+      display: none;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      min-height: 100%;
+    }
+    .layout.docs-collapsed .docs-rail { display: flex; cursor: pointer; }
+    .docs-rail button { writing-mode: horizontal-tb; transform: none; width: 2rem; padding: 0.35rem 0; }
+    .docs-rail .rail-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.02em;
+      max-height: 50vh;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .docs-toolbar { display: flex; gap: 0.35rem; margin-bottom: 0.5rem; align-items: center; }
+    .layout.docs-collapsed .docs-toolbar { display: none; }
     .doc { padding: 0.55rem 0.6rem; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
     .doc:hover, .doc.active { background: #222b38; border-color: var(--border); }
     .doc .meta { color: var(--muted); font-size: 0.75rem; }
     #pdf-host { position: relative; background: #0a0d11; min-height: 100%; }
-    .page-wrap { position: relative; margin: 0.75rem auto; width: fit-content; }
+    .page-wrap { position: relative; margin: 0.5rem auto; width: fit-content; overflow: hidden; }
     .page-wrap canvas { display: block; box-shadow: 0 0 0 1px var(--border); }
+    .page-wrap.out-of-unit { display: none; }
     .marker { position: absolute; left: 0; right: 0; border-top: 2px solid currentColor; border-bottom: 2px solid currentColor; pointer-events: none; }
     .marker.c0 { color: #3d8bfd; background: rgba(61, 139, 253, 0.28); }
     .marker.c1 { color: #2db48c; background: rgba(45, 180, 140, 0.28); }
@@ -42,33 +227,121 @@
     .unit.active { border-color: var(--accent); }
     .unit h3 { margin: 0 0 0.25rem; font-size: 0.92rem; }
     .unit .meta { color: var(--muted); font-size: 0.75rem; }
-    .row { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.45rem; }
+    .row { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.45rem; align-items: center; }
     .issue { color: var(--danger); font-size: 0.8rem; margin: 0.25rem 0; }
     .ok { color: var(--ok); }
     .warn { color: var(--warn); }
     .status { font-size: 0.8rem; color: var(--muted); }
+    .badge { display: inline-block; font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; border: 1px solid var(--border); color: var(--muted); }
+    .badge.danger { color: var(--danger); border-color: var(--danger); }
+    .badge.warn { color: var(--warn); border-color: var(--warn); }
+    label.field { display: block; font-size: 0.75rem; color: var(--muted); margin: 0.55rem 0 0.2rem; }
+    .list-edit { display: flex; flex-direction: column; gap: 0.35rem; }
+    .list-edit .item { display: flex; gap: 0.35rem; align-items: flex-start; }
+    .list-edit .item textarea {
+      flex: 1;
+      min-height: 1.6rem;
+      height: auto;
+      overflow: hidden;
+      resize: vertical;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    #units textarea.overview {
+      min-height: 1.8rem;
+      height: auto;
+      overflow: hidden;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .bubble { border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.6rem; font-size: 0.82rem; background: #141b24; white-space: pre-wrap; }
+    .bubble.user { border-color: #35507a; }
+    .bubble.assistant { border-color: #2a5a45; }
+    .bubble.pending {
+      border-style: dashed;
+      border-color: #4a5a6e;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .hidden { display: none !important; }
+    #nav-chunk { margin-bottom: 0.5rem; }
+    #nav-chunk select { max-width: 100%; flex: 1 1 12rem; }
+    body.resizing-col { cursor: col-resize; user-select: none; }
+    body.resizing-row { cursor: row-resize; user-select: none; }
   </style>
 </head>
 <body>
   <header>
     <div>
       <h1>Corpus review</h1>
-      <p>PDF-native semantic markers (ADR-0049). Drag handles across pages to push neighbors; click a selected marker to split.</p>
+      <p id="header-sub">Pick a document, then follow the next step shown on the right.</p>
     </div>
-    <div class="row">
-      <input id="api-key" type="password" placeholder="API key" style="width:11rem" />
-      <button id="btn-refresh">Refresh</button>
-      <button id="btn-propose" class="primary" disabled>Propose semantic</button>
-      <button id="btn-revise" disabled title="Clone live markers into a new editable candidate (retrieval stays on the active set)">Revise</button>
-      <button id="btn-finalize" disabled title="Generate search representations and mark this version ready to Activate">Finalize</button>
-      <button id="btn-activate" disabled title="Cut over live retrieval to this semantic version">Activate</button>
+    <div class="header-actions">
+      <div class="toolbar">
+        <button type="button" id="btn-back" class="hidden" title="Return to boundary review">← Back</button>
+        <span id="toolbar-markers" class="toolbar-markers">
+          <button type="button" id="btn-docs-toggle" title="Show or hide document list">Docs</button>
+          <button id="btn-refresh" title="Reload document list">Refresh</button>
+          <span class="seg" title="Review mode">
+            <button type="button" id="btn-mode-markers" class="mode-on">Boundaries</button>
+            <button type="button" id="btn-mode-reps" disabled title="Available after Finalize generates reps">Review reps</button>
+          </span>
+          <button id="btn-propose" class="primary hidden" disabled>1 · Propose</button>
+          <button id="btn-revise" class="primary hidden" disabled title="Clone live markers into an editable candidate">Revise to edit</button>
+          <button id="btn-finalize" class="primary hidden" disabled title="Generate overview / facts / questions">2 · Finalize</button>
+        </span>
+        <button id="btn-activate" class="primary hidden" disabled title="Cut over live retrieval">3 · Activate</button>
+      </div>
+      <div id="flow-hint" class="flow-hint">Select a document to begin.</div>
       <span id="status" class="status"></span>
     </div>
   </header>
-  <div class="layout">
-    <div class="pane" id="docs"></div>
+  <div class="layout" id="layout">
+    <div class="pane" id="docs">
+      <div class="docs-toolbar">
+        <strong style="font-size:0.85rem">Documents</strong>
+        <button type="button" id="btn-docs-collapse" title="Hide list">Hide</button>
+      </div>
+      <div id="docs-list"></div>
+      <div class="docs-rail" id="docs-rail">
+        <button type="button" id="btn-docs-expand" title="Show document list">›</button>
+        <span class="rail-label" id="docs-rail-label">Documents</span>
+      </div>
+    </div>
+    <div class="splitter splitter-v" id="split-docs" title="Drag to resize documents"></div>
     <div class="pane" id="pdf-host"><p class="status" style="padding:1rem">Select a document.</p></div>
-    <div class="pane" id="units"><p class="status">No units loaded.</p></div>
+    <div class="pdf-rail" id="pdf-rail" title="Show PDF">
+      <span class="rail-label">PDF</span>
+      <button type="button" id="btn-pdf-expand" class="pane-fold" title="Show PDF">›</button>
+    </div>
+    <div class="splitter splitter-v" id="split-side" title="Drag to resize panels">
+      <button type="button" id="btn-pdf-collapse" class="pane-fold" title="Collapse PDF">‹</button>
+    </div>
+    <div class="side-stack" id="side-stack">
+      <div class="pane" id="units"><p class="status">No units loaded.</p></div>
+      <div class="splitter splitter-h" id="split-assist" title="Drag to resize assist"></div>
+      <div class="pane hidden" id="assist-pane">
+        <div id="assist-scroll">
+          <h3>Assist</h3>
+          <p class="status">Suggest-only · Apply → editor · Save writes corpus</p>
+          <div id="assist-feedback">
+            <div id="assist-log"></div>
+            <div class="row" id="assist-feedback-actions">
+              <button type="button" id="btn-assist-apply" class="primary" disabled>Apply</button>
+              <button type="button" id="btn-assist-clear">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div id="assist-footer">
+          <textarea id="assist-input" rows="3" placeholder="Ask to rewrite facts, add a question, shorten overview…"></textarea>
+          <div class="row" id="assist-compose">
+            <button type="button" id="btn-assist-send" class="primary">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -76,8 +349,144 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs
 const state = {
   docs: [], docId: null, version: null, units: [], pageCount: 0, pdf: null,
   selected: null, scale: 1.15, loadToken: 0, proposing: false, dragMoved: false,
+  docsW: 260, sideW: Math.round(Math.min(780, Math.max(560, window.innerWidth * 0.55))), assistH: 220, fitTimer: null, autosizeTimer: null,
   editable: false,
+  mode: "markers", // markers | reps
+  versionStatus: null,
+  draft: { overview: "", facts: [], questions: [] },
+  draftDirty: false,
+  assistSessionId: null,
+  lastSuggestion: null,
+  focusPage: null,
+  docsCollapsed: false,
+  pdfCollapsed: false,
+  readyToApprove: null,
 };
+
+function setDocsCollapsed(collapsed) {
+  state.docsCollapsed = !!collapsed;
+  document.getElementById("layout").classList.toggle("docs-collapsed", state.docsCollapsed);
+  const d = selectedDoc();
+  const label = d ? (d.title || d.doc_id) : "Documents";
+  document.getElementById("docs-rail-label").textContent = label;
+  document.getElementById("btn-docs-toggle").textContent = state.docsCollapsed ? "Docs ›" : "Hide docs";
+  applyLayoutVars();
+  scheduleFitPdf();
+}
+
+function setPdfCollapsed(collapsed) {
+  state.pdfCollapsed = !!collapsed;
+  document.getElementById("layout").classList.toggle("pdf-collapsed", state.pdfCollapsed);
+  applyLayoutVars();
+  scheduleFitPdf();
+  scheduleAutosizeReps();
+}
+
+
+function applyLayoutVars() {
+  const el = document.getElementById("layout");
+  el.style.setProperty("--docs-w", state.docsW + "px");
+  el.style.setProperty("--side-w", state.sideW + "px");
+  el.style.setProperty("--assist-h", state.assistH + "px");
+}
+
+function scheduleFitPdf() {
+  if (state.fitTimer) clearTimeout(state.fitTimer);
+  state.fitTimer = setTimeout(() => { state.fitTimer = null; fitPdfToHost(); }, 120);
+}
+
+function scheduleAutosizeReps() {
+  if (state.autosizeTimer) clearTimeout(state.autosizeTimer);
+  state.autosizeTimer = setTimeout(() => {
+    state.autosizeTimer = null;
+    autosizeAllRepFields();
+  }, 40);
+}
+
+function autosizeTextarea(el, maxPx) {
+  if (!el || el.disabled) return;
+  const max = maxPx == null ? 320 : maxPx;
+  const min = parseFloat(getComputedStyle(el).minHeight) || 28;
+  el.style.height = "0px";
+  const next = Math.min(max, Math.max(el.scrollHeight, min));
+  el.style.height = next + "px";
+}
+
+function autosizeAllRepFields() {
+  document.querySelectorAll("#units textarea").forEach((el) => {
+    autosizeTextarea(el, el.classList.contains("overview") ? 220 : 320);
+  });
+}
+
+async function fitPdfToHost() {
+  if (!state.pdf) return;
+  const host = document.getElementById("pdf-host");
+  if (!host || host.clientWidth < 80) return;
+  try {
+    const page = await state.pdf.getPage(1);
+    const base = page.getViewport({ scale: 1 });
+    const pad = 28;
+    const next = Math.min(2.4, Math.max(0.55, (host.clientWidth - pad) / base.width));
+    const need = Math.abs(next - state.scale) >= 0.04 || !document.querySelector(".page-wrap");
+    if (!need) return;
+    state.scale = next;
+    await renderPdfPages(state.loadToken);
+  } catch (err) {
+    /* ignore fit races while swapping docs */
+  }
+}
+
+function bindSplitters() {
+  const layout = document.getElementById("layout");
+  const bind = (id, kind) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.onpointerdown = (ev) => {
+      if (ev.button !== 0) return;
+      ev.preventDefault();
+      el.classList.add("dragging");
+      const startX = ev.clientX;
+      const startY = ev.clientY;
+      const startDocs = state.docsW;
+      const startSide = state.sideW;
+      const startAssist = state.assistH;
+      const rect = layout.getBoundingClientRect();
+      document.body.classList.add(kind === "assist" ? "resizing-row" : "resizing-col");
+      const onMove = (e) => {
+        if (kind === "docs") {
+          const dx = e.clientX - startX;
+          state.docsW = Math.min(420, Math.max(160, startDocs + dx));
+        } else if (kind === "side") {
+          const dx = e.clientX - startX;
+          state.sideW = Math.min(Math.floor(rect.width * 0.75), Math.max(360, startSide - dx));
+          scheduleAutosizeReps();
+        } else if (kind === "assist") {
+          const dy = e.clientY - startY;
+          const stack = document.getElementById("side-stack").clientHeight;
+          state.assistH = Math.min(Math.floor(stack * 0.7), Math.max(160, startAssist - dy));
+        }
+        applyLayoutVars();
+      };
+      const onUp = () => {
+        el.classList.remove("dragging");
+        document.body.classList.remove("resizing-col", "resizing-row");
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        scheduleFitPdf();
+        scheduleAutosizeReps();
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    };
+  };
+  bind("split-docs", "docs");
+  bind("split-side", "side");
+  bind("split-assist", "assist");
+  window.addEventListener("resize", () => {
+    scheduleFitPdf();
+    scheduleAutosizeReps();
+  });
+}
 
 function isEditable() {
   const d = selectedDoc();
@@ -85,11 +494,8 @@ function isEditable() {
   return state.editable;
 }
 
-function key() { return document.getElementById("api-key").value.trim(); }
 function headers() {
-  const h = { "Content-Type": "application/json" };
-  if (key()) h["X-API-Key"] = key();
-  return h;
+  return { "Content-Type": "application/json" };
 }
 function setStatus(msg, cls) {
   const el = document.getElementById("status");
@@ -101,31 +507,136 @@ function selectedDoc() {
   return state.docs.find(d => d.doc_id === state.docId) || null;
 }
 
-/** Propose only when there is no semantic board yet; Revise when viewing live active. */
+function selectedUnit() {
+  return state.units.find(u => u.unit_key === state.selected) || null;
+}
+
+function unitHasReps(u) {
+  return !!(u && u.representations && u.representations.length);
+}
+
+function versionHasReps() {
+  return state.units.some(unitHasReps);
+}
+
+function canUseRepsMode() {
+  return versionHasReps() || state.versionStatus === "ready" || state.versionStatus === "active";
+}
+
+function syncModeButtons() {
+  const repsOk = canUseRepsMode();
+  const inReps = state.mode === "reps";
+  document.getElementById("btn-mode-reps").disabled = !repsOk;
+  document.getElementById("btn-mode-markers").classList.toggle("mode-on", !inReps);
+  document.getElementById("btn-mode-reps").classList.toggle("mode-on", inReps);
+  document.getElementById("layout").classList.toggle("reps", inReps);
+  document.getElementById("assist-pane").classList.toggle("hidden", !inReps);
+  document.getElementById("toolbar-markers").classList.toggle("hidden", inReps);
+  document.getElementById("btn-back").classList.toggle("hidden", !inReps);
+  document.getElementById("header-sub").textContent = inReps
+    ? "Review reps for the focused unit. Assist can suggest; Save writes the corpus."
+    : "Adjust PDF boundaries, then Finalize to build reps.";
+  if (!inReps && state.pdfCollapsed) setPdfCollapsed(false);
+  applyLayoutVars();
+  scheduleFitPdf();
+  if (inReps) scheduleAutosizeReps();
+}
+
+function setFlowHint(text) {
+  document.getElementById("flow-hint").innerHTML = text || "";
+}
+
+function showStageButton(id, show, enabled, asPrimary) {
+  const el = document.getElementById(id);
+  el.classList.toggle("hidden", !show);
+  el.disabled = !enabled;
+  el.classList.toggle("primary", !!asPrimary && !!show);
+}
+
+function setMode(mode) {
+  if (mode === "reps" && !canUseRepsMode()) {
+    setStatus("Finalize first to generate reps", "warn");
+    return;
+  }
+  if (state.mode === "reps" && mode === "markers" && state.draftDirty) {
+    if (!window.confirm("Discard unsaved representation edits?")) return;
+    state.draftDirty = false;
+  }
+  state.mode = mode;
+  syncModeButtons();
+  syncActionButtons(selectedDoc());
+  if (state.mode === "reps") {
+    if (!state.selected && state.units.length) selectUnit(state.units[0], { skipDirtyCheck: true });
+    else {
+      loadDraftFromUnit(selectedUnit());
+      applyChunkFocus();
+      renderUnitsPane();
+    }
+    ensureAssistSession();
+  } else {
+    applyChunkFocus();
+    paintMarkers();
+    renderUnitsPane();
+  }
+}
+
+/** Show only the next-stage primary action for the current document status. */
 function syncActionButtons(doc) {
   const d = doc || selectedDoc();
   const hasBoard = state.version != null || (d && d.review_version != null);
   const editable = d ? !!d.review_editable : state.editable;
   const status = d && d.review_status;
-  document.getElementById("btn-propose").disabled =
-    !state.docId || state.proposing || !!hasBoard;
-  document.getElementById("btn-revise").disabled =
-    !state.docId || state.proposing || status !== "active";
-  // Finalize/Activate refined in loadVersion once ready_to_approve is known.
-  document.getElementById("btn-finalize").disabled =
-    !(editable && status === "candidate" && state.version != null);
-  document.getElementById("btn-activate").disabled =
-    !(editable && status === "ready" && state.version != null);
-  if (status === "ready") {
-    document.getElementById("btn-finalize").title =
-      "Already finalized — use Activate to cut over";
+  state.versionStatus = status || state.versionStatus;
+  const inReps = state.mode === "reps";
+
+  const canPropose = !!(state.docId && !state.proposing && !hasBoard && !inReps);
+  const canRevise = !!(state.docId && !state.proposing && status === "active" && !inReps);
+  const showFinalize = !!(editable && status === "candidate" && state.version != null && !inReps);
+  const finalizeReady = !!(showFinalize && state.readyToApprove);
+  const overLimit = state.units.some(u =>
+    (u.reps || []).some(r => r.over_limit) ||
+    (u.rejected_reps || []).length
+  );
+  const showActivate = !!(editable && status === "ready" && state.version != null);
+  const canActivate = !!(showActivate && !state.draftDirty && !overLimit);
+
+  showStageButton("btn-propose", canPropose, canPropose, true);
+  showStageButton("btn-revise", canRevise, canRevise, true);
+  showStageButton("btn-finalize", showFinalize, finalizeReady, true);
+  showStageButton("btn-activate", showActivate, canActivate, true);
+
+  if (inReps) {
+    setFlowHint(
+      showActivate
+        ? "<strong>Review</strong> each unit's reps, then <strong>Activate</strong> when ready."
+        : "Read-only reps. Use <strong>Back</strong> to return to boundaries."
+    );
+  } else if (!state.docId) {
+    setFlowHint("Select a document to begin.");
+  } else if (canPropose) {
+    setFlowHint("<strong>Next:</strong> Propose semantic boundaries on this PDF.");
+  } else if (status === "candidate") {
+    setFlowHint(
+      finalizeReady
+        ? "<strong>Next:</strong> Review boundaries, then <strong>Finalize</strong> to generate reps."
+        : "<strong>In progress:</strong> Fix coverage / approve units until Finalize unlocks."
+    );
+  } else if (status === "ready") {
+    setFlowHint("<strong>Next:</strong> Open <strong>Review reps</strong>, then Activate.");
   } else if (status === "active") {
-    document.getElementById("btn-finalize").title =
-      "Live markers are read-only — click Revise to edit a candidate copy";
+    setFlowHint(
+      canUseRepsMode()
+        ? "Live set (read-only). Open <strong>Review reps</strong> to view, or <strong>Revise to edit</strong>."
+        : "Live set (read-only). <strong>Revise to edit</strong> opens a candidate copy."
+    );
   } else {
-    document.getElementById("btn-finalize").title =
-      "Generate search representations and mark this version ready to Activate";
+    setFlowHint("");
   }
+
+  document.getElementById("btn-finalize").title = finalizeReady
+    ? "Generate overview / facts / questions and mark ready to Activate"
+    : "Approve units and fix coverage first";
+  syncModeButtons();
 }
 
 async function api(path, opts={}) {
@@ -133,14 +644,19 @@ async function api(path, opts={}) {
   const text = await res.text();
   let body = null;
   try { body = text ? JSON.parse(text) : null; } catch { body = { detail: text }; }
-  if (!res.ok) throw new Error((body && body.detail) || res.statusText);
+  if (!res.ok) {
+    const detail = (body && body.detail) || res.statusText;
+    const err = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    err.status = res.status;
+    throw err;
+  }
   return body;
 }
 
 async function refreshDocs() {
   const data = await api("/v1/corpus/documents");
   state.docs = data.documents || [];
-  const host = document.getElementById("docs");
+  const host = document.getElementById("docs-list");
   host.innerHTML = "";
   for (const d of state.docs) {
     const el = document.createElement("div");
@@ -149,6 +665,10 @@ async function refreshDocs() {
       + (d.review_version != null ? ` · review v${d.review_version}` : "") + `</div>`;
     el.onclick = () => selectDoc(d);
     host.appendChild(el);
+  }
+  if (state.docId) {
+    const d = selectedDoc();
+    document.getElementById("docs-rail-label").textContent = d ? (d.title || d.doc_id) : "Documents";
   }
 }
 
@@ -159,8 +679,16 @@ async function selectDoc(d) {
   state.editable = !!d.review_editable;
   state.units = [];
   state.selected = null;
+  state.assistSessionId = null;
+  state.lastSuggestion = null;
+  state.draftDirty = false;
+  state.mode = "markers";
+  state.readyToApprove = null;
   setStatus("");
+  document.getElementById("assist-log").innerHTML = "";
+  syncAssistFeedbackUi();
   document.getElementById("units").innerHTML = "<p class='status'>Loading…</p>";
+  setDocsCollapsed(true);
   syncActionButtons(d);
   await refreshDocs();
   if (token !== state.loadToken) return;
@@ -175,7 +703,7 @@ async function selectDoc(d) {
     state.units = [];
     paintMarkers();
     document.getElementById("units").innerHTML =
-      "<p class='status'>No semantic markers yet — propose semantic units.</p>";
+      "<p class='status'>No semantic markers yet — click Propose.</p>";
   }
 }
 
@@ -218,6 +746,13 @@ async function loadPdf(docId, token) {
   }
   if (token !== state.loadToken) return;
   state.pageCount = state.pdf.numPages;
+  await fitPdfToHost();
+}
+
+async function renderPdfPages(token) {
+  if (token == null) token = state.loadToken;
+  const host = document.getElementById("pdf-host");
+  if (!state.pdf || !host) return;
   host.innerHTML = "";
   for (let p = 1; p <= state.pageCount; p++) {
     if (token !== state.loadToken) return;
@@ -226,6 +761,7 @@ async function loadPdf(docId, token) {
     const wrap = document.createElement("div");
     wrap.className = "page-wrap";
     wrap.dataset.page = String(p);
+    wrap.dataset.fullHeight = String(viewport.height);
     wrap.style.width = viewport.width + "px";
     wrap.style.height = viewport.height + "px";
     const canvas = document.createElement("canvas");
@@ -236,7 +772,38 @@ async function loadPdf(docId, token) {
     await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
   }
   if (token !== state.loadToken) return;
+  applyChunkFocus();
   paintMarkers();
+}
+
+function applyChunkFocus() {
+  const unit = selectedUnit();
+  const wraps = [...document.querySelectorAll(".page-wrap")];
+  for (const wrap of wraps) {
+    const p = parseInt(wrap.dataset.page, 10);
+    const fullH = parseFloat(wrap.dataset.fullHeight || wrap.style.height) || wrap.offsetHeight;
+    wrap.classList.remove("out-of-unit");
+    wrap.style.height = fullH + "px";
+    wrap.style.marginTop = "0.75rem";
+    const canvas = wrap.querySelector("canvas");
+    if (canvas) canvas.style.transform = "";
+    if (state.mode !== "reps" || !unit || !unit.page_start || !unit.page_end) continue;
+    if (p < unit.page_start || p > unit.page_end) {
+      wrap.classList.add("out-of-unit");
+      continue;
+    }
+    const startY = (p === unit.page_start) ? (unit.start_y ?? 0) : 0;
+    const endY = (p === unit.page_end) ? (unit.end_y ?? 1) : 1;
+    const topPx = startY * fullH;
+    const visible = Math.max(8, (endY - startY) * fullH);
+    wrap.style.height = visible + "px";
+    if (canvas) canvas.style.transform = `translateY(${-topPx}px)`;
+  }
+  if (state.mode === "reps" && unit) {
+    const page = state.focusPage || unit.page_start;
+    const wrap = document.querySelector(`.page-wrap[data-page="${page}"]:not(.out-of-unit)`);
+    if (wrap) wrap.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
 }
 
 function posCmp(pageA, yA, pageB, yB) {
@@ -246,7 +813,7 @@ function posCmp(pageA, yA, pageB, yB) {
 }
 
 function pointerToPageY(clientY) {
-  const wraps = [...document.querySelectorAll(".page-wrap")];
+  const wraps = [...document.querySelectorAll(".page-wrap:not(.out-of-unit)")];
   if (!wraps.length) return null;
   for (const wrap of wraps) {
     const r = wrap.getBoundingClientRect();
@@ -255,24 +822,6 @@ function pointerToPageY(clientY) {
         page: parseInt(wrap.dataset.page, 10),
         y: Math.min(1, Math.max(0, (clientY - r.top) / r.height)),
       };
-    }
-  }
-  const first = wraps[0].getBoundingClientRect();
-  const last = wraps[wraps.length - 1].getBoundingClientRect();
-  if (clientY < first.top) {
-    return { page: parseInt(wraps[0].dataset.page, 10), y: 0 };
-  }
-  if (clientY > last.bottom) {
-    return { page: parseInt(wraps[wraps.length - 1].dataset.page, 10), y: 1 };
-  }
-  // Between pages: snap to nearer page edge
-  for (let i = 0; i < wraps.length - 1; i++) {
-    const a = wraps[i].getBoundingClientRect();
-    const b = wraps[i + 1].getBoundingClientRect();
-    if (clientY > a.bottom && clientY < b.top) {
-      const mid = (a.bottom + b.top) / 2;
-      if (clientY < mid) return { page: parseInt(wraps[i].dataset.page, 10), y: 1 };
-      return { page: parseInt(wraps[i + 1].dataset.page, 10), y: 0 };
     }
   }
   return null;
@@ -289,19 +838,33 @@ function scrollToUnit(unit) {
   host.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
 }
 
-function selectUnit(unit) {
+function loadDraftFromUnit(unit) {
+  const reps = (unit && unit.representations) || [];
+  const byKind = Object.fromEntries(reps.map(r => [r.rep_kind, r.text || ""]));
+  state.draft = {
+    overview: byKind.overview || "",
+    facts: (byKind.facts || "").split("\n").map(s => s.trim()).filter(Boolean),
+    questions: (byKind.questions || "").split("\n").map(s => s.trim()).filter(Boolean),
+  };
+  state.draftDirty = false;
+}
+
+function selectUnit(unit, opts={}) {
+  if (state.mode === "reps" && state.draftDirty && !opts.skipDirtyCheck) {
+    if (!window.confirm("Discard unsaved edits for this unit?")) return;
+  }
   state.selected = unit.unit_key;
+  state.focusPage = unit.page_start;
+  if (state.mode === "reps") loadDraftFromUnit(unit);
+  applyChunkFocus();
   paintMarkers();
-  scrollToUnit(unit);
-  // Refresh the unit list active styling without a full reload.
-  document.querySelectorAll(".unit").forEach(el => {
-    const key = el.dataset.unitKey;
-    el.classList.toggle("active", key === unit.unit_key);
-  });
+  if (state.mode === "markers") scrollToUnit(unit);
+  renderUnitsPane();
 }
 
 function paintMarkers() {
   document.querySelectorAll(".marker").forEach(n => n.remove());
+  if (state.mode === "reps") return;
   const editable = isEditable();
   state.units.forEach((u, index) => {
     if (u._hidden) return;
@@ -397,7 +960,6 @@ function beginDrag(ev, unit, which) {
       if (posCmp(hit.page, hit.y, live.page_start, live.start_y ?? 0) <= 0) return;
       live.page_end = hit.page;
       live.end_y = hit.y;
-      // Push / preview-absorb following units
       for (let i = idx + 1; i < state.units.length; i++) {
         const nxt = state.units[i];
         if (posCmp(live.page_end, live.end_y, nxt.page_start, nxt.start_y ?? 0) <= 0) break;
@@ -507,17 +1069,244 @@ async function addUnitAfterSelection() {
   }
 }
 
-async function loadVersion(docId, version, token) {
-  if (token == null) token = state.loadToken;
-  const data = await api(`/v1/corpus/documents/${encodeURIComponent(docId)}/semantic/versions/${version}`);
-  if (token !== state.loadToken || state.docId !== docId) return;
-  state.units = data.units || [];
-  state.version = data.version;
-  const doc = selectedDoc();
-  state.editable = doc ? !!doc.review_editable : state.editable;
+function markDraftDirty() {
+  state.draftDirty = true;
+  syncActionButtons(selectedDoc());
+}
+
+function renderListEditor(kind, items) {
+  const host = document.createElement("div");
+  host.className = "list-edit";
+  host.dataset.kind = kind;
+  const paint = () => {
+    host.innerHTML = "";
+    items.forEach((text, idx) => {
+      const row = document.createElement("div");
+      row.className = "item";
+      const input = document.createElement("textarea");
+      input.value = text;
+      input.rows = 1;
+      input.oninput = () => {
+        items[idx] = input.value;
+        markDraftDirty();
+        autosizeTextarea(input);
+      };
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.textContent = "×";
+      rm.title = "Remove";
+      rm.onclick = () => {
+        items.splice(idx, 1);
+        markDraftDirty();
+        paint();
+      };
+      row.appendChild(input);
+      row.appendChild(rm);
+      host.appendChild(row);
+      requestAnimationFrame(() => autosizeTextarea(input));
+    });
+    const add = document.createElement("button");
+    add.type = "button";
+    add.textContent = "Add " + kind.slice(0, -1);
+    add.onclick = () => {
+      items.push("");
+      markDraftDirty();
+      paint();
+    };
+    host.appendChild(add);
+  };
+  paint();
+  return host;
+}
+
+function renderRepsEditor(host, unit) {
+  const nav = document.createElement("div");
+  nav.className = "row";
+  nav.id = "nav-chunk";
+  const idx = state.units.findIndex(u => u.unit_key === unit.unit_key);
+  const options = state.units.map((u, i) => {
+    const label = String(u.title || u.unit_key).replace(/</g, "&lt;");
+    return `<option value="${u.unit_key}" ${u.unit_key === unit.unit_key ? "selected" : ""}>${i + 1}. ${label}</option>`;
+  }).join("");
+  nav.innerHTML = `
+    <button type="button" id="nav-prev-unit" ${idx <= 0 ? "disabled" : ""}>Prev</button>
+    <button type="button" id="nav-next-unit" ${idx >= state.units.length - 1 ? "disabled" : ""}>Next</button>
+    <select id="nav-unit-select" title="Jump to unit">${options}</select>
+    <button type="button" id="nav-prev-page">Prev page</button>
+    <button type="button" id="nav-next-page">Next page</button>
+    <span class="status">${unit.page_label || ""} · ${idx + 1}/${state.units.length}</span>`;
+  host.appendChild(nav);
+  nav.querySelector("#nav-prev-unit").onclick = () => {
+    if (idx > 0) selectUnit(state.units[idx - 1]);
+  };
+  nav.querySelector("#nav-next-unit").onclick = () => {
+    if (idx < state.units.length - 1) selectUnit(state.units[idx + 1]);
+  };
+  nav.querySelector("#nav-unit-select").onchange = (ev) => {
+    const next = state.units.find(u => u.unit_key === ev.target.value);
+    if (next) selectUnit(next);
+  };
+  nav.querySelector("#nav-prev-page").onclick = () => {
+    const start = unit.page_start || 1;
+    const cur = state.focusPage || start;
+    state.focusPage = Math.max(start, cur - 1);
+    applyChunkFocus();
+  };
+  nav.querySelector("#nav-next-page").onclick = () => {
+    const end = unit.page_end || unit.page_start || 1;
+    const cur = state.focusPage || unit.page_start || 1;
+    state.focusPage = Math.min(end, cur + 1);
+    applyChunkFocus();
+  };
+
+  const title = document.createElement("h3");
+  title.style.margin = "0.4rem 0";
+  title.style.fontSize = "0.95rem";
+  title.textContent = unit.title || unit.unit_key;
+  host.appendChild(title);
+
+  const badges = document.createElement("div");
+  badges.className = "row";
+  if (unit.representations_stale) {
+    const b = document.createElement("span");
+    b.className = "badge warn";
+    b.textContent = "stale";
+    badges.appendChild(b);
+  }
+  for (const r of (unit.representations || [])) {
+    if (r.over_limit) {
+      const b = document.createElement("span");
+      b.className = "badge danger";
+      b.textContent = r.rep_kind + " over limit";
+      badges.appendChild(b);
+    }
+  }
+  for (const r of (unit.rejected_representations || [])) {
+    const b = document.createElement("span");
+    b.className = "badge danger";
+    b.textContent = "rejected " + r.rep_kind;
+    badges.appendChild(b);
+  }
+  if (state.draftDirty) {
+    const b = document.createElement("span");
+    b.className = "badge warn";
+    b.textContent = "unsaved";
+    badges.appendChild(b);
+  }
+  host.appendChild(badges);
+
   const editable = isEditable();
+  const ovLabel = document.createElement("label");
+  ovLabel.className = "field";
+  ovLabel.textContent = "Overview";
+  host.appendChild(ovLabel);
+  const ov = document.createElement("textarea");
+  ov.className = "overview";
+  ov.rows = 1;
+  ov.value = state.draft.overview;
+  ov.disabled = !editable;
+  ov.oninput = () => {
+    state.draft.overview = ov.value;
+    markDraftDirty();
+    autosizeTextarea(ov, 200);
+  };
+  host.appendChild(ov);
+  requestAnimationFrame(() => autosizeTextarea(ov, 200));
+
+  const fLabel = document.createElement("label");
+  fLabel.className = "field";
+  fLabel.textContent = "Facts";
+  host.appendChild(fLabel);
+  if (editable) host.appendChild(renderListEditor("facts", state.draft.facts));
+  else {
+    const pre = document.createElement("pre");
+    pre.style.whiteSpace = "pre-wrap";
+    pre.style.fontSize = "0.82rem";
+    pre.textContent = state.draft.facts.join("\n") || "(none)";
+    host.appendChild(pre);
+  }
+
+  const qLabel = document.createElement("label");
+  qLabel.className = "field";
+  qLabel.textContent = "Questions";
+  host.appendChild(qLabel);
+  if (editable) host.appendChild(renderListEditor("questions", state.draft.questions));
+  else {
+    const pre = document.createElement("pre");
+    pre.style.whiteSpace = "pre-wrap";
+    pre.style.fontSize = "0.82rem";
+    pre.textContent = state.draft.questions.join("\n") || "(none)";
+    host.appendChild(pre);
+  }
+
+  if (editable) {
+    const actions = document.createElement("div");
+    actions.className = "row";
+    actions.innerHTML = `
+      <button type="button" id="btn-save-reps" class="primary">Save</button>
+      <button type="button" id="btn-regen-reps" title="Ask the model to rebuild this unit's reps">Regenerate</button>
+      <button type="button" id="btn-reload-reps" title="Discard local edits">Reset</button>`;
+    host.appendChild(actions);
+    actions.querySelector("#btn-save-reps").onclick = () => saveReps(unit);
+    actions.querySelector("#btn-regen-reps").onclick = () => regenerateReps(unit);
+    actions.querySelector("#btn-reload-reps").onclick = () => {
+      loadDraftFromUnit(unit);
+      renderUnitsPane();
+    };
+  }
+
+}
+
+async function saveReps(unit) {
+  try {
+    await api(`/v1/corpus/documents/${state.docId}/semantic/versions/${state.version}/units/${encodeURIComponent(unit.unit_key)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        representations: {
+          overview: state.draft.overview || "",
+          facts: state.draft.facts.filter(Boolean).join("\n"),
+          questions: state.draft.questions.filter(Boolean).join("\n"),
+        },
+      }),
+    });
+    state.draftDirty = false;
+    setStatus("Reps saved", "ok");
+    await loadVersion(state.docId, state.version, state.loadToken);
+  } catch (err) {
+    setStatus(String(err.message || err), "issue");
+  }
+}
+
+async function regenerateReps(unit) {
+  try {
+    setStatus("Regenerating…", "warn");
+    await api(`/v1/corpus/documents/${state.docId}/semantic/versions/${state.version}/units/${encodeURIComponent(unit.unit_key)}/representations/regenerate`, {
+      method: "POST",
+    });
+    setStatus("Regenerated", "ok");
+    state.draftDirty = false;
+    await loadVersion(state.docId, state.version, state.loadToken);
+  } catch (err) {
+    setStatus(String(err.message || err), "issue");
+  }
+}
+
+function renderUnitsPane() {
   const host = document.getElementById("units");
   host.innerHTML = "";
+  if (state.mode === "reps") {
+    const unit = selectedUnit();
+    if (!unit) {
+      host.innerHTML = "<p class='status'>Select a unit to edit reps.</p>";
+      return;
+    }
+    renderRepsEditor(host, unit);
+    scheduleAutosizeReps();
+    return;
+  }
+
+  const editable = isEditable();
+  const doc = selectedDoc();
 
   if (!editable) {
     const banner = document.createElement("p");
@@ -535,67 +1324,262 @@ async function loadVersion(docId, version, token) {
     tools.querySelector("#btn-add-unit").onclick = () => addUnitAfterSelection();
   }
 
-  if (data.issues && data.issues.length) {
-    for (const i of data.issues) {
-      const p = document.createElement("p");
-      p.className = "issue";
-      p.textContent = `${i.code}: ${i.detail}`;
-      host.appendChild(p);
-    }
-  } else if (editable) {
-    const p = document.createElement("p");
-    p.className = "ok";
-    p.textContent = data.ready_to_approve ? "Ready to finalize" : "Markers cover the PDF";
-    host.appendChild(p);
-  }
   for (let i = 0; i < state.units.length; i++) {
     const u = state.units[i];
     const el = document.createElement("div");
     const isApproved = u.review_status === "approved";
-    el.className = "unit" + (u.unit_key === state.selected ? " active" : "");
+    const isSelected = u.unit_key === state.selected;
+    el.className = "unit" + (isSelected ? " active" : "");
     el.dataset.unitKey = u.unit_key;
+    const actions = [];
+    if (editable) {
+      actions.push(
+        `<button data-act="approve-unit" class="${isApproved ? "approved" : ""}" ${isApproved ? "disabled" : ""}>${isApproved ? "Approved" : "Approve"}</button>`
+      );
+      if (isSelected) {
+        if (i > 0) actions.push(`<button data-act="join-prev">Join prev</button>`);
+        if (i < state.units.length - 1) actions.push(`<button data-act="join-next">Join next</button>`);
+      }
+    } else if (isApproved) {
+      actions.push(`<span class="badge">Approved</span>`);
+    }
     el.innerHTML = `<h3>${u.title || u.unit_key}</h3>
       <div class="meta">${u.page_label || ""} · ${u.unit_type}${u.needs_ocr ? " · needs OCR" : ""}</div>
-      <div class="row">
-        <button data-act="select">Select</button>
-        <button data-act="approve-unit" class="${isApproved ? "approved" : ""}" ${!editable || isApproved ? "disabled" : ""}>${isApproved ? "Approved" : "Approve"}</button>
-        <button data-act="join-prev" ${!editable || i === 0 ? "disabled" : ""}>Join prev</button>
-        <button data-act="join-next" ${!editable || i >= state.units.length - 1 ? "disabled" : ""}>Join next</button>
-      </div>`;
-    el.querySelector('[data-act="select"]').onclick = (ev) => { ev.stopPropagation(); selectUnit(u); };
+      ${actions.length ? `<div class="row">${actions.join("")}</div>` : ""}`;
     el.onclick = (ev) => {
       if (ev.target.closest("button")) return;
       selectUnit(u);
     };
     const approveBtn = el.querySelector('[data-act="approve-unit"]');
-    if (editable && !isApproved) {
+    if (editable && !isApproved && approveBtn) {
       approveBtn.onclick = async () => {
-        await api(`/v1/corpus/documents/${docId}/semantic/versions/${version}/units/${encodeURIComponent(u.unit_key)}`, {
+        await api(`/v1/corpus/documents/${state.docId}/semantic/versions/${state.version}/units/${encodeURIComponent(u.unit_key)}`, {
           method: "PATCH", body: JSON.stringify({ review_status: "approved" }),
         });
-        await loadVersion(docId, version, token);
+        await loadVersion(state.docId, state.version, state.loadToken);
       };
     }
-    if (editable) {
-      el.querySelector('[data-act="join-prev"]').onclick = () => joinUnit(u, "previous");
-      el.querySelector('[data-act="join-next"]').onclick = () => joinUnit(u, "next");
+    if (editable && isSelected) {
+      const joinPrev = el.querySelector('[data-act="join-prev"]');
+      const joinNext = el.querySelector('[data-act="join-next"]');
+      if (joinPrev) joinPrev.onclick = () => joinUnit(u, "previous");
+      if (joinNext) joinNext.onclick = () => joinUnit(u, "next");
     }
     host.appendChild(el);
   }
-  paintMarkers();
-  syncActionButtons(selectedDoc());
+
   if (editable && doc && doc.review_status === "ready") {
     const banner = document.createElement("p");
     banner.className = "ok";
-    banner.textContent = "Finalized — click Activate to cut over live retrieval.";
+    banner.textContent = "Finalized — open Review reps, then Activate.";
     host.insertBefore(banner, host.firstChild);
-    document.getElementById("btn-finalize").disabled = true;
-    document.getElementById("btn-activate").disabled = false;
-  } else if (editable && doc && doc.review_status === "candidate") {
-    document.getElementById("btn-finalize").disabled = !data.ready_to_approve;
-    document.getElementById("btn-activate").disabled = true;
   }
 }
+
+async function loadVersion(docId, version, token) {
+  if (token == null) token = state.loadToken;
+  const data = await api(`/v1/corpus/documents/${encodeURIComponent(docId)}/semantic/versions/${version}`);
+  if (token !== state.loadToken || state.docId !== docId) return;
+  const keepSelected = state.selected;
+  state.units = data.units || [];
+  state.version = data.version;
+  state.versionStatus = data.status;
+  state.readyToApprove = !!data.ready_to_approve;
+  const doc = selectedDoc();
+  state.editable = doc ? !!doc.review_editable : state.editable;
+  if (keepSelected && state.units.some(u => u.unit_key === keepSelected)) {
+    state.selected = keepSelected;
+  } else if (!state.selected && state.units.length) {
+    state.selected = state.units[0].unit_key;
+  }
+  if (state.mode === "reps") {
+    const u = selectedUnit();
+    if (u && !state.draftDirty) loadDraftFromUnit(u);
+  }
+  applyChunkFocus();
+  paintMarkers();
+  renderUnitsPane();
+  syncActionButtons(selectedDoc());
+}
+
+function syncAssistFeedbackUi() {
+  const log = document.getElementById("assist-log");
+  const feedback = document.getElementById("assist-feedback");
+  const hasContent = !!(log && log.childElementCount);
+  feedback.classList.toggle("has-content", hasContent);
+  const apply = document.getElementById("btn-assist-apply");
+  apply.disabled = !state.lastSuggestion;
+  apply.classList.toggle("hidden", !state.lastSuggestion);
+}
+
+function appendAssistBubble(role, text) {
+  const log = document.getElementById("assist-log");
+  const el = document.createElement("div");
+  el.className = "bubble " + role;
+  el.textContent = text;
+  log.appendChild(el);
+  syncAssistFeedbackUi();
+  return el;
+}
+
+function setAssistBusy(busy) {
+  const send = document.getElementById("btn-assist-send");
+  const input = document.getElementById("assist-input");
+  send.disabled = !!busy;
+  send.textContent = busy ? "Working…" : "Send";
+  input.disabled = !!busy;
+}
+
+async function ensureAssistSession() {
+  if (state.assistSessionId || !state.docId || state.version == null) return;
+  try {
+    const unit = selectedUnit();
+    const res = await api(
+      `/v1/corpus/documents/${encodeURIComponent(state.docId)}/semantic/versions/${state.version}/assist/sessions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ unit_key: unit ? unit.unit_key : null }),
+      }
+    );
+    state.assistSessionId = res.session_id;
+  } catch (err) {
+    setStatus(String(err.message || err), "issue");
+  }
+}
+
+async function sendAssist() {
+  const unit = selectedUnit();
+  if (!unit) {
+    setStatus("Select a unit first", "warn");
+    return;
+  }
+  const input = document.getElementById("assist-input");
+  const message = input.value.trim();
+  if (!message || document.getElementById("btn-assist-send").disabled) return;
+
+  appendAssistBubble("user", message);
+  input.value = "";
+  setAssistBusy(true);
+  setStatus("Assist working…", "warn");
+  const pending = appendAssistBubble("pending", "Thinking… reviewing this unit’s PDF and draft reps.");
+
+  try {
+    await ensureAssistSession();
+    if (!state.assistSessionId) {
+      pending.textContent = "Could not start assist session.";
+      pending.className = "bubble pending";
+      syncAssistFeedbackUi();
+      return;
+    }
+    const res = await api(
+      `/v1/corpus/documents/${encodeURIComponent(state.docId)}/semantic/versions/${state.version}/assist/sessions/${state.assistSessionId}/message`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          unit_key: unit.unit_key,
+          message,
+          draft: {
+            overview: state.draft.overview,
+            facts: state.draft.facts,
+            questions: state.draft.questions,
+          },
+        }),
+      }
+    );
+    state.lastSuggestion = res.suggestion;
+    const bits = [res.suggestion.rationale || "(no rationale)"];
+    if (res.suggestion.overview) bits.push("overview: " + res.suggestion.overview);
+    if (res.suggestion.facts && res.suggestion.facts.length) {
+      bits.push("facts:\n- " + res.suggestion.facts.join("\n- "));
+    }
+    if (res.suggestion.questions && res.suggestion.questions.length) {
+      bits.push("questions:\n- " + res.suggestion.questions.join("\n- "));
+    }
+    pending.className = "bubble assistant";
+    pending.style.fontStyle = "";
+    pending.textContent = bits.join("\n\n");
+    syncAssistFeedbackUi();
+    setStatus("Assist ready — Apply to fill the editor, then Save", "ok");
+    if (state.assistH < 280) {
+      state.assistH = Math.min(360, Math.max(280, state.assistH));
+      applyLayoutVars();
+    }
+    requestAnimationFrame(() => {
+      const scroller = document.getElementById("assist-scroll");
+      if (scroller) scroller.scrollTop = Math.max(0, pending.offsetTop - 8);
+    });
+  } catch (err) {
+    if (err.status === 410) {
+      state.assistSessionId = null;
+      setStatus("Assist session expired — send again", "warn");
+      pending.textContent = "Session expired. Click Send again.";
+    } else {
+      setStatus(String(err.message || err), "issue");
+      pending.textContent = "Assist failed: " + String(err.message || err);
+    }
+    pending.className = "bubble pending";
+    syncAssistFeedbackUi();
+  } finally {
+    setAssistBusy(false);
+  }
+}
+
+function applyAssistSuggestion() {
+  const s = state.lastSuggestion;
+  if (!s) return;
+  if (s.overview) state.draft.overview = s.overview;
+  if (s.facts && s.facts.length) state.draft.facts = [...s.facts];
+  if (s.questions && s.questions.length) state.draft.questions = [...s.questions];
+  markDraftDirty();
+  renderUnitsPane();
+  setStatus("Suggestion applied to editor — click Save to write the corpus", "ok");
+}
+
+async function clearAssistSession() {
+  if (state.assistSessionId && state.docId && state.version != null) {
+    try {
+      await api(
+        `/v1/corpus/documents/${encodeURIComponent(state.docId)}/semantic/versions/${state.version}/assist/sessions/${state.assistSessionId}`,
+        { method: "DELETE" }
+      );
+    } catch { /* ignore */ }
+  }
+  state.assistSessionId = null;
+  state.lastSuggestion = null;
+  document.getElementById("assist-log").innerHTML = "";
+  syncAssistFeedbackUi();
+  setStatus("Assist session cleared", "ok");
+}
+
+document.getElementById("btn-mode-markers").onclick = () => setMode("markers");
+document.getElementById("btn-mode-reps").onclick = () => setMode("reps");
+document.getElementById("btn-back").onclick = () => setMode("markers");
+document.getElementById("btn-pdf-collapse").onpointerdown = (ev) => ev.stopPropagation();
+document.getElementById("btn-pdf-collapse").onclick = (ev) => {
+  ev.stopPropagation();
+  setPdfCollapsed(true);
+};
+document.getElementById("btn-pdf-expand").onclick = (ev) => {
+  ev.stopPropagation();
+  setPdfCollapsed(false);
+};
+document.getElementById("pdf-rail").onclick = () => setPdfCollapsed(false);
+document.getElementById("btn-docs-toggle").onclick = () => setDocsCollapsed(!state.docsCollapsed);
+document.getElementById("btn-docs-collapse").onclick = () => setDocsCollapsed(true);
+document.getElementById("btn-docs-expand").onclick = () => setDocsCollapsed(false);
+document.getElementById("docs-rail").onclick = (ev) => {
+  if (ev.target.closest("button")) return;
+  setDocsCollapsed(false);
+};
+document.getElementById("btn-assist-send").onclick = () => sendAssist();
+document.getElementById("btn-assist-apply").onclick = () => applyAssistSuggestion();
+document.getElementById("btn-assist-clear").onclick = () => clearAssistSession();
+document.getElementById("assist-input").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
+    ev.preventDefault();
+    sendAssist();
+  }
+});
 
 document.getElementById("btn-refresh").onclick = () => refreshDocs().then(() => syncActionButtons()).catch(e => setStatus(e.message, "issue"));
 document.getElementById("btn-propose").onclick = async () => {
@@ -637,6 +1621,7 @@ document.getElementById("btn-revise").onclick = async () => {
     setStatus(res.detail || "candidate opened", "ok");
     state.version = res.version;
     state.editable = true;
+    state.mode = "markers";
     await refreshDocs();
     if (res.version != null) await loadVersion(docId, res.version, token);
     syncActionButtons(selectedDoc());
@@ -651,19 +1636,14 @@ document.getElementById("btn-finalize").onclick = async () => {
   const btn = document.getElementById("btn-finalize");
   if (btn.disabled || !state.docId || state.version == null || !isEditable()) return;
   btn.disabled = true;
-  setStatus("Finalizing… generating search representations (may take a minute)", "warn");
+  setStatus("Finalizing… generating reps (may take a minute)", "warn");
   try {
     const res = await api(`/v1/corpus/documents/${encodeURIComponent(state.docId)}/semantic/versions/${state.version}/approve`, { method: "POST" });
-    setStatus(res.detail || "Finalized — click Activate to cut over live retrieval", "ok");
+    setStatus(res.detail || "Finalized — open Review reps, then Activate", "ok");
     await refreshDocs();
     syncActionButtons(selectedDoc());
     if (state.version != null) await loadVersion(state.docId, state.version, state.loadToken);
-    const banner = document.createElement("p");
-    banner.className = "ok";
-    banner.textContent = "Finalized. Review units below, then click Activate to switch live retrieval.";
-    const host = document.getElementById("units");
-    if (host.firstChild) host.insertBefore(banner, host.firstChild);
-    else host.appendChild(banner);
+    setMode("reps");
   } catch (e) {
     setStatus(e.message, "issue");
     btn.disabled = false;
@@ -671,6 +1651,10 @@ document.getElementById("btn-finalize").onclick = async () => {
 };
 document.getElementById("btn-activate").onclick = async () => {
   if (!state.docId || state.version == null) return;
+  if (state.draftDirty) {
+    setStatus("Save or discard representation edits before Activate", "warn");
+    return;
+  }
   try {
     const res = await api(`/v1/corpus/documents/${encodeURIComponent(state.docId)}/semantic/versions/${state.version}/activate`, { method: "POST" });
     setStatus(res.detail || "activated", "ok");
@@ -681,6 +1665,10 @@ document.getElementById("btn-activate").onclick = async () => {
   } catch (e) { setStatus(e.message, "issue"); }
 };
 
+applyLayoutVars();
+bindSplitters();
+syncModeButtons();
+setDocsCollapsed(false);
 refreshDocs().catch(e => setStatus(e.message, "issue"));
 </script>
 </body>

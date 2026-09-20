@@ -108,3 +108,24 @@ REPRESENTATIONS_RESPONSE_FORMAT: dict = {
     "type": "json_schema",
     "json_schema": REPRESENTATIONS_SCHEMA,
 }
+
+ASSIST_SCHEMA: dict = {
+    "name": "corpus_assist_suggestion",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "rationale": {"type": "string"},
+            "overview": {"type": "string"},
+            "facts": {"type": "array", "items": {"type": "string"}},
+            "questions": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["rationale", "overview", "facts", "questions"],
+    },
+}
+
+ASSIST_RESPONSE_FORMAT: dict = {
+    "type": "json_schema",
+    "json_schema": ASSIST_SCHEMA,
+}

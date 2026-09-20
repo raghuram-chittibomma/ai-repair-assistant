@@ -13,7 +13,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from repair_assistant.api.assist_sessions import AssistSessionStore
 from repair_assistant.api.corpus_schemas import (
+    AssistMessageRequest,
+    AssistMessageResponse,
+    AssistSessionCreateRequest,
+    AssistSessionOut,
+    AssistSuggestionOut,
     CorpusDocumentOut,
     CorpusDocumentsResponse,
     EditResponse,
@@ -97,6 +103,8 @@ def build_corpus_router(
     embedder: Callable[[], Any],
     segmenter: Callable[[], Any] | None = None,
     representer: Callable[[], Any] | None = None,
+    assist_store: AssistSessionStore | None = None,
+    assist_client: Callable[[], Any] | None = None,
 ) -> APIRouter:
     """Build the router. Collaborators are injected so tests can fake the LLM."""
     router = APIRouter(
@@ -104,6 +112,7 @@ def build_corpus_router(
         tags=["corpus"],
         dependencies=[Depends(require_api_key)],
     )
+    sessions = assist_store or AssistSessionStore()
 
     def _parsed_dir(doc_id: str):
         return repo_root() / "corpus" / "parsed" / doc_id
@@ -850,6 +859,174 @@ def build_corpus_router(
             filename=pdf.name,
         )
 
+    # --- representations assist (ADR-0053) ---------------------------------
+
+    @router.post(
+        "/documents/{doc_id}/semantic/versions/{version}/assist/sessions",
+        response_model=AssistSessionOut,
+    )
+    def create_assist_session(
+        doc_id: str,
+        version: int,
+        body: AssistSessionCreateRequest | None = None,
+        db: Database = Depends(get_db),
+    ) -> AssistSessionOut:
+        """Start an in-memory specialist chat for rep curation."""
+        found = _editable(db, doc_id, version)
+        request = body or AssistSessionCreateRequest()
+        if request.unit_key:
+            _unit(db, found.id, request.unit_key)
+        session = sessions.create(
+            doc_id=doc_id,
+            version=found.version,
+            unit_key=request.unit_key,
+        )
+        return AssistSessionOut(
+            session_id=session.session_id,
+            doc_id=session.doc_id,
+            version=session.version,
+            unit_key=session.unit_key,
+        )
+
+    @router.post(
+        "/documents/{doc_id}/semantic/versions/{version}/assist/sessions/{session_id}/message",
+        response_model=AssistMessageResponse,
+    )
+    def assist_message(
+        doc_id: str,
+        version: int,
+        session_id: str,
+        body: AssistMessageRequest,
+        db: Database = Depends(get_db),
+    ) -> AssistMessageResponse:
+        """Suggest overview/facts/questions edits; does not write the corpus."""
+        from repair_assistant.observability.langfuse_tracing import (
+            observation,
+            update_span,
+        )
+        from repair_assistant.semantic import assist as assist_mod
+
+        found = _editable(db, doc_id, version)
+        try:
+            session = sessions.get(session_id)
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=410,
+                detail="assist session expired or unknown",
+            ) from exc
+        if session.doc_id != doc_id or session.version != found.version:
+            raise HTTPException(
+                status_code=409,
+                detail="assist session does not match this document version",
+            )
+        unit = _unit(db, found.id, body.unit_key)
+        draft = None
+        if body.draft is not None:
+            draft = {
+                "overview": body.draft.overview,
+                "facts": list(body.draft.facts),
+                "questions": list(body.draft.questions),
+            }
+        client = _requires_llm(
+            assist_client or (lambda: assist_mod.build_assist_client()),
+            "corpus assist",
+        )
+        document = _manifest_document(doc_id)
+        doc_ctx = assist_mod.DocumentContext(
+            doc_id=doc_id,
+            title=(document.title if document else "") or "",
+            doc_type=(document.doc_type if document else "") or "",
+            publication_number=(document.publication_number if document else "")
+            or "",
+            revision=(document.revision if document else "") or "",
+        )
+        pdf: Path | None = None
+        looks_scanned = False
+        try:
+            pdf = _pdf_path(doc_id)
+            from repair_assistant.corpus.identity import inspect
+
+            looks_scanned = bool(inspect(pdf).looks_scanned)
+        except Exception:  # noqa: BLE001 — text-only fallback
+            pdf = None
+            looks_scanned = False
+
+        def _raster(doc: str, page: int) -> Path | None:
+            from repair_assistant.qa.page_images import ensure_page_raster
+
+            return ensure_page_raster(manifest(), doc, page)
+
+        attachments = assist_mod.prepare_unit_attachments(
+            pdf_path=pdf,
+            unit=unit,
+            doc_id=doc_id,
+            looks_scanned=looks_scanned,
+            raster_loader=_raster if looks_scanned else None,
+        )
+        with observation(
+            "corpus_assist",
+            input={
+                "doc_id": doc_id,
+                "version": found.version,
+                "unit_key": unit.unit_key,
+                "message": body.message,
+                "attachment_modality": attachments.modality,
+                "pages": unit.page_label,
+            },
+            metadata={
+                "assist_session_id": session_id,
+                "prompt_version": assist_mod.assist_prompt_version(),
+                "attachment_modality": attachments.modality,
+            },
+            session_id=session_id,
+        ) as span:
+            try:
+                suggestion = assist_mod.run_assist_turn(
+                    session=session,
+                    unit=unit,
+                    message=body.message,
+                    draft=draft,
+                    llm=client,
+                    document=doc_ctx,
+                    attachments=attachments,
+                )
+            except assist_mod.AssistError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            update_span(
+                span,
+                output={
+                    "rationale": suggestion.rationale,
+                    "overview": suggestion.overview,
+                    "facts": suggestion.facts,
+                    "questions": suggestion.questions,
+                    "attachment_modality": attachments.modality,
+                },
+            )
+        return AssistMessageResponse(
+            session_id=session_id,
+            unit_key=unit.unit_key,
+            suggestion=AssistSuggestionOut(**suggestion.as_dict()),
+            prompt_version=assist_mod.assist_prompt_version(),
+        )
+
+    @router.delete(
+        "/documents/{doc_id}/semantic/versions/{version}/assist/sessions/{session_id}",
+    )
+    def delete_assist_session(
+        doc_id: str,
+        version: int,
+        session_id: str,
+    ) -> dict[str, bool]:
+        try:
+            session = sessions.get(session_id)
+        except KeyError:
+            return {"deleted": False}
+        if session.doc_id != doc_id or session.version != version:
+            raise HTTPException(
+                status_code=409,
+                detail="assist session does not match this document version",
+            )
+        return {"deleted": sessions.delete(session_id)}
 
     return router
 

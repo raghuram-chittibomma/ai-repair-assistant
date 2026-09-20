@@ -91,7 +91,7 @@ cutover). Needs `SEMANTIC_OPENAI_API_KEY`. Diagram:
 
 ```bash
 repair-corpus segment installation-instructions-w11156977
-# open http://localhost:8080/ui/corpus — revise markers, Finalize, Activate
+# open http://localhost:8080/ui/corpus — Boundaries, Finalize, Review reps, Activate
 repair-corpus ingestion-status
 # repair-corpus ingestion-revert <doc_id>   # restore structured without re-parse
 ```

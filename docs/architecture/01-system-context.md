@@ -67,7 +67,7 @@ flowchart LR
 | CLI | `search` / `ask` / `diagnose` | Same engines as API; good for benches |
 | API | `POST /v1/ask`, `/v1/diagnose`, streams | Optional `X-API-Key` ([ADR-0016](../adr/0016-http-api-docker.md)) |
 | UI | `http://localhost:8080/ui` | Ask / diagnose / search; diagnose shows a read-only session tally ([ADR-0044](../adr/0044-diagnose-session-tally.md), [ADR-0045](../adr/0045-diagnose-tally-symptom-trail.md)); export JSON/MD |
-| UI | `http://localhost:8080/ui/corpus` | Curator board: per-document ingestion strategy, PDF-native semantic boundary review, cutover and revert ([ADR-0047](../adr/0047-ingestion-versions.md), [ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md)) |
+| UI | `http://localhost:8080/ui/corpus` | Curator board: per-document ingestion strategy, PDF-native boundary review, Review reps (+ assist), cutover and revert ([ADR-0047](../adr/0047-ingestion-versions.md), [ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md), [ADR-0053](../adr/0053-reps-review-assist.md)) |
 
 ## Three-way copyright separation
 

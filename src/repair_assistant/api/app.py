@@ -636,10 +636,13 @@ def create_app(
     # Corpus review (ADR-0047 / ADR-0048). The segmentation clients are built
     # per request so a server with no SEMANTIC_OPENAI_API_KEY still serves the
     # document list, the review board, and cutover — only proposing needs the key.
+    from repair_assistant.api.assist_sessions import AssistSessionStore
     from repair_assistant.api.corpus_routes import build_corpus_router
+    from repair_assistant.semantic import assist as semantic_assist
     from repair_assistant.semantic import representations as semantic_reps
     from repair_assistant.semantic import segment as semantic_segment
 
+    assist_sessions = AssistSessionStore()
     app.include_router(
         build_corpus_router(
             get_db=get_db,
@@ -649,10 +652,13 @@ def create_app(
             embedder=get_shared_embedder,
             segmenter=semantic_segment.build_client,
             representer=semantic_reps.build_client,
+            assist_store=assist_sessions,
+            assist_client=semantic_assist.build_assist_client,
         )
     )
 
     app.state.session_store = store
+    app.state.assist_session_store = assist_sessions
 
     static_dir = Path(__file__).resolve().parent / "static"
     if static_dir.is_dir():

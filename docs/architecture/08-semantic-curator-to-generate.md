@@ -14,7 +14,8 @@ retrieval collapse in [04 — Retrieval](04-retrieval.md); ask/diagnose runtime 
 [ADR-0048](../adr/0048-semantic-knowledge-units.md) ·
 [ADR-0049](../adr/0049-pdf-native-semantic-boundaries.md) ·
 [ADR-0050](../adr/0050-generate-hybrid-pdf-evidence.md) ·
-[ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md).
+[ADR-0051](../adr/0051-pdf-primary-semantic-evidence.md) ·
+[ADR-0053](../adr/0053-representations-review-assist.md).
 
 ## Why use a strong LLM up front
 
@@ -45,6 +46,7 @@ flowchart TD
   candidate[Candidate_semantic_version]
   board[Human_review_PDF_js_board]
   finalize[Finalize_reps_ready]
+  repReview[Rep_review_plus_assist]
   activate[Activate_cutover]
   activeSem[Active_semantic_version]
   retrieve[Retrieve_overview_facts_questions]
@@ -62,7 +64,9 @@ flowchart TD
   candidate --> board
   board -->|revise_markers| board
   board --> finalize
-  finalize --> activate
+  finalize --> repReview
+  repReview -->|edit_overview_facts_questions| repReview
+  repReview --> activate
   activate --> activeSem
   activeSem --> retrieve
   retrieve --> collapse
@@ -74,12 +78,19 @@ flowchart TD
 - **Default path stays free of paid LLM calls:** `parse` / `ingest` only
   ([charter D9](../CHARTER.md#deviations-from-this-charter)).
 - **Propose** needs `SEMANTIC_OPENAI_API_KEY`; review, finalize, activate, and
-  revert do not.
+  revert do not. **Rep assist** (optional) uses the same curator key
+  ([ADR-0053](../adr/0053-representations-review-assist.md)).
 - **One active version per `doc_id`:** activate supersedes structured in one
   transaction; revert restores structured without re-parse
   ([ADR-0047](../adr/0047-ingestion-versions.md)).
-- **Board:** `/ui/corpus` — drag page-fraction handles, split/merge, approve
-  units, Finalize (representations), Activate (cutover).
+- **After Finalize:** `/ui/corpus` **Review reps** mode focuses the PDF on the
+  current unit, edits overview/facts/questions (reps), and offers a suggest-only
+  specialist chat (Apply → editor → Save PATCH). Assist turns attach the unit’s
+  native PDF page-range (or rasters when scanned) plus document/unit context
+  ([ADR-0053](../adr/0053-reps-review-assist.md)). Activate remains cutover.
+- **Board:** `/ui/corpus` — Propose → boundary review (drag handles, split/merge,
+  approve) → Finalize (generate reps) → Review reps (+ assist) → Activate
+  (cutover). Docs list and PDF pane collapse when reviewing reps.
 
 ## Build-time detail (propose → ready)
 
@@ -169,12 +180,13 @@ What the answer LLM sees by hit kind (full table in
 | Surface | Role |
 | --- | --- |
 | `repair-corpus segment` / `ingestion-status` / `ingestion-revert` | CLI propose and lifecycle |
-| `http://localhost:8080/ui/corpus` | Human review board |
+| `http://localhost:8080/ui/corpus` | Human review board — Boundaries, Finalize, Review reps (+ assist), Activate ([ADR-0053](../adr/0053-reps-review-assist.md)) |
 | `POST /v1/ask`, `/v1/diagnose` | Consume active units + PDF attach |
 | Langfuse generate `llm` | Text pack + PDF media fingerprint |
 
-**Modules:** `semantic/*`, `retrieval/units.py`, `qa/semantic_evidence.py`,
-`api/corpus_routes.py`, `api/static/corpus.html`
+**Modules:** `semantic/*`, `semantic/assist.py`, `api/assist_sessions.py`,
+`retrieval/units.py`, `qa/semantic_evidence.py`, `api/corpus_routes.py`,
+`api/static/corpus.html`
 
 ## Review board (screenshots)
 
