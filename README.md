@@ -278,7 +278,8 @@ tests/                   deterministic tests
 
 Python, PostgreSQL, pgvector, Docker, OpenAI, LangGraph ([charter](docs/CHARTER.md)).
 Postgres on a **LAN Docker host**; CLI, API, UI, and local BGE embeddings on **your machine**
-([ADR-0009](docs/adr/0009-local-open-embeddings.md)). OpenAI is for LLM inference only.
+([ADR-0009](docs/adr/0009-local-open-embeddings.md)). OpenAI is for LLM inference;
+optional TypeSafe Jev classifies diagnose follow-up labels ([ADR-0054](docs/adr/0054-jev-diagnose-classify.md)).
 
 ## Licence
 

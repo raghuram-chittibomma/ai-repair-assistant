@@ -19,7 +19,9 @@ parts-list linkage, **R2** audience attestation, **R44** trace governance.
 **R22** wait after the S5 reject. **R18** is recorded as closed-set diagnose
 intent, not free query rewrite or more synonym regex
 ([ADR-0034](adr/0034-diagnose-nlu-split.md)); retrieve-time labels
-landed in [ADR-0039](adr/0039-diagnose-retrieve-labels.md). Free rewrite
+landed in [ADR-0039](adr/0039-diagnose-retrieve-labels.md). TypeSafe
+Jev is the preferred classify backend when `JEV_API_KEY` is set
+([ADR-0054](adr/0054-jev-diagnose-classify.md); charter D10). Free rewrite
 stays forbidden.
 **R33** honesty note remains when the PDF is missing; gated page rasters
 attach at generate time when a vision model is available

@@ -1,0 +1,292 @@
+# Gold labels for diagnose turn-2+ classify (ADR-0039 / ADR-0054).
+#
+# Manual bench: repair-corpus bench-diagnose-intent [--write]
+# Each case is board + transcript → expected closed-set label.
+# Not CI. Not mined into live fixtures automatically (ADR-0023).
+
+version: 1
+
+fixtures:
+  - id: ack-looks-good
+    label: ack
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: F5E2 door will not lock
+      ruled out: (none yet)
+      next check: Confirm door is fully closed and strike is aligned
+    transcript: |
+      User: Washer shows F5E2 and the door will not lock.
+      Assistant: Check that the door is fully closed and the strike lines up.
+      User: looks good
+    notes: Classic ack after a check.
+
+  - id: ack-no-issues
+    label: ack
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 3  phase: checking
+      symptom: F5E2 door locks but won't start
+      ruled out: door not fully closed
+      next check: Inspect door lock switch continuity
+    transcript: |
+      User: My washer shows F5E2 and the door locks but it won't start.
+      Assistant: Verify the door is fully closed.
+      User: The door seems fully closed.
+      Assistant: Next check the door lock switch.
+      User: no issues found
+    notes: Ack after second check.
+
+  - id: ack-all-clear
+    label: ack
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: control panel unresponsive
+      ruled out: (none yet)
+      next check: Hold Control Lock 3 seconds and confirm LOC clears
+    transcript: |
+      User: Control panel doesn't respond to any buttons.
+      Assistant: Try clearing Control Lock first.
+      User: all clear
+    notes: Short ack.
+
+  - id: ack-checks-passed
+    label: ack
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: shakes during spin
+      ruled out: (none yet)
+      next check: Confirm all four shipping bolts were removed
+    transcript: |
+      User: Washer shakes violently during spin.
+      Assistant: Confirm the shipping bolts are out.
+      User: checks passed
+    notes: Explicit checks-passed ack.
+
+  - id: still-facing-issue
+    label: still_unresolved
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: F5E2 door will not lock
+      ruled out: (none yet)
+      next check: Door lock mechanism / strike check
+    transcript: |
+      User: Washer shows F5E2 and the door will not lock.
+      Assistant: Check the door lock mechanism and strike.
+      User: checked but still facing the issue
+    notes: Seeded from f5e2-door-lock-still-unresolved smoke.
+
+  - id: still-didnt-help
+    label: still_unresolved
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: F7E1 violent shake
+      ruled out: shipping bolts still installed
+      next check: Motor speed / TEST #3 path
+    transcript: |
+      User: My new washer shakes violently and shows F7 E1 during spin.
+      Assistant: Remove all four shipping bolts first.
+      User: I already removed all four shipping bolts — it still shakes and shows F7E1.
+    notes: Bolts done; symptom remains.
+
+  - id: still-same-problem
+    label: still_unresolved
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 3  phase: checking
+      symptom: F5E2 door locks but won't start
+      ruled out: door not closed
+      next check: TEST #4 door lock
+    transcript: |
+      User: Door locks but washer won't start, F5E2.
+      Assistant: Confirm the door is closed.
+      User: Door is closed.
+      Assistant: Run TEST #4 on the door lock.
+      User: I checked that but still have the same issue
+    notes: Unresolved after TEST mention.
+
+  - id: still-did-not-fix
+    label: still_unresolved
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: won't drain
+      ruled out: (none yet)
+      next check: Clean the drain filter
+    transcript: |
+      User: Washer won't drain at the end of the cycle.
+      Assistant: Clean the drain filter and retry.
+      User: that did not fix the problem
+    notes: Explicit did-not-fix unresolved.
+
+  - id: mid-cycle-no-code
+    label: mid_cycle_stop
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 1  phase: intake
+      symptom: F5E2 door will not lock
+      ruled out: (none yet)
+      next check: Door closed / strike
+    transcript: |
+      User: Washer shows F5E2 and the door will not lock.
+      Assistant: Start with the door closed and strike check.
+      User: actually it also stops after about 10 minutes with no error code
+    notes: Mid-cycle stop cue on a follow-up turn.
+
+  - id: mid-cycle-halfway
+    label: mid_cycle_stop
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: not washing properly
+      ruled out: (none yet)
+      next check: Check water inlet screens
+    transcript: |
+      User: Clothes come out dirty.
+      Assistant: Check the inlet screens for clogging.
+      User: wash stops halfway through the cycle, display blank, no code
+    notes: Halfway / no-code mid-cycle.
+
+  - id: mid-cycle-stops-running
+    label: mid_cycle_stop
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 1  phase: intake
+      symptom: loud during wash
+      ruled out: (none yet)
+      next check: Level the machine
+    transcript: |
+      User: Washer is loud during wash.
+      Assistant: Confirm the machine is level.
+      User: it stops mid-cycle and never finishes
+    notes: Stops mid-cycle follow-up.
+
+  - id: new-symptom-drain
+    label: new_symptom
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: F5E2 door will not lock
+      ruled out: (none yet)
+      next check: Door lock strike alignment
+    transcript: |
+      User: Washer shows F5E2 and the door will not lock.
+      Assistant: Check strike alignment.
+      User: different problem now — it won't drain at all
+    notes: Explicit different problem.
+
+  - id: new-symptom-leak
+    label: new_symptom
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 3  phase: checking
+      symptom: F5E2 door locks but won't start
+      ruled out: door not closed
+      next check: Door lock switch
+    transcript: |
+      User: F5E2, door locks, won't start.
+      Assistant: Check the door lock switch.
+      User: ignore that — now it's leaking from the front boot
+    notes: Pivot to leak.
+
+  - id: new-symptom-odor
+    label: new_symptom
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: shakes during spin
+      ruled out: (none yet)
+      next check: Shipping bolts removed
+    transcript: |
+      User: Violent shake on spin.
+      Assistant: Confirm shipping bolts are removed.
+      User: actually the real complaint is a musty odor after every wash
+    notes: Corrected problem / new symptom.
+
+  - id: new-symptom-error-code-swap
+    label: new_symptom
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: F5E2 door will not lock
+      ruled out: (none yet)
+      next check: Door closed check
+    transcript: |
+      User: Door will not lock, F5E2.
+      Assistant: Confirm the door is fully closed.
+      User: wait, the display now shows F8E1 and it overfills
+    notes: Different fault family.
+
+  - id: unclear-short
+    label: unclear
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: F5E2 door will not lock
+      ruled out: (none yet)
+      next check: Door closed / strike
+    transcript: |
+      User: Washer shows F5E2 and the door will not lock.
+      Assistant: Check that the door is fully closed.
+      User: hmm
+    notes: Too vague to label as progress or new problem.
+
+  - id: unclear-maybe
+    label: unclear
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: won't drain
+      ruled out: (none yet)
+      next check: Clean drain filter
+    transcript: |
+      User: Won't drain.
+      Assistant: Clean the drain filter.
+      User: not sure
+    notes: Explicit uncertainty.
+
+  - id: unclear-question
+    label: unclear
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: F5E2 door will not lock
+      ruled out: (none yet)
+      next check: Strike alignment
+    transcript: |
+      User: F5E2 door will not lock.
+      Assistant: Check strike alignment.
+      User: what do you mean by strike?
+    notes: Clarifying question, not a result or new symptom.
+
+  - id: unclear-thanks
+    label: unclear
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: control lock stuck
+      ruled out: (none yet)
+      next check: Hold Control Lock 3 seconds
+    transcript: |
+      User: Buttons do nothing, LOC on display.
+      Assistant: Hold Control Lock for three seconds.
+      User: thanks
+    notes: Polite but not an ack of the check result.
+
+  - id: unclear-mixed
+    label: unclear
+    board: |
+      Session diagnostic board (authoritative — do not invent ruled-out checks):
+      step: 2  phase: checking
+      symptom: F5E2 door will not lock
+      ruled out: (none yet)
+      next check: Door closed check
+    transcript: |
+      User: Door will not lock, F5E2.
+      Assistant: Confirm the door is fully closed.
+      User: ok maybe later
+    notes: Deferred / non-committal — not progress or new symptom.

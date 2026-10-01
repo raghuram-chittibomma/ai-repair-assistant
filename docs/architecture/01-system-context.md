@@ -1,8 +1,8 @@
 # 01 — System context
 
 Who talks to what. Manufacturer PDFs stay on disk (gitignored); the committed
-manifest describes them. OpenAI is used for LLM generation only — embeddings
-are local BGE.
+manifest describes them. OpenAI is used for LLM **generation**; diagnose turn
+2+ classify may use TypeSafe Jev when configured — embeddings are local BGE.
 
 ## Actors and boundaries
 
@@ -13,6 +13,7 @@ flowchart TB
   app[CLI_API_UI]
   pg[(Postgres_pgvector)]
   openai[OpenAI_LLM]
+  jev[TypeSafe_Jev_optional]
   lf[Langfuse_optional]
   pdfs[Manufacturer_PDFs_gitignored]
   manifest[Corpus_manifest_git]
@@ -21,6 +22,7 @@ flowchart TB
   tech --> app
   app --> pg
   app --> openai
+  app -.-> jev
   app -.-> lf
   pdfs --> app
   manifest --> app
@@ -28,7 +30,8 @@ flowchart TB
 
 - **Audience matters:** Owner vs technician changes safety policy and (when feasible) which literature ranks first — same app, different gates.
 - **Store:** Postgres + pgvector holds documents and chunk embeddings.
-- **LLM:** OpenAI chat for ask / diagnose; never for embeddings ([ADR-0009](../adr/0009-local-open-embeddings.md)).
+- **LLM:** OpenAI chat for ask / diagnose **answers**; never for embeddings ([ADR-0009](../adr/0009-local-open-embeddings.md)).
+- **Classify:** Optional TypeSafe Jev for diagnose retrieve-time labels when `JEV_API_KEY` is set ([ADR-0054](../adr/0054-jev-diagnose-classify.md), charter D10); else OpenAI structured JSON; else regex / `acks.py`.
 - **Corpus:** Manifest in git; bytes under `corpus/documents/` never committed ([ADR-0003](../adr/0003-no-downloader.md), [CORPUS_LICENSING](../CORPUS_LICENSING.md)).
 - **Traces:** Langfuse is opt-in via `LANGFUSE_*` ([ADR-0018](../adr/0018-langfuse-observability.md)).
 
@@ -49,6 +52,7 @@ flowchart LR
   end
   pg[(Postgres)]
   openai[OpenAI]
+  jev[Jev_classify]
 
   cli --> retrieve
   api --> retrieve
@@ -60,6 +64,7 @@ flowchart LR
   retrieve --> pg
   ask --> openai
   diag --> openai
+  diag -.-> jev
 ```
 
 | Surface | Entry | Notes |

@@ -45,7 +45,10 @@ with fixtures.
 ## Consequences
 
 - Subsequent diagnose turns can stay on the current guide after a result.
-- Extra OpenAI call on turn 2+ when a key is present (LAN + paid exception).
+- Extra classify call on turn 2+ when a key is present. Prefer TypeSafe Jev
+  when `JEV_API_KEY` is set ([ADR-0054](0054-jev-diagnose-classify.md)); else
+  OpenAI structured JSON; else regex / `acks.py` (LAN + paid exceptions D1 /
+  D10).
 - CI uses a fake classifier. Live `bench-qa` of
   `f5e2-door-lock-still-unresolved` is manual/scheduled.
 - Free query rewrite remains rejected.

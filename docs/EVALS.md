@@ -22,6 +22,7 @@ not on PATH.
 | Chain smoke | `bench-chain --write` | DB + embedder (+ OpenAI unless `--skip-ask`) | `evals/chain/fixtures.yaml` | `evals/chain/results/scorecard.md` |
 | Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K / MRR / nDCG@K / latency) |
 | Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` (CI gate) + `evals/safety/adversarial.yaml` (R4 rates, not a gate). Optional `--classifier` (needs OpenAI; R3 union; not CI) | stdout + CI gate |
+| Diagnose intent | `bench-diagnose-intent --write` | `OPENAI_API_KEY` and/or `JEV_API_KEY` (regex arm offline) | `evals/diagnose/intent-fixtures.yaml` | `evals/diagnose/results/scorecard.md` (ADR-0054 bake-off) |
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
 | Promote failure | `promote-eval --run … --scenario ID` | prior run JSON | — | YAML draft (optional `--write` into grading overlay) |
@@ -57,6 +58,9 @@ pytest -q
 python -m repair_assistant.corpus.cli bench-parse --write
 python -m repair_assistant.corpus.cli bench-layout --write
 python -m repair_assistant.corpus.cli bench-safety
+
+# Diagnose label bake-off (ADR-0054). Needs OPENAI_API_KEY and/or JEV_API_KEY.
+python -m repair_assistant.corpus.cli bench-diagnose-intent --write
 
 # Needs LAN Postgres (DATABASE_URL in .env.local)
 # First run of vector_apply_rerank (ADR-0027) downloads CrossEncoder weights.

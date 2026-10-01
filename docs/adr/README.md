@@ -77,6 +77,7 @@ End-to-end diagram (propose → human board → retrieve → generate with layou
 | [0031](0031-structured-diagnostic-state.md) | Session board: step, phase, hypotheses, ruled-out, observations | Review R31 |
 | [0034](0034-diagnose-nlu-split.md) | Rules own protocol; LLM owns closed-set labels — no slang YAML, no rule-only agent, no free query rewrite | Review R18 reading |
 | [0039](0039-diagnose-retrieve-labels.md) | Turn 2+ classify → rule-built query + same-doc stickiness | ADR-0034 opened with fixtures |
+| [0054](0054-jev-diagnose-classify.md) | TypeSafe Jev `choice` for diagnose retrieve labels (OpenAI generate unchanged) | Closed-set classify; 90% vs 70% OpenAI on intent fixtures |
 | [0043](0043-session-evidence-reuse.md) | Progress follow-ups reuse the session evidence pack; search only on a new or corrected problem | Re-search replaced `[n]` after checks passed |
 | [0035](0035-late-fusion-page-images.md) | Gated page rasters at generate time; BGE retrieval unchanged; image embeddings deferred | Review R33 follow-on |
 

@@ -22,12 +22,16 @@ Copy from `.env.example`. Minimum:
 DATABASE_URL=postgresql://repair:YOUR_PASSWORD@LAN_HOST:5436/repair_assistant
 OPENAI_API_KEY=sk-...
 SEMANTIC_OPENAI_API_KEY=sk-...
+# Optional: prefer TypeSafe Jev for diagnose turn-2+ labels (ADR-0054).
+# JEV_API_KEY=apikey_...
 LLM_MODEL=gpt-4o-mini-2024-07-18
 REPAIR_API_KEY=
 ```
 
-`OPENAI_API_KEY` is for ask/diagnose. `SEMANTIC_OPENAI_API_KEY` is a separate
-key for corpus propose / approve representations (cost tracking; no fallback).
+`OPENAI_API_KEY` is for ask/diagnose **answers**. `JEV_API_KEY` (when set) is
+preferred for diagnose retrieve-time classify only ([ADR-0054](adr/0054-jev-diagnose-classify.md)).
+`SEMANTIC_OPENAI_API_KEY` is a separate key for corpus propose / approve
+representations (cost tracking; no fallback).
 
 The API binds **127.0.0.1** by default (`REPAIR_API_HOST`). Leave `REPAIR_API_KEY`
 empty on that loopback path. To listen on the LAN, set `REPAIR_API_HOST=0.0.0.0`
@@ -109,6 +113,7 @@ Optional live traces (not required for benches): [LANGFUSE.md](LANGFUSE.md).
 | Diagnose “session expired” after restart | Expected — sessions are in-memory; click **New chat** |
 | UI 401 with API key set | Enter the same value in the UI **API key** field (stored in localStorage) |
 | UI works but answers fail | Check `OPENAI_API_KEY` in `.env.local` |
+| Diagnose follow-ups mis-label / fall back to regex | Check `JEV_API_KEY` (and optional `JEV_DECIDE_URL`) in `.env.local` |
 | Corpus **Propose semantic** fails | Check `SEMANTIC_OPENAI_API_KEY` in `.env.local` (not the ask key) |
 | `repair-corpus` not found | Use `python -m repair_assistant.corpus.cli …` |
 

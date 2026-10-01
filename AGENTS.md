@@ -27,6 +27,7 @@ local BGE embeddings). Manufacturer PDFs stay out of git.
 Encoded in `.cursor/rules/standing-decisions.mdc`. In short: keep
 `vector_apply_boost`; do not start R11/R20/R22 ranking or R41 feedback UI;
 R18 is closed-set diagnose retrieve labels ([ADR-0039](docs/adr/0039-diagnose-retrieve-labels.md)), not slang YAML, a rule-only agent, or free query rewrite;
+prefer TypeSafe Jev for that classify step when `JEV_API_KEY` is set ([ADR-0054](docs/adr/0054-jev-diagnose-classify.md));
 do not invent a held-out retrieval set; door polarity is compositional
 ([ADR-0040](docs/adr/0040-door-polarity-grammar.md)); unlock retrieve is
 stuck-closed OEM not F5E2 ([ADR-0041](docs/adr/0041-unlock-family-no-fault-code.md));

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -24,7 +25,9 @@ from repair_assistant.diagnostic.graph import (
     retrieve_diagnose_state,
 )
 from repair_assistant.diagnostic.intent import last_doc_ids_from_citations, live_intent_complete
+from repair_assistant.diagnostic.jev import jev_api_key, live_jev_intent_complete
 from repair_assistant.diagnostic.state import DiagnosticGraphState, TurnResult
+from repair_assistant.ingest.env import load_dotenv_files
 from repair_assistant.ingest.store import Database
 from repair_assistant.observability.langfuse_tracing import observation, update_span
 from repair_assistant.prompts import prompt_stamp
@@ -39,12 +42,19 @@ DEFAULT_SESSION_MAX_TURNS = 24
 
 
 def _session_classify_turn(injected_llm: LLMClient | None):
-    """Live classify only when this is a real API session (no test double)."""
+    """Live classify only when this is a real API session (no test double).
+
+    Preference (ADR-0054): Jev if ``JEV_API_KEY`` → else OpenAI if
+    ``OPENAI_API_KEY`` → else regex / ``acks.py`` fallback (``None``).
+    """
     if injected_llm is not None:
         return None
-    if not openai_api_key():
-        return None
-    return live_intent_complete
+    load_dotenv_files()
+    if jev_api_key():
+        return live_jev_intent_complete
+    if os.environ.get("OPENAI_API_KEY", "").strip():
+        return live_intent_complete
+    return None
 
 
 class SessionTurnLimitError(ValueError):

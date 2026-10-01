@@ -1689,6 +1689,38 @@ def mine_traces_cmd(
         click.echo("Dry run — pass --write to save the analysis report.")
 
 
+@main.command("bench-diagnose-intent")
+@click.option(
+    "--write",
+    is_flag=True,
+    default=False,
+    help="Write evals/diagnose/results/scorecard.md",
+)
+@click.option(
+    "--arm",
+    "arms",
+    multiple=True,
+    type=click.Choice(["openai", "jev", "regex"], case_sensitive=False),
+    help="Arms to run (default: openai, jev, regex). Repeatable.",
+)
+def bench_diagnose_intent_cmd(write: bool, arms: tuple[str, ...]) -> None:
+    """Bake-off closed-set diagnose labels: OpenAI vs Jev vs regex (ADR-0054).
+
+    Manual only — needs live API keys for openai/jev arms. Regex is offline.
+    """
+    from repair_assistant.diagnostic.intent_bench import run_bakeoff, write_scorecard
+
+    selected = list(arms) if arms else None
+    summaries = run_bakeoff(arms=selected)
+    from repair_assistant.diagnostic.intent_bench import scorecard_markdown
+
+    card = scorecard_markdown(summaries)
+    if write:
+        path = write_scorecard(summaries)
+        click.echo(f"Wrote {path}")
+    click.echo(card)
+
+
 @main.command("bench-safety")
 @click.option(
     "--classifier",
