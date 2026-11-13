@@ -1721,6 +1721,42 @@ def bench_diagnose_intent_cmd(write: bool, arms: tuple[str, ...]) -> None:
     click.echo(card)
 
 
+@main.command("bench-reasoning")
+@click.option(
+    "--translate",
+    is_flag=True,
+    default=False,
+    help="Also run the live translator on evals/reasoning/translation_probe.yaml "
+    "(needs OPENAI_API_KEY; reported, not a gate).",
+)
+def bench_reasoning_cmd(translate: bool) -> None:
+    """Prove config/reasoning/answer_invariants.yaml against formal scenarios.
+
+    No OpenAI or Postgres. A failing case rejects that policy version (ADR-0055).
+    """
+    from repair_assistant.reasoning.bench import (
+        run_bench,
+        run_translation_probe,
+        scorecard_markdown,
+    )
+
+    results = run_bench()
+    click.echo(scorecard_markdown(results))
+    if translate:
+        from repair_assistant.qa.env import llm_model, llm_timeout_seconds, openai_api_key
+        from repair_assistant.reasoning.translator import OpenAITranslator
+
+        translator = OpenAITranslator(
+            api_key=openai_api_key(), model=llm_model(), timeout=llm_timeout_seconds()
+        )
+        probe = run_translation_probe(translator)
+        click.echo(
+            scorecard_markdown(probe, title="Reasoning translation probe", all_detail=True)
+        )
+    if any(not item.passed for item in results):
+        raise click.ClickException("reasoning bench failed; see output above")
+
+
 @main.command("bench-safety")
 @click.option(
     "--classifier",

@@ -33,6 +33,8 @@ dependencies = [
     # Phase 9 HTTP API (charter Phase 10).
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.32,<1",
+    # Policy entailment (ADR-0055). Local SMT solver; not a hosted guardrail.
+    "z3-solver>=4.12,<5",
     # Phase 9 observability (ADR-0018) — opt-in via LANGFUSE_* env vars.
     # v4+ required for Python 3.14+ (v3 hits pydantic.v1 import errors).
     "langfuse>=4.0,<5",

@@ -122,6 +122,10 @@ def _citation_out(cite) -> CitationOut:
     return CitationOut(**citation_public_dict(cite))
 
 
+def _reasoning_out(value: object) -> dict | None:
+    return value if isinstance(value, dict) else None
+
+
 def _diagnose_tally_out(turn) -> DiagnoseTallyOut:
     payload = session_tally(
         board_from_mapping(getattr(turn, "diagnostic", None)),
@@ -473,6 +477,7 @@ def create_app(
             safety_notice=result.safety_notice,
             escalated=result.escalated,
             figure_pages=_figure_pages_out(result.figure_pages),
+            reasoning=_reasoning_out(result.reasoning),
         )
 
     @app.post("/v1/ask/stream", dependencies=[Depends(require_api_key)])
@@ -553,6 +558,7 @@ def create_app(
             diagnostic=turn.diagnostic if isinstance(turn.diagnostic, dict) else None,
             tally=_diagnose_tally_out(turn),
             figure_pages=_figure_pages_out(turn.figure_pages),
+            reasoning=_reasoning_out(turn.reasoning),
         )
 
     @app.post("/v1/diagnose/stream", dependencies=[Depends(require_api_key)])

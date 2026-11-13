@@ -22,6 +22,8 @@ not on PATH.
 | Chain smoke | `bench-chain --write` | DB + embedder (+ OpenAI unless `--skip-ask`) | `evals/chain/fixtures.yaml` | `evals/chain/results/scorecard.md` |
 | Retrieval | `bench-retrieve --write` | live Postgres + embeddings | `evals/retrieval/fixtures.yaml` | `evals/retrieval/results/scorecard.md` (pass/fail + Hit@K / Recall@K / Precision@K / MRR / nDCG@K / latency) |
 | Safety | `bench-safety` | none | `evals/safety/fixtures.yaml` (CI gate) + `evals/safety/adversarial.yaml` (R4 rates, not a gate). Optional `--classifier` (needs OpenAI; R3 union; not CI) | stdout + CI gate |
+| Reasoning | `bench-reasoning` | none | `evals/reasoning/fixtures.yaml` (formal scenarios and claim completeness for the published policy version, [ADR-0055](adr/0055-automated-reasoning-checks.md)) | stdout. A mismatch fails the command |
+| Reasoning translation | `bench-reasoning --translate` | `OPENAI_API_KEY` | `evals/reasoning/translation_probe.yaml` (natural turns) | stdout. Reported, not a gate |
 | Diagnose intent | `bench-diagnose-intent --write` | `OPENAI_API_KEY` and/or `JEV_API_KEY` (regex arm offline) | `evals/diagnose/intent-fixtures.yaml` | `evals/diagnose/results/scorecard.md` (ADR-0054 bake-off) |
 | Q&A smoke | `bench-qa --write` | DB + `OPENAI_API_KEY` | `evals/qa/smoke-scenarios.yaml` | `evals/qa/results/scorecard.md` + JSON under `runs/` |
 | Candidates | `bench-candidates --write` | DB + `OPENAI_API_KEY` | `evals/scenarios/candidates.yaml` + `evals/qa/candidates-grading.yaml` | `evals/qa/results/candidates-scorecard.md` + JSON under `runs/` |
@@ -58,6 +60,9 @@ pytest -q
 python -m repair_assistant.corpus.cli bench-parse --write
 python -m repair_assistant.corpus.cli bench-layout --write
 python -m repair_assistant.corpus.cli bench-safety
+python -m repair_assistant.corpus.cli bench-reasoning
+# Optional live translator sample (needs OPENAI_API_KEY; not a gate)
+python -m repair_assistant.corpus.cli bench-reasoning --translate
 
 # Diagnose label bake-off (ADR-0054). Needs OPENAI_API_KEY and/or JEV_API_KEY.
 python -m repair_assistant.corpus.cli bench-diagnose-intent --write
@@ -232,6 +237,7 @@ report by hand if you want new smoke/candidates.
 | Bench | Result | Notes |
 | --- | --- | --- |
 | Safety | 15/15 | Deterministic; required CI check (`bench-safety`) |
+| Reasoning | 16/16 | Formal pack + completeness; `pytest` covers the same gate ([ADR-0055](adr/0055-automated-reasoning-checks.md)) |
 | Retrieval | 14/14 hard (`vector_apply_boost`) | Includes `production_search` strategy |
 | Chain smoke | — | `bench-chain` harness ready; E12 deferred (no boundary failure to bake) |
 | Q&A smoke | 5/5 | Live |
@@ -254,10 +260,12 @@ Gap analysis: [EVAL_FRAMEWORK_GAPS.md](EVAL_FRAMEWORK_GAPS.md).
 ## Out of scope (for now)
 
 - CI benches that need OpenAI or the real corpus (`bench-qa`, `bench-retrieve`,
-  `--judge`) — operators run those by hand. Offline `bench-safety` is a
-  required CI check. SQL correctness tests (`tests/test_postgres_sql.py`) run
-  against a disposable `pgvector` service in CI via `REPAIR_TEST_DATABASE_URL`;
-  they never use the LAN `DATABASE_URL`.
+  `--judge`, `bench-reasoning --translate`) — operators run those by hand.
+  Offline `bench-safety` is a required CI check. Offline `bench-reasoning` is
+  the policy promotion gate; the same pack also runs under `pytest`
+  (`tests/test_reasoning.py`). SQL correctness tests (`tests/test_postgres_sql.py`)
+  run against a disposable `pgvector` service in CI via
+  `REPAIR_TEST_DATABASE_URL`; they never use the LAN `DATABASE_URL`.
 - Auto-merging promoted drafts into live overlay keys (always human review)
 - Auto-merging `mine-traces` report suggestions into `status: ready` (ADR-0023)
 

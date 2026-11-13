@@ -80,6 +80,7 @@ class AskResponse(BaseModel):
     safety_notice: str = ""
     escalated: bool = False
     figure_pages: list[PageImageOut] = Field(default_factory=list)
+    reasoning: dict | None = None
 
 
 class DiagnoseRequest(BaseModel):
@@ -137,6 +138,7 @@ class DiagnoseResponse(BaseModel):
     diagnostic: DiagnoseBoardOut | None = None
     tally: DiagnoseTallyOut | None = None
     figure_pages: list[PageImageOut] = Field(default_factory=list)
+    reasoning: dict | None = None
 
 
 class HealthResponse(BaseModel):

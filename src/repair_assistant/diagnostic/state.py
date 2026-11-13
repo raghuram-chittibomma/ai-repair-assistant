@@ -37,6 +37,7 @@ class DiagnosticGraphState(TypedDict):
     diagnostic: NotRequired[dict]
     last_cite_doc_ids: NotRequired[list[str]]
     retrieve_label: NotRequired[str]
+    reasoning: NotRequired[dict]
 
 
 @dataclass
@@ -58,3 +59,4 @@ class TurnResult:
     evidence_blocks: dict[int, str] = field(default_factory=dict)
     diagnostic: dict = field(default_factory=dict)
     figure_pages: list[dict] = field(default_factory=list)
+    reasoning: dict | None = None

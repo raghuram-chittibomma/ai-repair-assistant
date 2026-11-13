@@ -37,6 +37,7 @@ class CandidateBenchResult:
     abstained: bool = False
     duration_ms: int = 0
     turns: list[TurnRecord] = field(default_factory=list)
+    reasoning: dict | None = None
 
 
 def load_candidates(path: Path | None = None) -> dict[str, Any]:
@@ -151,6 +152,7 @@ def run_candidates_bench(
                         abstained=qa.abstained,
                         duration_ms=qa.duration_ms,
                         turns=qa.turns,
+                        reasoning=qa.reasoning,
                     )
                 )
                 continue
@@ -189,6 +191,7 @@ def run_candidates_bench(
                     citations=cite_keys,
                     abstained=outcome.abstained,
                     duration_ms=elapsed,
+                    reasoning=getattr(outcome, "reasoning", None),
                 )
             )
     return results
@@ -230,6 +233,7 @@ def to_qa_results(results: list[CandidateBenchResult]) -> list[QAScenarioResult]
             citations=r.citations,
             turns=r.turns,
             duration_ms=r.duration_ms,
+            reasoning=r.reasoning,
         )
         for r in results
         if not r.skipped

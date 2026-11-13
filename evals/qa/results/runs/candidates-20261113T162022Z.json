@@ -1,0 +1,1726 @@
+{
+  "timestamp": "2026-11-13T16:25:50.235553+00:00",
+  "results": [
+    {
+      "scenario_id": "acu-led-step-10",
+      "passed": false,
+      "detail": "must_cite missing 'W11375982'; got ['tech-sheet-w11156989-revd', 'W11156989 Rev D p.12 [structured]', 'W11156989']",
+      "command": "ask",
+      "abstained": false,
+      "answer": "During the ACU power check on the WFW5620HW0, the ACU diagnostic LED will blink rapidly for a few seconds and then blink slowly (0.5 seconds on, 0.5 seconds off). This indicates the functionality of the microcontroller and power supply. If the LED is not lit, there is no 5 VDC supply to the microcontroller, and if it does not blink slowly within 30 seconds of being powered up, the microcontroller is not responding, indicating a need to replace the ACU. If the LED is blinking slowly during washer operation, the ACU is likely functioning correctly and the issue may lie elsewhere [1].",
+      "citations": [
+        "tech-sheet-w11156989-revd",
+        "W11156989 Rev D p.12 [structured]",
+        "W11156989"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 37523,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "During the ACU power check on the WFW5620HW0, the ACU diagnostic LED will blink rapidly for a few seconds and then blink slowly (0.5 seconds on, 0.5 seconds off). This indicates the functionality of the microcontroller and power supply. If the LED is not lit, there is no 5 VDC supply to the microcontroller, and if it does not blink slowly within 30 seconds of being powered up, the microcontroller is not responding, indicating a need to replace the ACU. If the LED is blinking slowly during washer operation, the ACU is likely functioning correctly and the issue may lie elsewhere [1]."
+        ],
+        "duration_ms": 3473
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "door-locks-wont-run-wrong-platform",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "If your Whirlpool front load washer model WFW5620HW0 locks the door but won't start, it may be due to a lack of proper electrical supply. Ensure that the power cord is plugged into a grounded 3-prong outlet and check for any tripped circuit breakers or blown fuses [2]. Additionally, verify that both water supply hoses are properly attached and that water is flowing to the washer [2].",
+      "citations": [
+        "use-and-care-w11156985",
+        "W11156985 Rev A p.24 [structured]",
+        "W11156985"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 7545,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "rules": [],
+        "premises": {
+          "doorPolarity": "UNKNOWN"
+        },
+        "claims": {},
+        "untranslated": [
+          "If your Whirlpool front load washer model WFW5620HW0 locks the door but won't start, it may be due to a lack of proper electrical supply. Ensure that the power cord is plugged into a grounded 3-prong outlet and check for any tripped circuit breakers or blown fuses [2]. Additionally, verify that both water supply hoses are properly attached and that water is flowing to the washer [2]."
+        ],
+        "confidence": 1.0,
+        "duration_ms": 2803
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "serial-outside-range",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "Is the door stuck closed (won't open / won't unlock), or will it not lock to start a cycle? If the display shows an error code (for example F5E2), please include it.",
+      "citations": [],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 1263,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": null,
+      "turns": []
+    },
+    {
+      "scenario_id": "serial-unknown-must-ask",
+      "passed": false,
+      "detail": "expect_contains_any missing one of ['serial']; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": false,
+      "answer": "Is the door stuck closed (won't open / won't unlock), or will it not lock to start a cycle? If the display shows an error code (for example F5E2), please include it.",
+      "citations": [],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 1263,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": null,
+      "turns": []
+    },
+    {
+      "scenario_id": "f5e2-three-way",
+      "passed": false,
+      "detail": "missing 'door lock'",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The F5 E2 error code on your Whirlpool washer indicates that the door is not locking properly. This can occur if the door is not completely closed, if there is an item preventing the door from closing, or if the washer's control unit detects an open door switch when attempting to lock. To resolve this, ensure the door is firmly closed and check for any obstructions. If the issue persists, you may need to reset the washer by disconnecting it from the power source for 5 minutes and then reconnecting it. If the problem continues, contacting a qualified technician may be necessary [1][2][5].",
+      "citations": [
+        "kb-f5e2-front-load",
+        "kb-f5e2-front-load p.1 [structured]",
+        "kb-f5e2-front-load",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.32 [structured] \u2014 F5E2",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 11895,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "rules": [],
+        "premises": {
+          "doorPolarity": "UNKNOWN"
+        },
+        "claims": {},
+        "untranslated": [
+          "The F5 E2 error code on your Whirlpool washer indicates that the door is not locking properly. This can occur if the door is not completely closed, if there is an item preventing the door from closing, or if the washer's control unit detects an open door switch when attempting to lock. To resolve this, ensure the door is firmly closed and check for any obstructions. If the issue persists, you may need to reset the washer by disconnecting it from the power source for 5 minutes and then reconnecting it. If the problem continues, contacting a qualified technician may be necessary [1][2][5]."
+        ],
+        "confidence": 1.0,
+        "duration_ms": 3463
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "f5e2-technician-depth",
+      "passed": false,
+      "detail": "must_cite missing 'W11320651'; got ['service-manual-w11169652-revb', 'W11169652 Rev B p.32 [structured] \u2014 F5E2', 'W11169652']; must_cite missing 'W11320651'; got ['service-manual-w11169652-revb', 'W11169652 Rev B p.32 [structured] \u2014 F5E2', 'W11169652']",
+      "command": "ask",
+      "abstained": false,
+      "answer": "If you see CODE F5E2 on your WFW5620HW0, it indicates a door lock failure. You should check the following: 1) Ensure the door closes completely without any interference. 2) Verify that the door switch is functioning correctly and not detected as open when attempting to lock. 3) Check if the ACU (Active Control Unit) can determine if the door lock is in a locked state. If these checks do not resolve the issue, further diagnostics may be needed [1][2][3].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.32 [structured] \u2014 F5E2",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 8857,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "valid",
+        "rules": [
+          "will-not-lock-uses-lock-test"
+        ],
+        "premises": {
+          "doorPolarity": "WILL_NOT_LOCK"
+        },
+        "claims": {
+          "prescribesLockSideTest": true
+        },
+        "model": {
+          "doorPolarity": "WILL_NOT_LOCK",
+          "prescribesLockSideTest": true,
+          "prescribesUnlockSideTest": false,
+          "meterReading": 0,
+          "quotedReading": 0
+        },
+        "claim_outcomes": [
+          {
+            "name": "prescribesLockSideTest",
+            "outcome": "valid"
+          }
+        ],
+        "confidence": 1.0,
+        "duration_ms": 2824
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "door-lock-part-number",
+      "passed": false,
+      "detail": "missing 'W10804741'; expect_contains_any missing one of ['confirm', 'catalog', 'catalogue', 'supersed', '2020', 'current', 'may have changed']; must_cite missing 'W11320547'; got []; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": false,
+      "answer": "Is the door stuck closed (won't open / won't unlock), or will it not lock to start a cycle? If the display shows an error code (for example F5E2), please include it.",
+      "citations": [],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 1258,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": null,
+      "turns": []
+    },
+    {
+      "scenario_id": "error-code-lookup",
+      "passed": false,
+      "detail": "expect_contains_any missing one of ['valve', 'test #6', 'inlet']; expect_cites_any missing one of ['W11320651', 'W11156989']; got ['service-manual-w11169652-revb', 'W11169652 Rev B p.33 [structured] \u2014 F8E1', 'W11169652']",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The F8E1 error code on your Whirlpool washer model WFW5620HW0 indicates a \"Long Fill\" issue. This occurs when the water level does not change for a period of time, or water is present but the washer does not detect the water level changing. Possible causes include: the water supply not being connected or turned on, kinked water supply hoses, plugged hose screens, low water pressure, or issues with the pressure hose connection from the tub to the pressure switch [2][7].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.33 [structured] \u2014 F8E1",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 8009,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The F8E1 error code on your Whirlpool washer model WFW5620HW0 indicates a \"Long Fill\" issue. This occurs when the water level does not change for a period of time, or water is present but the washer does not detect the water level changing. Possible causes include: the water supply not being connected or turned on, kinked water supply hoses, plugged hose screens, low water pressure, or issues with the pressure hose connection from the tub to the pressure switch [2][7]."
+        ],
+        "duration_ms": 2782
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "error-code-orphaned-by-extraction",
+      "passed": false,
+      "detail": "expect_cites_any missing one of ['W11320651', 'W11156989']; got ['service-manual-w11169652-revb', 'W11169652 Rev B p.32 [structured] \u2014 F6E1', 'W11169652']",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The F6E1 error code on your Whirlpool washer model WFW5620HW0 indicates a communication error where the ACU (Appliance Control Unit) cannot hear the HMI (Human Machine Interface). This fault is displayed when communications between these two components have not been detected. To address this issue, you can try recycling power to the washer. Additionally, verify continuity in the cable between the ACU and HMI, and check both AC and DC power supplies [1].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.32 [structured] \u2014 F6E1",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 7653,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The F6E1 error code on your Whirlpool washer model WFW5620HW0 indicates a communication error where the ACU (Appliance Control Unit) cannot hear the HMI (Human Machine Interface). This fault is displayed when communications between these two components have not been detected. To address this issue, you can try recycling power to the washer. Additionally, verify continuity in the cable between the ACU and HMI, and check both AC and DC power supplies [1]."
+        ],
+        "duration_ms": 2900
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "publication-number-lookup",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "W11375982 is a Technical Service Pointer released in June 2019, intended for the service department's immediate attention regarding laundry products [5] .",
+      "citations": [
+        "tsp-w11375982",
+        "W11375982 p.1 [structured]",
+        "W11375982"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 7712,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "W11375982 is a Technical Service Pointer released in June 2019, intended for the service department's immediate attention regarding laundry products [5] ."
+        ],
+        "duration_ms": 3968
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "connector-designation",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "Connector J36 on the Appliance Control Unit (ACU) connects to the motor, specifically for the direct drive motor circuit. It has three pins with resistance values ranging from 6 to 20 \u2126 for each pin [1] [2].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.48 [structured]",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 7861,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "Connector J36 on the Appliance Control Unit (ACU) connects to the motor, specifically for the direct drive motor circuit. It has three pins with resistance values ranging from 6 to 20 \u2126 for each pin [1] [2].",
+          "resistance values ranging from 6 to 20 \u2126 for each pin"
+        ],
+        "duration_ms": 2929
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "code-to-procedure-hop",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The F3E2 error code on your WFW5620HW0 indicates a \"Wash NTC Fault,\" which occurs if the wash temperature sensor is out of range, or if an open circuit or short circuit is detected. To address this issue, it is recommended to check the wash temperature sensor for faults [1].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.31 [structured] \u2014 F3E2",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 6990,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The F3E2 error code on your WFW5620HW0 indicates a \"Wash NTC Fault,\" which occurs if the wash temperature sensor is out of range, or if an open circuit or short circuit is detected. To address this issue, it is recommended to check the wash temperature sensor for faults [1]."
+        ],
+        "duration_ms": 2441
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "unresponsive-control-panel",
+      "passed": false,
+      "detail": "expect_contains_any missing one of ['control lock', 'LOC', 'lock']; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": false,
+      "answer": "If your washer powers on but the control panel does not respond to any buttons, it may be due to an issue with the electrical supply or the control panel itself. First, ensure that the power cord is plugged into a grounded 3-prong outlet and check for any tripped circuit breakers or blown fuses [1]. If the control panel has a touch interface, make sure to touch the panel lightly with your fingertip, as it is sensitive to touch [2]. If these steps do not resolve the issue, further investigation may be needed to determine if there is a fault with the control panel or other internal components.",
+      "citations": [
+        "use-and-care-w11156985",
+        "W11156985 Rev A p.24 [structured]",
+        "W11156985",
+        "use-and-care-w11156985",
+        "W11156985 Rev A p.5 [structured]",
+        "W11156985"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 8046,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "If your washer powers on but the control panel does not respond to any buttons, it may be due to an issue with the electrical supply or the control panel itself. First, ensure that the power cord is plugged into a grounded 3-prong outlet and check for any tripped circuit breakers or blown fuses [1]. If the control panel has a touch interface, make sure to touch the panel lightly with your fingertip, as it is sensitive to touch [2]. If these steps do not resolve the issue, further investigation may be needed to determine if there is a fault with the control panel or other internal components."
+        ],
+        "duration_ms": 3141
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "installation-fault-not-component-fault",
+      "passed": false,
+      "detail": "must_cite missing 'W11156977'; got ['service-manual-w11169652-revb', 'W11169652 Rev B p.33 [structured]', 'W11169652', 'tech-sheet-w11320651', 'W11320651 Rev B p.9 [structured] \u2014 MC/MCU Overload.', 'W11320651']",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The error code F7E1 indicates a motor control or motor overload fault, which can occur if there is an obstruction between the spin basket and the outer tub or if there are issues with the motor connections. To address this, you should check for any obstructions and ensure that the harness connections between the ACU and the motor are secure. Additionally, recycling power to the washer may help reset the system [2][6].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.33 [structured]",
+        "W11169652",
+        "tech-sheet-w11320651",
+        "W11320651 Rev B p.9 [structured] \u2014 MC/MCU Overload.",
+        "W11320651"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 11079,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The error code F7E1 indicates a motor control or motor overload fault, which can occur if there is an obstruction between the spin basket and the outer tub or if there are issues with the motor connections. To address this, you should check for any obstructions and ensure that the harness connections between the ACU and the motor are secure. Additionally, recycling power to the washer may help reset the system [2][6]."
+        ],
+        "duration_ms": 2682
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "f5e2-narrow-then-exclude-24in",
+      "passed": true,
+      "detail": "ok; det turns only (needs --judge for prose)",
+      "command": "diagnose",
+      "abstained": false,
+      "answer": "Since the door appears to be fully closed, the next step is to check for a possible door lock failure. Here are the checks to perform:\n\n1. **Door Lock Mechanism**: Inspect the door lock mechanism for any signs of damage or wear. Ensure that it is functioning properly and that the door latch is engaging correctly.\n2. **Door Switch**: Verify that the door switch is working. The ACU (Automatic Control Unit) may detect an open door switch when attempting to lock, which can trigger the F5E2 error code.\n3. **Interference**: Ensure there are no items obstructing the door lock mechanism that could prevent it from locking completely.\n\nThese checks are crucial as the F5E2 error indicates that the door is not locking properly due to one of these issues [2][3].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.32 [structured] \u2014 F5E2",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 27996,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "rules": [],
+        "premises": {
+          "doorPolarity": "UNKNOWN"
+        },
+        "claims": {},
+        "untranslated": [
+          "Since the door appears to be fully closed, the next step is to check for a possible door lock failure. Here are the checks to perform:",
+          "1. **Door Lock Mechanism**: Inspect the door lock mechanism for any signs of damage or wear. Ensure that it is functioning properly and that the door latch is engaging correctly.",
+          "2. **Door Switch**: Verify that the door switch is working. The ACU (Automatic Control Unit) may detect an open door switch when attempting to lock, which can trigger the F5E2 error code.",
+          "3. **Interference**: Ensure there are no items obstructing the door lock mechanism that could prevent it from locking completely.",
+          "These checks are crucial as the F5E2 error indicates that the door is not locking properly due to one of these issues [2][3]."
+        ],
+        "confidence": 1.0,
+        "duration_ms": 4481
+      },
+      "turns": [
+        {
+          "turn": 1,
+          "user_message": "My washer shows F5E2 and the door locks but it won't start.",
+          "assistant_message": "The F5E2 error code indicates a door lock failure, which can occur for several reasons. Here are some steps to troubleshoot this issue:\n\n1. **Check if the door is firmly closed**: Ensure that the door is completely closed and latched. Sometimes, it may appear closed but isn't fully latched.\n2. **Look for obstructions**: Check if there are any items preventing the door from closing properly. Make sure there are no clothes or other items sticking out beyond the door opening.\n3. **Reset the washer**: Cycle power to the control to reset the washer. You can do this by unplugging the washer for 5 minutes and then plugging it back in. This can sometimes resolve the issue if it's a temporary glitch.\n\nPlease try these steps and let me know the results. If the issue persists, we may need to explore further diagnostics related to the door lock system [1][2].",
+          "abstained": false,
+          "citations": [
+            "kb-f5e2-front-load",
+            "kb-f5e2-front-load p.1 [structured]",
+            "kb-f5e2-front-load",
+            "service-manual-w11169652-revb",
+            "W11169652 Rev B p.32 [structured] \u2014 F5E2",
+            "W11169652"
+          ],
+          "retrieval_count": 8,
+          "claims": [
+            {
+              "text": "The F5E2 error code indicates a door lock failure.",
+              "evidence_index": 1
+            },
+            {
+              "text": "To resolve the F5E2 error, check if the door is firmly closed and look for any items preventing it from closing properly.",
+              "evidence_index": 2
+            }
+          ],
+          "evidence_blocks": {
+            "1": "Error codes: F5E2\n\nF5 E2 - Error Code - Product Help | Whirlpool Skip to main content Icon/Error Created with Sketch. Your location: 20146 Current Location: 20146 Providing your exact location will allow us to ensure our products are available in your area. ZIP Code: Icon/Error Created with Sketch. Oops! We seem to have lost our map and can't update your zip code right now. Please try again in a bit. Icon/Error Created with Sketch. This site only ships to the United States. Please provide a US ZIP code. Icon/Error Created with Sketch. This site only ships to the United States. Please provide a US ZIP code. Visit KitchenAid International Update Location Owner's Center Extended Service Plans Contact Us Your location: 20146 Owner's Center Extended Service Plans Contact Us Close Suggestions Content & Manuals View all SIGN IN or Create account Hello, My Account Hello, My Account Dashboard My Orders Wish List My Appliances Profile Information Address Book Saved Payment Information My Subscriptions Sign Out All Merchandise in Cart: Order Discount: Total: (Before Taxes, Shipping, and Services): Proceed to Checkout Your Shopping Cart is Empty Link your shopping cart across all your devices! Sign in to your account to save and access your shopping cart on your desktop, tablet, or mobile device. Be sure to check out our latest offers to start saving! Menu Close Close Suggestions Content & Manuals View all Kitchen Refrigeration French Door Refrigerators Side by Side Refrigerators Top Freezer Refrigerators Bottom Freezer Refrigerators Counter Depth Refrigerators Under Counter Refrigerators Beverage & Wine Centers Ice Makers Freezers Water Filters Shop All Refrigerators Ranges Gas Ranges Electric Ranges Slide-in Ranges Freestanding Single Ovens Double Oven Ranges Explore Smart Ranges Shop All Kitchen Ranges Wall Ovens Single Wall Ovens Double Wall Ovens Wall Oven & Microwave Combo Smart Wall Ovens Shop All Wall Ovens Dishwashers Top Control Dishwashers Front-Control Dishwashers Explore 3rd Rack Dishwashers Shop 3rd Rack Dishwashers Portable Dishwashers Shop All Dishwashers Microwaves Countertop Microwaves Over the Range Microwaves Explore Low Profile Microwaves Shop All Microwaves Cooktops Electric Cooktops Gas Cooktops Induction Cooktops Shop All Cooktops Vent Hoods Under-Cabinet Range Hoods Canopy Vent Hoods Downdraft Range Hoods Shop All Vent Hoods Trash Compactors Garbage Disposers Smart Kitchen Appliances Small Space Kitchen Appliances Help Me Choose Laundry & Home Explore Top Load Explore Front Load Washers Top Load Washers Front Load Washers HE Top Load Washers 2 in 1 Washer with Removable Agitator Smart Washers Shop All Washers Dryers Electric Dryers Gas Dryers Smart Dryers Shop All Dryers Laundry Sets Washer Dryer Combo Units Stackable Washer and Dryers Stacked Laundry Centers Pedestals Commercial Laundry Equipment Home Solutions Laundry Detergent Portable Dehumidifiers Portable Air Conditioners Window Air Conditioner Air Purifiers & Filters Central Heating & AC Water Softeners Water Filtration Systems Water Coolers Water Heaters Care Counts Smart Laundry Appliances Small Space Laundry Appliances Help Me Choose Parts & Accessories Kitchen Refrigerator Accessories Freezer Accessories Dishwasher Accessories Range Accessories Wall Oven Accessories Microwave Accessories All Kitchen Appliance Accessories Water Filters Laundry Washing Machine Accessories Dryer Accessories All Laundry Accessories Appliance Cleaners Specialized Appliance Cleaners Affresh Kitchen Accessories Affresh Laundry Accessories All Affresh Accessories Blog Kitchen Convection vs. Conventional Dishwasher Buying Guide Wall Oven Sizing Guide Fridge Size & Fit Guide What is Counter Depth? Dishwasher Fit Guide Island Cooktop vs. Range How to Replace Water Filter Laundry Top vs. Front Load Washers How to Use Top Load Washer Agitator vs. Impeller What is a Ventless Dryer? What is a Steam Dryer? Laundry Pair Size & Fit Guide All Articles & Guides Home Innovation Connected Appliances Whirlpool\u00ae App Works with Yummly Voice Control Smart Integrations Shop Smart Appliances Sale Appliance Sales Kitchen Laundry Whirlpool\u00ae Outlet Shop All Outlet Discount Programs Healthcare Sign Up Military Sign Up Service & Support Professional Delivery & Install Pre-Delivery Instructions Arrival & Installation Return Policy Financing Payment Options Repair Troubleshoot Self Repair Service Estimates Schedule Service Product Support Register Your Product Product Manuals Product Help Extended Service Plans Rebate Information Parts & Accessories Connect Smart Appliance Customer Care Contact Us: Email/Phone x Sign In * Required Information Generic form submit error message if an error response is not returned or is empty but an error has occurred. Link Example * Email Address: * Password: Show Password Hide Password Forgot your Password? Sign In or Sign in with Google Icons/facebook Created with Sketch. Sign in with Facebook Create an Account Complete Your Account Whirlpool will be using the following information we gathered from the external platform you selected to create your account. Yes, I'd like to receive occasional special offers, promotions, or other e-mail marketing communications from Whirlpool and its affiliated brands. For more information about our privacy practices and a list of affiliated brands, please read out Privacy Notice . I agree to the Terms of Use and Privacy Notice . For more information about our privacy practices and a list of affiliated brands, please read out Privacy Notice . Create an Account Are you a medical professional? If yes, we can offer you special offers if you sign up, do you want to continue? Yes Skip block.addtocart.title block.addtocart.message block.addtocart.close Trigger Modal Session Time Out Your session is about to expire. Continue Shopping Session Timed Out Your session has expired. Continue Shopping - Choose delivery frequency. You'll only be billed when your order ships. - Hassle-free, we'll send you a reminder before each delivery. Skip refills or cancel any time. - Cannot be combined with promo codes. I agree to the Subscription Terms and authorize Whirlpool to automatically charge my default payment card at then-current prices at the frequency below. I acknowledge that my subscription will auto-renew until I cancel via the Subscriptions section of My Account before the refill order date.\" data-deliver=\"Deliver:\" data-every=\"Every\" data-recommended=\"(Recommended)\" data-months=\"Months\" data-guestpass-header=\"Subscribe to save on water filters!\" data-guestpass-message=\"As a Guest Pass user, you&apos;re unable to subscribe directly on Inside Pass but you can subscribe on any of our Whirlpool \u00ae family sites. Click on the following to be redirected to set up your subscription: Whirlpool.com | KitchenAid.com | Maytag.com \" data-show-offline-label=\"false\"> Avatar/Fill - Default Added to Cart Avatar/Fill - Default Unable to Add to Cart Delivery & Installation Options Search site Search Search Go back to previous article Username Password Sign in Sign in Sign in Forgot password Expand/collapse global hierarchy Home Laundry Washers Front Load Washers Error Codes \"F\" Error Codes F5 E2 - Error Code Expand/collapse global location F5 E2 - Error Code Last updated Nov 19, 2025 Save as PDF Share Share Tweet Share Table of contents Possible Solutions Error Code F5 E2 in display: Is the door firmly closed? Is there an item preventing the door from closing? Cycle power to the control to reset the washer: Still need help? Contact us or schedule service. United States Canada Interested in purchasing an Extended Service Plan? United States Canada Still need help? Contact us or schedule service. United States Canada Interested in purchasing an Extended Service Plan? United States Canada Possible Solutions Error Code F5 E2 in display: This error code indicates that the door is not locking properly. Is the door firmly closed? The door must be completely closed for the washer to operate. The door may look as if it's closed, but it may not be latched. Open the door and firmly close it. Is there an item preventing the door from closing? Before you close the washer door, check for laundry items sticking out beyond the door opening. Leave enough space in the washer to allow the clothes to freely tumble. Reduce your load size if needed. Cycle power to the control to reset the washer: Much like a computer, resetting the washer control can sometimes solve the issues you are experiencing. To reset the washer control panel, it needs to be disconnected from the power source for 5 minutes. If your washer is plugged into an outlet, simply unplug the unit for 5 minutes and then plug the unit back in. Still need help? Contact us or schedule service. Please contact us or click below to make an appointment from our preferred list of service providers for service on your appliances. United States Schedule Service Online Contact Us Canada Schedule Service Online Contact Us CA Interested in purchasing an Extended Service Plan? Please click below to learn more on how you can save up to 25% on New Appliance Extended Service Plans within 30 days of your appliance purchase. United States Extended Service Plans Canada Extended Service Plans CA \u200b \u200b Manuals & Service 1/2 Product Manuals & Literature Use your model number to locate resources like product manuals and documents to help with installing, using and troubleshooting your appliances. READ Schedule Service Need to schedule a service call? Simply choose your preferred date and time, and we'll confirm your appointment promptly. SCHEDULE Customer Service Have questions or need assistance? Our dedicated customer service team is ready to help! Contact us via phone or email, or live chat. 1-866-698-2538 CALL Back to top F5 E1 - Front Load Washer F5 E3 - Front Load Washer Was this article helpful? Yes No Sign in and leave feedback Recommended articles F0 E1 or rL - Front Load Washer F0 E3 - Front Load Washer F0 E4 - Front Load Washer F0 E5 - Front Load Washer Article type Topic Brand Multiple Brands Media Fault Tree Topic Product Assistance Tags This page has no tags. \u00a9 Copyright 2026 Product Help | Whirlpool Powered by NiCE Knowledge Management \u00ae Product Registration Find A Retailer Connect with Us Footer Service & Support Service & Support Repair Financing Product Help Product Registration Manuals & Literature Service & Repair Shipping, Delivery & Install Returns, Exchanges & Cancellations Payment Options Service Plans Buying from Whirlpool.com Digital Catalogs My Appliances Rebates Track My Order Professional Discounts Products Products Washers & Dryers Kitchen Cooking Dishwashers and Cleaning Pedestals Fabric Refresher Water Filters Find a Retailer Parts, Accessories & Other Products Parts, Accessories & Other Products Parts & Accessories Other Products Featured Innovations Consumer Electronics Show Whirlpool Outlet Commercial Laundry More Home Products About Whirlpool Corporation About Whirlpool Corporation Every day, care.\u00ae Press & Media Contact Us About Us Investors Careers Whirlpool Eco & ENERGY STAR\u00ae Certified Habitat for Humanity Recall Information Accessibility \u00ae/\u2122 \u00a9 2026 Whirlpool. All rights reserved. This online merchant is located in the United States at 600 West Main Street, Benton Harbor, MI 49022. MSRP is the Manufacturer's Suggested Retail Price, which may differ from actual selling prices in your area. Terms of Use Privacy Notice Do Not Sell My Personal Information COVID-19 Response Sitemap Supply Chain Interest-Based Ads Contact Us SIGN UP X Recommendations THIS MODEL IS TEMPORARILY OUT OF STOCK! Hang in there, we are looking for alternate products just for you. Have You Considered These? Front Load Electric Dryer with Extra Power and Quick Dry cycle - 7.3 c... SALE: $854.00 4.5 (689) View Now 7.4 cu. ft. Commercial-Grade Residential Dryer... MSRP: $999.00 4.6 (362) View Now Smart Capable Top Load Electric Dryer with Extra Power Button - 7.4 cu... MSRP: $1149.00 3.5 (190) View Now We use your information in accordance with our privacy policy .",
+            "2": "[W11169652 Rev B] Section: Fault/Error Code Chart (continued)\nCode: F5E2 | Description: Door Lock Will Not Lock or\nDoor Lock Failure | Explanation and Recommended Procedure: Fault is displayed when one of the following conditions occur:\n\u2022 Door will not close completely due to interference.\n\u2022 ACU detects open door switch when attempting to lock.\n\u2022 ACU cannot determine if door lock is in a locked state.\n\u2022 See TEST #4: Door Lock System, pg. 3-11.",
+            "3": "[W11156989 Rev D] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "4": "[W11320651 Rev B] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "5": "Error codes: F5E2, F7E1, F8E1, F8E2, F9E1\n\nError Codes in Front Load Washers - Product Help | Whirlpool Skip to main content Icon/Error Created with Sketch. Your location: 20146 Current Location: 20146 Providing your exact location will allow us to ensure our products are available in your area. ZIP Code: Icon/Error Created with Sketch. Oops! We seem to have lost our map and can't update your zip code right now. Please try again in a bit. Icon/Error Created with Sketch. This site only ships to the United States. Please provide a US ZIP code. Icon/Error Created with Sketch. This site only ships to the United States. Please provide a US ZIP code. Visit KitchenAid International Update Location Owner's Center Extended Service Plans Contact Us Your location: 20146 Owner's Center Extended Service Plans Contact Us Close Suggestions Content & Manuals View all SIGN IN or Create account Hello, My Account Hello, My Account Dashboard My Orders Wish List My Appliances Profile Information Address Book Saved Payment Information My Subscriptions Sign Out All Merchandise in Cart: Order Discount: Total: (Before Taxes, Shipping, and Services): Proceed to Checkout Your Shopping Cart is Empty Link your shopping cart across all your devices! Sign in to your account to save and access your shopping cart on your desktop, tablet, or mobile device. Be sure to check out our latest offers to start saving! Menu Close Close Suggestions Content & Manuals View all Kitchen Refrigeration French Door Refrigerators Side by Side Refrigerators Top Freezer Refrigerators Bottom Freezer Refrigerators Counter Depth Refrigerators Under Counter Refrigerators Beverage & Wine Centers Ice Makers Freezers Water Filters Shop All Refrigerators Ranges Gas Ranges Electric Ranges Slide-in Ranges Freestanding Single Ovens Double Oven Ranges Explore Smart Ranges Shop All Kitchen Ranges Wall Ovens Single Wall Ovens Double Wall Ovens Wall Oven & Microwave Combo Smart Wall Ovens Shop All Wall Ovens Dishwashers Top Control Dishwashers Front-Control Dishwashers Explore 3rd Rack Dishwashers Shop 3rd Rack Dishwashers Portable Dishwashers Shop All Dishwashers Microwaves Countertop Microwaves Over the Range Microwaves Explore Low Profile Microwaves Shop All Microwaves Cooktops Electric Cooktops Gas Cooktops Induction Cooktops Shop All Cooktops Vent Hoods Under-Cabinet Range Hoods Canopy Vent Hoods Downdraft Range Hoods Shop All Vent Hoods Trash Compactors Garbage Disposers Smart Kitchen Appliances Small Space Kitchen Appliances Help Me Choose Laundry & Home Explore Top Load Explore Front Load Washers Top Load Washers Front Load Washers HE Top Load Washers 2 in 1 Washer with Removable Agitator Smart Washers Shop All Washers Dryers Electric Dryers Gas Dryers Smart Dryers Shop All Dryers Laundry Sets Washer Dryer Combo Units Stackable Washer and Dryers Stacked Laundry Centers Pedestals Commercial Laundry Equipment Home Solutions Laundry Detergent Portable Dehumidifiers Portable Air Conditioners Window Air Conditioner Air Purifiers & Filters Central Heating & AC Water Softeners Water Filtration Systems Water Coolers Water Heaters Care Counts Smart Laundry Appliances Small Space Laundry Appliances Help Me Choose Parts & Accessories Kitchen Refrigerator Accessories Freezer Accessories Dishwasher Accessories Range Accessories Wall Oven Accessories Microwave Accessories All Kitchen Appliance Accessories Water Filters Laundry Washing Machine Accessories Dryer Accessories All Laundry Accessories Appliance Cleaners Specialized Appliance Cleaners Affresh Kitchen Accessories Affresh Laundry Accessories All Affresh Accessories Blog Kitchen Convection vs. Conventional Dishwasher Buying Guide Wall Oven Sizing Guide Fridge Size & Fit Guide What is Counter Depth? Dishwasher Fit Guide Island Cooktop vs. Range How to Replace Water Filter Laundry Top vs. Front Load Washers How to Use Top Load Washer Agitator vs. Impeller What is a Ventless Dryer? What is a Steam Dryer? Laundry Pair Size & Fit Guide All Articles & Guides Home Innovation Connected Appliances Whirlpool\u00ae App Works with Yummly Voice Control Smart Integrations Shop Smart Appliances Sale Appliance Sales Kitchen Laundry Whirlpool\u00ae Outlet Shop All Outlet Discount Programs Healthcare Sign Up Military Sign Up Service & Support Professional Delivery & Install Pre-Delivery Instructions Arrival & Installation Return Policy Financing Payment Options Repair Troubleshoot Self Repair Service Estimates Schedule Service Product Support Register Your Product Product Manuals Product Help Extended Service Plans Rebate Information Parts & Accessories Connect Smart Appliance Customer Care Contact Us: Email/Phone x Sign In * Required Information Generic form submit error message if an error response is not returned or is empty but an error has occurred. Link Example * Email Address: * Password: Show Password Hide Password Forgot your Password? Sign In or Sign in with Google Icons/facebook Created with Sketch. Sign in with Facebook Create an Account Complete Your Account Whirlpool will be using the following information we gathered from the external platform you selected to create your account. Yes, I'd like to receive occasional special offers, promotions, or other e-mail marketing communications from Whirlpool and its affiliated brands. For more information about our privacy practices and a list of affiliated brands, please read out Privacy Notice . I agree to the Terms of Use and Privacy Notice . For more information about our privacy practices and a list of affiliated brands, please read out Privacy Notice . Create an Account Are you a medical professional? If yes, we can offer you special offers if you sign up, do you want to continue? Yes Skip block.addtocart.title block.addtocart.message block.addtocart.close Trigger Modal Session Time Out Your session is about to expire. Continue Shopping Session Timed Out Your session has expired. Continue Shopping - Choose delivery frequency. You'll only be billed when your order ships. - Hassle-free, we'll send you a reminder before each delivery. Skip refills or cancel any time. - Cannot be combined with promo codes. I agree to the Subscription Terms and authorize Whirlpool to automatically charge my default payment card at then-current prices at the frequency below. I acknowledge that my subscription will auto-renew until I cancel via the Subscriptions section of My Account before the refill order date.\" data-deliver=\"Deliver:\" data-every=\"Every\" data-recommended=\"(Recommended)\" data-months=\"Months\" data-guestpass-header=\"Subscribe to save on water filters!\" data-guestpass-message=\"As a Guest Pass user, you&apos;re unable to subscribe directly on Inside Pass but you can subscribe on any of our Whirlpool \u00ae family sites. Click on the following to be redirected to set up your subscription: Whirlpool.com | KitchenAid.com | Maytag.com \" data-show-offline-label=\"false\"> Avatar/Fill - Default Added to Cart Avatar/Fill - Default Unable to Add to Cart Delivery & Installation Options Search site Search Search Go back to previous article Username Password Sign in Sign in Sign in Forgot password Expand/collapse global hierarchy Home Laundry Washers Product Info Washer Product Assistance Error Codes in Front Load Washers Expand/collapse global location Error Codes in Front Load Washers Last updated Oct 16, 2025 Save as PDF Share Share Tweet Share Table of contents Error Codes in my Whirlpool Front Load Washer Error Codes in my Whirlpool Front Load Washer These codes serve as vital indicators, alerting you to specific problems that may occur during the washing cycle. In this guide, we will explore the various Whirlpool washer fault codes you might encounter, along with their meanings and solutions. Use these Whirlpool front-load washer error codes to help diagnose your problem. These may not be all Error Codes that will show for your model. See your Owner's Manual for the Error Codes for your specific model. If none of these solutions work, Contact Us or Schedule Service Online . Error Code Error Possible Solution LOC or LC Control Lock has been activated Touch the Control Lock button, or (on older models) determine which button activates control lock from your Owner's Manual. Some models require you to press and hold the button. dET Detergent cartridge not detected in the dispenser. This is on select models. If you are using single-load doses of detergent, ignore this message. Ensure the dispenser cartridge is inserted correctly and the dispenser drawer is shut completely. Int The cycle was paused or canceled. The washer may take 20 to 30 minutes to stop spinning and drain, and will display this error code during that time. To remove the code, press pause or cancel button twice and the power button once. If the code is still displayed, unplug the washer or disconnect the power for 5 minutes. rL or F34 Items were detected in the washer during the Clean Washer cycle. Remove items from the drum and restart the Clean Washer cycle. Sud or Sd There are too many suds in the washing machine. The washer will not be able to spin out water with the excess suds. When \"Sud\" or \"Sd\" is displayed, the washer automatically extends the rinse time to remove the excess suds. During this time, the washer pauses the tumbling and adds water for additional rinsing. This pause allows the bubbles in the suds to break. This pause and rinsing are necessary and may occur several times to eliminate the suds. Make sure you are using HE or High Efficiency detergent. Find more information on HE Detergent use in your Washer . If you used \"no splash\" or \"easy pour\" liquid chlorine bleach, you could also have too many suds. This type of liquid chlorine bleach contains a thickening agent that may create excess suds in washers. If this is the case, run the washer with regular liquid bleach products. The Sud or Sd code may also be the result of a restricted drain hose or standpipe (drainpipe). Make sure that the drain hose is not kinked or clogged. Find more information on How to Install the Drain Hose . F5 E2 The door is not locking properly. Check that there are no items blocking the door and it is closing completely. Press the Pause or Cancel button twice and the Power button once to clear the code. F7 E1 Indicates a motor speed sensing error, The motor can not achieve the correct speed for the cycle selection. Check that: All the shipping bolts have been removed The washer has not been overloaded Press the Pause or Cancel button twice and the Power button once to clear the code. F8 E1 or LO FL The washer is sensing a low flow of water. Check that: The household water supply is turned on and both the cold and the hot water faucets or valves are fully open. The water inlet hoses are not kinked (learn more about How to check your Fill Hoses if your Washer is not Filling ) There are no anti-flood hoses and controls in the water line connected to the washer (learn more about Should I use Flood Safe Devices on my Front Load Washer Press the Pause or Cancel button twice and the Power button once to clear the code. F8 E2 Indicates there is a problem with the Dispenser System This is on select models. Verify that the detergent drawer or detergent cartridge is not clogged with detergent. Find more information on How do I clean my washer dispensers? F9 E1 Indicates that drain times are longer than expected, typically over eight (8) minutes. Make su re the drain hose is not kinked or clogged. Use the U-shaped drain hose form on the drain hose. The stan dpipe (drainpipe) height requirements are 96\" (244 cm) maximum and 39\" (99 cm) minimum. Find more information on How to Install the Drain Hose . Excessive suds may also cause delays in draining. Make sure you are using HE detergent . Other F# E# code Indicates other error Unplug the washer or disconnect the power for 5 minutes and reconnect it again. Reselect the cycle and press Start. If the code persists, Contact Us or Schedule Service Online so a qualified technician can diagnose the washer. If you would like to download or view product literature for your appliance, please visit our Manuals and Literature page. Manuals & Service 1/2 Product Manuals & Literature Use your model number to locate resources like product manuals and documents to help with installing, using and troubleshooting your appliances. READ Schedule Service Need to schedule a service call? Simply choose your preferred date and time, and we'll confirm your appointment promptly. SCHEDULE Customer Service Have questions or need assistance? Our dedicated customer service team is ready to help! Contact us via phone or email, or live chat. 1-866-698-2538 CALL Back to top Display of Time Remaining Seems Long Error Codes in Top Load HE Washers Was this article helpful? Yes No Sign in and leave feedback Recommended articles Washer is Vibrating, Walking or Moving Front Load Washer Vibration/Walking Issues: Check shipping bolts removal, ensure all feet contact the floor, level the washer, avoid overloading, and ... How to Reset a Washer To reset the washer's control panel, disconnect from power for 5 minutes. Reconnect, either by unplugging or turning off the breaker, then turn it bac... What is an F7 E1 Error Code on a Front Load Washer What is an F8 E2 Error Code on a Front Load Washer Article type Topic Brand Multiple Brands Media Article Topic Product Assistance Visual Content Image Only Tags Front Load Washer \u00a9 Copyright 2026 Product Help | Whirlpool Powered by NiCE Knowledge Management \u00ae Product Registration Find A Retailer Connect with Us Footer Service & Support Service & Support Repair Financing Product Help Product Registration Manuals & Literature Service & Repair Shipping, Delivery & Install Returns, Exchanges & Cancellations Payment Options Service Plans Buying from Whirlpool.com Digital Catalogs My Appliances Rebates Track My Order Professional Discounts Products Products Washers & Dryers Kitchen Cooking Dishwashers and Cleaning Pedestals Fabric Refresher Water Filters Find a Retailer Parts, Accessories & Other Products Parts, Accessories & Other Products Parts & Accessories Other Products Featured Innovations Consumer Electronics Show Whirlpool Outlet Commercial Laundry More Home Products About Whirlpool Corporation About Whirlpool Corporation Every day, care.\u00ae Press & Media Contact Us About Us Investors Careers Whirlpool Eco & ENERGY STAR\u00ae Certified Habitat for Humanity Recall Information Accessibility \u00ae/\u2122 \u00a9 2026 Whirlpool. All rights reserved. This online merchant is located in the United States at 600 West Main Street, Benton Harbor, MI 49022. MSRP is the Manufacturer's Suggested Retail Price, which may differ from actual selling prices in your area. Terms of Use Privacy Notice Do Not Sell My Personal Information COVID-19 Response Sitemap Supply Chain Interest-Based Ads Contact Us SIGN UP X Recommendations THIS MODEL IS TEMPORARILY OUT OF STOCK! Hang in there, we are looking for alternate products just for you. Have You Considered These? Front Load Electric Dryer with Extra Power and Quick Dry cycle - 7.3 c... SALE: $854.00 4.5 (689) View Now 7.4 cu. ft. Commercial-Grade Residential Dryer... MSRP: $999.00 4.6 (362) View Now Smart Capable Top Load Electric Dryer with Extra Power Button - 7.4 cu... MSRP: $1149.00 3.5 (190) View Now We use your information in accordance with our privacy policy .",
+            "6": "[W11169652 Rev B] Section: Fault/Error Code Display Method\nFault/Error Code Display Method\n1Lock DoorIf door does n\nFault codes are displayed by showiSnygst eFm#, pEa#ge.  3\nT2he E# indicaDtreasin  t(hif en escuessspareyc)t ComIpf odrnaeinn pt usmyps \nDrain/Recircul\nUp to four Fault/Error codes may be stored. In S\n3Cold 1 ValveIf no water, se\ndisplays the next saved Fault/Error Code. If the \npage 3-13.\nare present.\n4Cold 2 ValveIf no water, se\nNOTE: Fault/Error codes cannot be cplaegaer 3e-d1.3.\n5Hot ValveIf no water, se\nExit Procedurepage 3-13.\n6Drain PumpIf drain pump \nTo exit Fault/Error Codes Display Mode, turn the\nDrain/Recircul\n7Recirculation PumpIf recirculation\nThe fault codes below may be indicated under va\n#8: Drain/Reci\nService Diagnostics.\n8Drain PumpIf drain pump \nDrain/Recircul\nF0E1Load in drum during Clean Washer cycle\n9Spin at 820 RPM                       If drum does n\nF0E3Highw t/eDmrapin e Prruomr, pd OryN cycleCircuit, page 3\nF100E4High temDrpy  eBrlorowr,e wrash cycleIf no airflow, s\npage 3-26.\nF1E2MCU over- or under-voltage error\n11Detergent PumpIf Detergent P\nF1E4Main relay open or shorted\n#12A: Drawer \nF3E1 Pressure sensor signal missing\n12Softener PumpIf Softener Pum\nor out of range#12A: Drawer \nF133E2 Wash CoWr d Srlyo wN TSCpi no  p    e   n      o    r     s hIof rdterudm does n\nCCW Slow SpinCircuit, page 3\nF3E5Three D sensor error\n14End of CycleWasher enters\nF3E6Dispenser container open or not in place\nTotal Time\nF4E1 Wash heater relay error\nnF4E2Dry heater relay error\n2-12   Whirlpool & Maytag Front-Load Washers\nF4E3Blower error\nF4E4Ozone relay error\nF5E1Door switch error\nF5E2Lock failure\nF5E3Unlock failure\nF5E4Door not open error\nDO NOT REMOVE OR DESTROY\n\nNoIoCrIA DNi\u2019aSg UnSoEs tOicNsLY\nnued)\nC MODE TESTS (cont.)\nExit Service Diagnostic Mode by scrolling to the top and \npressing the < button in the top left corner of the screen twice, \nand then pressing the HOME button.\n<DIAGNOSTICS HOME\nFigure 8\n manually commanded ON will be turned OFF. The Quick \nrum must be empty during this test. \nmmended ProcedureEst. Duration\not lock, see TEST #4: Door Lock 10 sec.\nT-1h1e. F# indicates the suspect System/Category.\ndteomes .not turn on, see TEST #8: 20 sec.\nation Pump, page 3-15. \nervice Diagnostic Mode, pressing START \ne TEST #6: Water Inlet Valves, 10 sec.\ndisplay shows \u201cF - E -,\u201d no fault codes \ne TEST #6: Water Inlet Valves, 10 sec.\ne TEST #6: Water Inlet Valves, 10 sec.\ndoes not turn on, see TEST #8: 10 sec. \n cycle selector knob or press and hold POWER.\nation Pump, page 3-15. \n pump does not turn on, see TEST 10 sec.\nrious conditions and can be accessed through\nrculation Pump, page 3-15. \ndoes not turn on, see TEST #8: 10 sec. \nation Pump, page 3-15. \nF6E1MC/MCU communication error\not spin, see TEST #3: Motor 5 min.\n-10.F6E3Unknown cycle ID error\nee TFE7STE #11 7: Dry BTalocwheorm Meotetro re, rror10 sec.\nF7E2MC/MCU over temp error\nump does not turn on, see TEST 10 sec.\nF7E3MC/MCU over current error\nBulk Dispenser, page 3-20.  \nF7E4Motor disconnected error\np does not turn on, see TEST 10 sec.\nBulkF D7iEsp3enser, pMagCe /3M-2C0U.  internal failure\not spin, see TEST #3: Motor 22 sec.\nF7E8MC/Motor over temp error\n-10.\nF7E9Locked rotor\n Standby Mode - Door Unlocks\nF8E1 Valve failure\n ~7-8 minutes\nF8E3Over\ufb02ow\nF9E1Long drain\n(cid:51)(cid:36)(cid:42)(cid:40)(cid:3)(cid:26)",
+            "7": "[W11156989 Rev D] Section: Sensor, page 19.\nSensor, page 19.\nF0E5 Off Balance Load. Load could be unbalanced or too large. Avoid tightly packing the\nload. Avoid washing single items.\nMain relay open or shorted. Main relay issue. Replace ACU.\nSee TEST #1: ACU Power Check, page 12.\nF1E2 MCU over- or under-voltage error. Check household voltage. See TEST #3: Motor Circuit, page 15.\nPressure sensor signal missing or out See TEST #7: Water Level Sensor, page 17.\nof range.\nF3E2 Wash NTC open or shorted. See TEST #10a: Wash Temperature Sensor, page 19.\nF3E5 Dry NTC fault. Fault is displayed if dry temperature sensor is out of range, or open\ncircuit or short circuit is detected. The was function is still operable,\nbut the dry function will not operate.\nSee TEST #10b: Dry Temperature sensor page 20.\nF3E6 Accelerometer error. Check ACU. See TEST #1: ACU Power Check, page 12.\nF4E1 Wash heater relay error or no feedback Error is generated when the ACU cannot detect the temperature rise\nsignal. of the wash heater. See TEST #9a Wash heating element, page 18.\nF4E2 Wash heater relay error. See TEST #9a: Wash Heating Element, page 18.\nF5E2 Lock failure. See TEST #4: Door Lock System, page 15.\nF5E3 Unlock failure. See TEST #4: Door Lock System, page 15.\nF5E4 Door not open error. Make sure to open and close the washer/dryer door between cycles.\nNo communication from the HMI See Test #2: Human-Machine Interface (HMI), page 14.\ndetected by ACU.\nNo communication from the ACU See Test #1: ACU Power Check, page 12.\ndetected by the HMI.\nNo communication from the MCU Replace ACU. See TEST #1: ACU Power Check, page 12.\ndetected by the ACU.\n8 DO NOT REMOVE OR DESTROY",
+            "8": "[W11320651 Rev B] Section: Sensor, page 19.\nSensor, page 19.\nF0E5 Off Balance Load. Load could be unbalanced or too large. Avoid tightly packing the\nload. Avoid washing single items.\nMain relay open or shorted. Main relay issue. Replace ACU.\nSee TEST #1: ACU Power Check, page 12.\nF1E2 MCU over- or under-voltage error. Check household voltage. See TEST #3: Motor Circuit, page 15.\nPressure sensor signal missing or out See TEST #7: Water Level Sensor, page 17.\nof range.\nF3E2 Wash NTC open or shorted. See TEST #10a: Wash Temperature Sensor, page 19.\nF3E5 Dry NTC fault. Fault is displayed if dry temperature sensor is out of range, or open\ncircuit or short circuit is detected. The was function is still operable,\nbut the dry function will not operate.\nSee TEST #10b: Dry Temperature sensor page 20.\nF3E6 Accelerometer error. Check ACU. See TEST #1: ACU Power Check, page 12.\nF4E1 Wash heater relay error or no feedback Error is generated when the ACU cannot detect the temperature rise\nsignal. of the wash heater. See TEST #9a Wash heating element, page 18.\nF4E2 Wash heater relay error. See TEST #9a: Wash Heating Element, page 18.\nF5E2 Lock failure. See TEST #4: Door Lock System, page 15.\nF5E3 Unlock failure. See TEST #4: Door Lock System, page 15.\nF5E4 Door not open error. Make sure to open and close the washer/dryer door between cycles.\nNo communication from the HMI See Test #2: Human-Machine Interface (HMI), page 14.\ndetected by ACU.\nNo communication from the ACU See Test #1: ACU Power Check, page 12.\ndetected by the HMI.\nNo communication from the MCU Replace ACU. See TEST #1: ACU Power Check, page 12.\ndetected by the ACU.\n8 DO NOT REMOVE OR DESTROY"
+          },
+          "diagnostic": {
+            "step": 1,
+            "phase": "next_step",
+            "symptom_anchor": "My washer shows F5E2 and the door locks but it won't start.",
+            "hypotheses": [
+              "Door lock failure due to obstruction or improper closure."
+            ],
+            "ruled_out": [],
+            "observations": [
+              {
+                "text": "My washer shows F5E2 and the door locks but it won't start.",
+                "source": "user",
+                "turn": 1
+              },
+              {
+                "text": "The washer shows F5E2 and the door locks but won't start.",
+                "source": "assistant",
+                "turn": 1
+              }
+            ],
+            "next_check": "Check if the door is firmly closed and look for obstructions.",
+            "symptom_path": [
+              {
+                "text": "My washer shows F5E2 and the door locks but it won't start.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "no_translations",
+            "rules": [],
+            "premises": {
+              "doorPolarity": "UNKNOWN"
+            },
+            "claims": {},
+            "untranslated": [
+              "The F5E2 error code indicates a door lock failure, which can occur for several reasons. Here are some steps to troubleshoot this issue:",
+              "Check if the door is firmly closed: Ensure that the door is completely closed and latched. Sometimes, it may appear closed but isn't fully latched.",
+              "Look for obstructions: Check if there are any items preventing the door from closing properly. Make sure there are no clothes or other items sticking out beyond the door opening.",
+              "Reset the washer: Cycle power to the control to reset the washer. You can do this by unplugging the washer for 5 minutes and then plugging it back in. This can sometimes resolve the issue if it's a temporary glitch.",
+              "Please try these steps and let me know the results. If the issue persists, we may need to explore further diagnostics related to the door lock system [1][2]."
+            ],
+            "confidence": 1.0,
+            "duration_ms": 4202
+          }
+        },
+        {
+          "turn": 2,
+          "user_message": "The door seems fully closed \u2014 what should I check next?",
+          "assistant_message": "Since the door appears to be fully closed, the next step is to check for a possible door lock failure. Here are the checks to perform:\n\n1. **Door Lock Mechanism**: Inspect the door lock mechanism for any signs of damage or wear. Ensure that it is functioning properly and that the door latch is engaging correctly.\n2. **Door Switch**: Verify that the door switch is working. The ACU (Automatic Control Unit) may detect an open door switch when attempting to lock, which can trigger the F5E2 error code.\n3. **Interference**: Ensure there are no items obstructing the door lock mechanism that could prevent it from locking completely.\n\nThese checks are crucial as the F5E2 error indicates that the door is not locking properly due to one of these issues [2][3].",
+          "abstained": false,
+          "citations": [
+            "service-manual-w11169652-revb",
+            "W11169652 Rev B p.32 [structured] \u2014 F5E2",
+            "W11169652"
+          ],
+          "retrieval_count": 8,
+          "claims": [
+            {
+              "text": "The F5E2 error indicates a door lock failure, which can occur if the door lock mechanism is damaged or if there is interference preventing the door from locking properly.",
+              "evidence_index": 2
+            }
+          ],
+          "evidence_blocks": {
+            "1": "Error codes: F5E2\n\nF5 E2 - Error Code - Product Help | Whirlpool Skip to main content Icon/Error Created with Sketch. Your location: 20146 Current Location: 20146 Providing your exact location will allow us to ensure our products are available in your area. ZIP Code: Icon/Error Created with Sketch. Oops! We seem to have lost our map and can't update your zip code right now. Please try again in a bit. Icon/Error Created with Sketch. This site only ships to the United States. Please provide a US ZIP code. Icon/Error Created with Sketch. This site only ships to the United States. Please provide a US ZIP code. Visit KitchenAid International Update Location Owner's Center Extended Service Plans Contact Us Your location: 20146 Owner's Center Extended Service Plans Contact Us Close Suggestions Content & Manuals View all SIGN IN or Create account Hello, My Account Hello, My Account Dashboard My Orders Wish List My Appliances Profile Information Address Book Saved Payment Information My Subscriptions Sign Out All Merchandise in Cart: Order Discount: Total: (Before Taxes, Shipping, and Services): Proceed to Checkout Your Shopping Cart is Empty Link your shopping cart across all your devices! Sign in to your account to save and access your shopping cart on your desktop, tablet, or mobile device. Be sure to check out our latest offers to start saving! Menu Close Close Suggestions Content & Manuals View all Kitchen Refrigeration French Door Refrigerators Side by Side Refrigerators Top Freezer Refrigerators Bottom Freezer Refrigerators Counter Depth Refrigerators Under Counter Refrigerators Beverage & Wine Centers Ice Makers Freezers Water Filters Shop All Refrigerators Ranges Gas Ranges Electric Ranges Slide-in Ranges Freestanding Single Ovens Double Oven Ranges Explore Smart Ranges Shop All Kitchen Ranges Wall Ovens Single Wall Ovens Double Wall Ovens Wall Oven & Microwave Combo Smart Wall Ovens Shop All Wall Ovens Dishwashers Top Control Dishwashers Front-Control Dishwashers Explore 3rd Rack Dishwashers Shop 3rd Rack Dishwashers Portable Dishwashers Shop All Dishwashers Microwaves Countertop Microwaves Over the Range Microwaves Explore Low Profile Microwaves Shop All Microwaves Cooktops Electric Cooktops Gas Cooktops Induction Cooktops Shop All Cooktops Vent Hoods Under-Cabinet Range Hoods Canopy Vent Hoods Downdraft Range Hoods Shop All Vent Hoods Trash Compactors Garbage Disposers Smart Kitchen Appliances Small Space Kitchen Appliances Help Me Choose Laundry & Home Explore Top Load Explore Front Load Washers Top Load Washers Front Load Washers HE Top Load Washers 2 in 1 Washer with Removable Agitator Smart Washers Shop All Washers Dryers Electric Dryers Gas Dryers Smart Dryers Shop All Dryers Laundry Sets Washer Dryer Combo Units Stackable Washer and Dryers Stacked Laundry Centers Pedestals Commercial Laundry Equipment Home Solutions Laundry Detergent Portable Dehumidifiers Portable Air Conditioners Window Air Conditioner Air Purifiers & Filters Central Heating & AC Water Softeners Water Filtration Systems Water Coolers Water Heaters Care Counts Smart Laundry Appliances Small Space Laundry Appliances Help Me Choose Parts & Accessories Kitchen Refrigerator Accessories Freezer Accessories Dishwasher Accessories Range Accessories Wall Oven Accessories Microwave Accessories All Kitchen Appliance Accessories Water Filters Laundry Washing Machine Accessories Dryer Accessories All Laundry Accessories Appliance Cleaners Specialized Appliance Cleaners Affresh Kitchen Accessories Affresh Laundry Accessories All Affresh Accessories Blog Kitchen Convection vs. Conventional Dishwasher Buying Guide Wall Oven Sizing Guide Fridge Size & Fit Guide What is Counter Depth? Dishwasher Fit Guide Island Cooktop vs. Range How to Replace Water Filter Laundry Top vs. Front Load Washers How to Use Top Load Washer Agitator vs. Impeller What is a Ventless Dryer? What is a Steam Dryer? Laundry Pair Size & Fit Guide All Articles & Guides Home Innovation Connected Appliances Whirlpool\u00ae App Works with Yummly Voice Control Smart Integrations Shop Smart Appliances Sale Appliance Sales Kitchen Laundry Whirlpool\u00ae Outlet Shop All Outlet Discount Programs Healthcare Sign Up Military Sign Up Service & Support Professional Delivery & Install Pre-Delivery Instructions Arrival & Installation Return Policy Financing Payment Options Repair Troubleshoot Self Repair Service Estimates Schedule Service Product Support Register Your Product Product Manuals Product Help Extended Service Plans Rebate Information Parts & Accessories Connect Smart Appliance Customer Care Contact Us: Email/Phone x Sign In * Required Information Generic form submit error message if an error response is not returned or is empty but an error has occurred. Link Example * Email Address: * Password: Show Password Hide Password Forgot your Password? Sign In or Sign in with Google Icons/facebook Created with Sketch. Sign in with Facebook Create an Account Complete Your Account Whirlpool will be using the following information we gathered from the external platform you selected to create your account. Yes, I'd like to receive occasional special offers, promotions, or other e-mail marketing communications from Whirlpool and its affiliated brands. For more information about our privacy practices and a list of affiliated brands, please read out Privacy Notice . I agree to the Terms of Use and Privacy Notice . For more information about our privacy practices and a list of affiliated brands, please read out Privacy Notice . Create an Account Are you a medical professional? If yes, we can offer you special offers if you sign up, do you want to continue? Yes Skip block.addtocart.title block.addtocart.message block.addtocart.close Trigger Modal Session Time Out Your session is about to expire. Continue Shopping Session Timed Out Your session has expired. Continue Shopping - Choose delivery frequency. You'll only be billed when your order ships. - Hassle-free, we'll send you a reminder before each delivery. Skip refills or cancel any time. - Cannot be combined with promo codes. I agree to the Subscription Terms and authorize Whirlpool to automatically charge my default payment card at then-current prices at the frequency below. I acknowledge that my subscription will auto-renew until I cancel via the Subscriptions section of My Account before the refill order date.\" data-deliver=\"Deliver:\" data-every=\"Every\" data-recommended=\"(Recommended)\" data-months=\"Months\" data-guestpass-header=\"Subscribe to save on water filters!\" data-guestpass-message=\"As a Guest Pass user, you&apos;re unable to subscribe directly on Inside Pass but you can subscribe on any of our Whirlpool \u00ae family sites. Click on the following to be redirected to set up your subscription: Whirlpool.com | KitchenAid.com | Maytag.com \" data-show-offline-label=\"false\"> Avatar/Fill - Default Added to Cart Avatar/Fill - Default Unable to Add to Cart Delivery & Installation Options Search site Search Search Go back to previous article Username Password Sign in Sign in Sign in Forgot password Expand/collapse global hierarchy Home Laundry Washers Front Load Washers Error Codes \"F\" Error Codes F5 E2 - Error Code Expand/collapse global location F5 E2 - Error Code Last updated Nov 19, 2025 Save as PDF Share Share Tweet Share Table of contents Possible Solutions Error Code F5 E2 in display: Is the door firmly closed? Is there an item preventing the door from closing? Cycle power to the control to reset the washer: Still need help? Contact us or schedule service. United States Canada Interested in purchasing an Extended Service Plan? United States Canada Still need help? Contact us or schedule service. United States Canada Interested in purchasing an Extended Service Plan? United States Canada Possible Solutions Error Code F5 E2 in display: This error code indicates that the door is not locking properly. Is the door firmly closed? The door must be completely closed for the washer to operate. The door may look as if it's closed, but it may not be latched. Open the door and firmly close it. Is there an item preventing the door from closing? Before you close the washer door, check for laundry items sticking out beyond the door opening. Leave enough space in the washer to allow the clothes to freely tumble. Reduce your load size if needed. Cycle power to the control to reset the washer: Much like a computer, resetting the washer control can sometimes solve the issues you are experiencing. To reset the washer control panel, it needs to be disconnected from the power source for 5 minutes. If your washer is plugged into an outlet, simply unplug the unit for 5 minutes and then plug the unit back in. Still need help? Contact us or schedule service. Please contact us or click below to make an appointment from our preferred list of service providers for service on your appliances. United States Schedule Service Online Contact Us Canada Schedule Service Online Contact Us CA Interested in purchasing an Extended Service Plan? Please click below to learn more on how you can save up to 25% on New Appliance Extended Service Plans within 30 days of your appliance purchase. United States Extended Service Plans Canada Extended Service Plans CA \u200b \u200b Manuals & Service 1/2 Product Manuals & Literature Use your model number to locate resources like product manuals and documents to help with installing, using and troubleshooting your appliances. READ Schedule Service Need to schedule a service call? Simply choose your preferred date and time, and we'll confirm your appointment promptly. SCHEDULE Customer Service Have questions or need assistance? Our dedicated customer service team is ready to help! Contact us via phone or email, or live chat. 1-866-698-2538 CALL Back to top F5 E1 - Front Load Washer F5 E3 - Front Load Washer Was this article helpful? Yes No Sign in and leave feedback Recommended articles F0 E1 or rL - Front Load Washer F0 E3 - Front Load Washer F0 E4 - Front Load Washer F0 E5 - Front Load Washer Article type Topic Brand Multiple Brands Media Fault Tree Topic Product Assistance Tags This page has no tags. \u00a9 Copyright 2026 Product Help | Whirlpool Powered by NiCE Knowledge Management \u00ae Product Registration Find A Retailer Connect with Us Footer Service & Support Service & Support Repair Financing Product Help Product Registration Manuals & Literature Service & Repair Shipping, Delivery & Install Returns, Exchanges & Cancellations Payment Options Service Plans Buying from Whirlpool.com Digital Catalogs My Appliances Rebates Track My Order Professional Discounts Products Products Washers & Dryers Kitchen Cooking Dishwashers and Cleaning Pedestals Fabric Refresher Water Filters Find a Retailer Parts, Accessories & Other Products Parts, Accessories & Other Products Parts & Accessories Other Products Featured Innovations Consumer Electronics Show Whirlpool Outlet Commercial Laundry More Home Products About Whirlpool Corporation About Whirlpool Corporation Every day, care.\u00ae Press & Media Contact Us About Us Investors Careers Whirlpool Eco & ENERGY STAR\u00ae Certified Habitat for Humanity Recall Information Accessibility \u00ae/\u2122 \u00a9 2026 Whirlpool. All rights reserved. This online merchant is located in the United States at 600 West Main Street, Benton Harbor, MI 49022. MSRP is the Manufacturer's Suggested Retail Price, which may differ from actual selling prices in your area. Terms of Use Privacy Notice Do Not Sell My Personal Information COVID-19 Response Sitemap Supply Chain Interest-Based Ads Contact Us SIGN UP X Recommendations THIS MODEL IS TEMPORARILY OUT OF STOCK! Hang in there, we are looking for alternate products just for you. Have You Considered These? Front Load Electric Dryer with Extra Power and Quick Dry cycle - 7.3 c... SALE: $854.00 4.5 (689) View Now 7.4 cu. ft. Commercial-Grade Residential Dryer... MSRP: $999.00 4.6 (362) View Now Smart Capable Top Load Electric Dryer with Extra Power Button - 7.4 cu... MSRP: $1149.00 3.5 (190) View Now We use your information in accordance with our privacy policy .",
+            "2": "[W11169652 Rev B] Section: Fault/Error Code Chart (continued)\nCode: F5E2 | Description: Door Lock Will Not Lock or\nDoor Lock Failure | Explanation and Recommended Procedure: Fault is displayed when one of the following conditions occur:\n\u2022 Door will not close completely due to interference.\n\u2022 ACU detects open door switch when attempting to lock.\n\u2022 ACU cannot determine if door lock is in a locked state.\n\u2022 See TEST #4: Door Lock System, pg. 3-11.",
+            "3": "[W11156989 Rev D] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "4": "[W11320651 Rev B] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "5": "Error codes: F5E2, F7E1, F8E1, F8E2, F9E1\n\nError Codes in Front Load Washers - Product Help | Whirlpool Skip to main content Icon/Error Created with Sketch. Your location: 20146 Current Location: 20146 Providing your exact location will allow us to ensure our products are available in your area. ZIP Code: Icon/Error Created with Sketch. Oops! We seem to have lost our map and can't update your zip code right now. Please try again in a bit. Icon/Error Created with Sketch. This site only ships to the United States. Please provide a US ZIP code. Icon/Error Created with Sketch. This site only ships to the United States. Please provide a US ZIP code. Visit KitchenAid International Update Location Owner's Center Extended Service Plans Contact Us Your location: 20146 Owner's Center Extended Service Plans Contact Us Close Suggestions Content & Manuals View all SIGN IN or Create account Hello, My Account Hello, My Account Dashboard My Orders Wish List My Appliances Profile Information Address Book Saved Payment Information My Subscriptions Sign Out All Merchandise in Cart: Order Discount: Total: (Before Taxes, Shipping, and Services): Proceed to Checkout Your Shopping Cart is Empty Link your shopping cart across all your devices! Sign in to your account to save and access your shopping cart on your desktop, tablet, or mobile device. Be sure to check out our latest offers to start saving! Menu Close Close Suggestions Content & Manuals View all Kitchen Refrigeration French Door Refrigerators Side by Side Refrigerators Top Freezer Refrigerators Bottom Freezer Refrigerators Counter Depth Refrigerators Under Counter Refrigerators Beverage & Wine Centers Ice Makers Freezers Water Filters Shop All Refrigerators Ranges Gas Ranges Electric Ranges Slide-in Ranges Freestanding Single Ovens Double Oven Ranges Explore Smart Ranges Shop All Kitchen Ranges Wall Ovens Single Wall Ovens Double Wall Ovens Wall Oven & Microwave Combo Smart Wall Ovens Shop All Wall Ovens Dishwashers Top Control Dishwashers Front-Control Dishwashers Explore 3rd Rack Dishwashers Shop 3rd Rack Dishwashers Portable Dishwashers Shop All Dishwashers Microwaves Countertop Microwaves Over the Range Microwaves Explore Low Profile Microwaves Shop All Microwaves Cooktops Electric Cooktops Gas Cooktops Induction Cooktops Shop All Cooktops Vent Hoods Under-Cabinet Range Hoods Canopy Vent Hoods Downdraft Range Hoods Shop All Vent Hoods Trash Compactors Garbage Disposers Smart Kitchen Appliances Small Space Kitchen Appliances Help Me Choose Laundry & Home Explore Top Load Explore Front Load Washers Top Load Washers Front Load Washers HE Top Load Washers 2 in 1 Washer with Removable Agitator Smart Washers Shop All Washers Dryers Electric Dryers Gas Dryers Smart Dryers Shop All Dryers Laundry Sets Washer Dryer Combo Units Stackable Washer and Dryers Stacked Laundry Centers Pedestals Commercial Laundry Equipment Home Solutions Laundry Detergent Portable Dehumidifiers Portable Air Conditioners Window Air Conditioner Air Purifiers & Filters Central Heating & AC Water Softeners Water Filtration Systems Water Coolers Water Heaters Care Counts Smart Laundry Appliances Small Space Laundry Appliances Help Me Choose Parts & Accessories Kitchen Refrigerator Accessories Freezer Accessories Dishwasher Accessories Range Accessories Wall Oven Accessories Microwave Accessories All Kitchen Appliance Accessories Water Filters Laundry Washing Machine Accessories Dryer Accessories All Laundry Accessories Appliance Cleaners Specialized Appliance Cleaners Affresh Kitchen Accessories Affresh Laundry Accessories All Affresh Accessories Blog Kitchen Convection vs. Conventional Dishwasher Buying Guide Wall Oven Sizing Guide Fridge Size & Fit Guide What is Counter Depth? Dishwasher Fit Guide Island Cooktop vs. Range How to Replace Water Filter Laundry Top vs. Front Load Washers How to Use Top Load Washer Agitator vs. Impeller What is a Ventless Dryer? What is a Steam Dryer? Laundry Pair Size & Fit Guide All Articles & Guides Home Innovation Connected Appliances Whirlpool\u00ae App Works with Yummly Voice Control Smart Integrations Shop Smart Appliances Sale Appliance Sales Kitchen Laundry Whirlpool\u00ae Outlet Shop All Outlet Discount Programs Healthcare Sign Up Military Sign Up Service & Support Professional Delivery & Install Pre-Delivery Instructions Arrival & Installation Return Policy Financing Payment Options Repair Troubleshoot Self Repair Service Estimates Schedule Service Product Support Register Your Product Product Manuals Product Help Extended Service Plans Rebate Information Parts & Accessories Connect Smart Appliance Customer Care Contact Us: Email/Phone x Sign In * Required Information Generic form submit error message if an error response is not returned or is empty but an error has occurred. Link Example * Email Address: * Password: Show Password Hide Password Forgot your Password? Sign In or Sign in with Google Icons/facebook Created with Sketch. Sign in with Facebook Create an Account Complete Your Account Whirlpool will be using the following information we gathered from the external platform you selected to create your account. Yes, I'd like to receive occasional special offers, promotions, or other e-mail marketing communications from Whirlpool and its affiliated brands. For more information about our privacy practices and a list of affiliated brands, please read out Privacy Notice . I agree to the Terms of Use and Privacy Notice . For more information about our privacy practices and a list of affiliated brands, please read out Privacy Notice . Create an Account Are you a medical professional? If yes, we can offer you special offers if you sign up, do you want to continue? Yes Skip block.addtocart.title block.addtocart.message block.addtocart.close Trigger Modal Session Time Out Your session is about to expire. Continue Shopping Session Timed Out Your session has expired. Continue Shopping - Choose delivery frequency. You'll only be billed when your order ships. - Hassle-free, we'll send you a reminder before each delivery. Skip refills or cancel any time. - Cannot be combined with promo codes. I agree to the Subscription Terms and authorize Whirlpool to automatically charge my default payment card at then-current prices at the frequency below. I acknowledge that my subscription will auto-renew until I cancel via the Subscriptions section of My Account before the refill order date.\" data-deliver=\"Deliver:\" data-every=\"Every\" data-recommended=\"(Recommended)\" data-months=\"Months\" data-guestpass-header=\"Subscribe to save on water filters!\" data-guestpass-message=\"As a Guest Pass user, you&apos;re unable to subscribe directly on Inside Pass but you can subscribe on any of our Whirlpool \u00ae family sites. Click on the following to be redirected to set up your subscription: Whirlpool.com | KitchenAid.com | Maytag.com \" data-show-offline-label=\"false\"> Avatar/Fill - Default Added to Cart Avatar/Fill - Default Unable to Add to Cart Delivery & Installation Options Search site Search Search Go back to previous article Username Password Sign in Sign in Sign in Forgot password Expand/collapse global hierarchy Home Laundry Washers Product Info Washer Product Assistance Error Codes in Front Load Washers Expand/collapse global location Error Codes in Front Load Washers Last updated Oct 16, 2025 Save as PDF Share Share Tweet Share Table of contents Error Codes in my Whirlpool Front Load Washer Error Codes in my Whirlpool Front Load Washer These codes serve as vital indicators, alerting you to specific problems that may occur during the washing cycle. In this guide, we will explore the various Whirlpool washer fault codes you might encounter, along with their meanings and solutions. Use these Whirlpool front-load washer error codes to help diagnose your problem. These may not be all Error Codes that will show for your model. See your Owner's Manual for the Error Codes for your specific model. If none of these solutions work, Contact Us or Schedule Service Online . Error Code Error Possible Solution LOC or LC Control Lock has been activated Touch the Control Lock button, or (on older models) determine which button activates control lock from your Owner's Manual. Some models require you to press and hold the button. dET Detergent cartridge not detected in the dispenser. This is on select models. If you are using single-load doses of detergent, ignore this message. Ensure the dispenser cartridge is inserted correctly and the dispenser drawer is shut completely. Int The cycle was paused or canceled. The washer may take 20 to 30 minutes to stop spinning and drain, and will display this error code during that time. To remove the code, press pause or cancel button twice and the power button once. If the code is still displayed, unplug the washer or disconnect the power for 5 minutes. rL or F34 Items were detected in the washer during the Clean Washer cycle. Remove items from the drum and restart the Clean Washer cycle. Sud or Sd There are too many suds in the washing machine. The washer will not be able to spin out water with the excess suds. When \"Sud\" or \"Sd\" is displayed, the washer automatically extends the rinse time to remove the excess suds. During this time, the washer pauses the tumbling and adds water for additional rinsing. This pause allows the bubbles in the suds to break. This pause and rinsing are necessary and may occur several times to eliminate the suds. Make sure you are using HE or High Efficiency detergent. Find more information on HE Detergent use in your Washer . If you used \"no splash\" or \"easy pour\" liquid chlorine bleach, you could also have too many suds. This type of liquid chlorine bleach contains a thickening agent that may create excess suds in washers. If this is the case, run the washer with regular liquid bleach products. The Sud or Sd code may also be the result of a restricted drain hose or standpipe (drainpipe). Make sure that the drain hose is not kinked or clogged. Find more information on How to Install the Drain Hose . F5 E2 The door is not locking properly. Check that there are no items blocking the door and it is closing completely. Press the Pause or Cancel button twice and the Power button once to clear the code. F7 E1 Indicates a motor speed sensing error, The motor can not achieve the correct speed for the cycle selection. Check that: All the shipping bolts have been removed The washer has not been overloaded Press the Pause or Cancel button twice and the Power button once to clear the code. F8 E1 or LO FL The washer is sensing a low flow of water. Check that: The household water supply is turned on and both the cold and the hot water faucets or valves are fully open. The water inlet hoses are not kinked (learn more about How to check your Fill Hoses if your Washer is not Filling ) There are no anti-flood hoses and controls in the water line connected to the washer (learn more about Should I use Flood Safe Devices on my Front Load Washer Press the Pause or Cancel button twice and the Power button once to clear the code. F8 E2 Indicates there is a problem with the Dispenser System This is on select models. Verify that the detergent drawer or detergent cartridge is not clogged with detergent. Find more information on How do I clean my washer dispensers? F9 E1 Indicates that drain times are longer than expected, typically over eight (8) minutes. Make su re the drain hose is not kinked or clogged. Use the U-shaped drain hose form on the drain hose. The stan dpipe (drainpipe) height requirements are 96\" (244 cm) maximum and 39\" (99 cm) minimum. Find more information on How to Install the Drain Hose . Excessive suds may also cause delays in draining. Make sure you are using HE detergent . Other F# E# code Indicates other error Unplug the washer or disconnect the power for 5 minutes and reconnect it again. Reselect the cycle and press Start. If the code persists, Contact Us or Schedule Service Online so a qualified technician can diagnose the washer. If you would like to download or view product literature for your appliance, please visit our Manuals and Literature page. Manuals & Service 1/2 Product Manuals & Literature Use your model number to locate resources like product manuals and documents to help with installing, using and troubleshooting your appliances. READ Schedule Service Need to schedule a service call? Simply choose your preferred date and time, and we'll confirm your appointment promptly. SCHEDULE Customer Service Have questions or need assistance? Our dedicated customer service team is ready to help! Contact us via phone or email, or live chat. 1-866-698-2538 CALL Back to top Display of Time Remaining Seems Long Error Codes in Top Load HE Washers Was this article helpful? Yes No Sign in and leave feedback Recommended articles Washer is Vibrating, Walking or Moving Front Load Washer Vibration/Walking Issues: Check shipping bolts removal, ensure all feet contact the floor, level the washer, avoid overloading, and ... How to Reset a Washer To reset the washer's control panel, disconnect from power for 5 minutes. Reconnect, either by unplugging or turning off the breaker, then turn it bac... What is an F7 E1 Error Code on a Front Load Washer What is an F8 E2 Error Code on a Front Load Washer Article type Topic Brand Multiple Brands Media Article Topic Product Assistance Visual Content Image Only Tags Front Load Washer \u00a9 Copyright 2026 Product Help | Whirlpool Powered by NiCE Knowledge Management \u00ae Product Registration Find A Retailer Connect with Us Footer Service & Support Service & Support Repair Financing Product Help Product Registration Manuals & Literature Service & Repair Shipping, Delivery & Install Returns, Exchanges & Cancellations Payment Options Service Plans Buying from Whirlpool.com Digital Catalogs My Appliances Rebates Track My Order Professional Discounts Products Products Washers & Dryers Kitchen Cooking Dishwashers and Cleaning Pedestals Fabric Refresher Water Filters Find a Retailer Parts, Accessories & Other Products Parts, Accessories & Other Products Parts & Accessories Other Products Featured Innovations Consumer Electronics Show Whirlpool Outlet Commercial Laundry More Home Products About Whirlpool Corporation About Whirlpool Corporation Every day, care.\u00ae Press & Media Contact Us About Us Investors Careers Whirlpool Eco & ENERGY STAR\u00ae Certified Habitat for Humanity Recall Information Accessibility \u00ae/\u2122 \u00a9 2026 Whirlpool. All rights reserved. This online merchant is located in the United States at 600 West Main Street, Benton Harbor, MI 49022. MSRP is the Manufacturer's Suggested Retail Price, which may differ from actual selling prices in your area. Terms of Use Privacy Notice Do Not Sell My Personal Information COVID-19 Response Sitemap Supply Chain Interest-Based Ads Contact Us SIGN UP X Recommendations THIS MODEL IS TEMPORARILY OUT OF STOCK! Hang in there, we are looking for alternate products just for you. Have You Considered These? Front Load Electric Dryer with Extra Power and Quick Dry cycle - 7.3 c... SALE: $854.00 4.5 (689) View Now 7.4 cu. ft. Commercial-Grade Residential Dryer... MSRP: $999.00 4.6 (362) View Now Smart Capable Top Load Electric Dryer with Extra Power Button - 7.4 cu... MSRP: $1149.00 3.5 (190) View Now We use your information in accordance with our privacy policy .",
+            "6": "[W11169652 Rev B] Section: Fault/Error Code Display Method\nFault/Error Code Display Method\n1Lock DoorIf door does n\nFault codes are displayed by showiSnygst eFm#, pEa#ge.  3\nT2he E# indicaDtreasin  t(hif en escuessspareyc)t ComIpf odrnaeinn pt usmyps \nDrain/Recircul\nUp to four Fault/Error codes may be stored. In S\n3Cold 1 ValveIf no water, se\ndisplays the next saved Fault/Error Code. If the \npage 3-13.\nare present.\n4Cold 2 ValveIf no water, se\nNOTE: Fault/Error codes cannot be cplaegaer 3e-d1.3.\n5Hot ValveIf no water, se\nExit Procedurepage 3-13.\n6Drain PumpIf drain pump \nTo exit Fault/Error Codes Display Mode, turn the\nDrain/Recircul\n7Recirculation PumpIf recirculation\nThe fault codes below may be indicated under va\n#8: Drain/Reci\nService Diagnostics.\n8Drain PumpIf drain pump \nDrain/Recircul\nF0E1Load in drum during Clean Washer cycle\n9Spin at 820 RPM                       If drum does n\nF0E3Highw t/eDmrapin e Prruomr, pd OryN cycleCircuit, page 3\nF100E4High temDrpy  eBrlorowr,e wrash cycleIf no airflow, s\npage 3-26.\nF1E2MCU over- or under-voltage error\n11Detergent PumpIf Detergent P\nF1E4Main relay open or shorted\n#12A: Drawer \nF3E1 Pressure sensor signal missing\n12Softener PumpIf Softener Pum\nor out of range#12A: Drawer \nF133E2 Wash CoWr d Srlyo wN TSCpi no  p    e   n      o    r     s hIof rdterudm does n\nCCW Slow SpinCircuit, page 3\nF3E5Three D sensor error\n14End of CycleWasher enters\nF3E6Dispenser container open or not in place\nTotal Time\nF4E1 Wash heater relay error\nnF4E2Dry heater relay error\n2-12   Whirlpool & Maytag Front-Load Washers\nF4E3Blower error\nF4E4Ozone relay error\nF5E1Door switch error\nF5E2Lock failure\nF5E3Unlock failure\nF5E4Door not open error\nDO NOT REMOVE OR DESTROY\n\nNoIoCrIA DNi\u2019aSg UnSoEs tOicNsLY\nnued)\nC MODE TESTS (cont.)\nExit Service Diagnostic Mode by scrolling to the top and \npressing the < button in the top left corner of the screen twice, \nand then pressing the HOME button.\n<DIAGNOSTICS HOME\nFigure 8\n manually commanded ON will be turned OFF. The Quick \nrum must be empty during this test. \nmmended ProcedureEst. Duration\not lock, see TEST #4: Door Lock 10 sec.\nT-1h1e. F# indicates the suspect System/Category.\ndteomes .not turn on, see TEST #8: 20 sec.\nation Pump, page 3-15. \nervice Diagnostic Mode, pressing START \ne TEST #6: Water Inlet Valves, 10 sec.\ndisplay shows \u201cF - E -,\u201d no fault codes \ne TEST #6: Water Inlet Valves, 10 sec.\ne TEST #6: Water Inlet Valves, 10 sec.\ndoes not turn on, see TEST #8: 10 sec. \n cycle selector knob or press and hold POWER.\nation Pump, page 3-15. \n pump does not turn on, see TEST 10 sec.\nrious conditions and can be accessed through\nrculation Pump, page 3-15. \ndoes not turn on, see TEST #8: 10 sec. \nation Pump, page 3-15. \nF6E1MC/MCU communication error\not spin, see TEST #3: Motor 5 min.\n-10.F6E3Unknown cycle ID error\nee TFE7STE #11 7: Dry BTalocwheorm Meotetro re, rror10 sec.\nF7E2MC/MCU over temp error\nump does not turn on, see TEST 10 sec.\nF7E3MC/MCU over current error\nBulk Dispenser, page 3-20.  \nF7E4Motor disconnected error\np does not turn on, see TEST 10 sec.\nBulkF D7iEsp3enser, pMagCe /3M-2C0U.  internal failure\not spin, see TEST #3: Motor 22 sec.\nF7E8MC/Motor over temp error\n-10.\nF7E9Locked rotor\n Standby Mode - Door Unlocks\nF8E1 Valve failure\n ~7-8 minutes\nF8E3Over\ufb02ow\nF9E1Long drain\n(cid:51)(cid:36)(cid:42)(cid:40)(cid:3)(cid:26)",
+            "7": "[W11156989 Rev D] Section: Sensor, page 19.\nSensor, page 19.\nF0E5 Off Balance Load. Load could be unbalanced or too large. Avoid tightly packing the\nload. Avoid washing single items.\nMain relay open or shorted. Main relay issue. Replace ACU.\nSee TEST #1: ACU Power Check, page 12.\nF1E2 MCU over- or under-voltage error. Check household voltage. See TEST #3: Motor Circuit, page 15.\nPressure sensor signal missing or out See TEST #7: Water Level Sensor, page 17.\nof range.\nF3E2 Wash NTC open or shorted. See TEST #10a: Wash Temperature Sensor, page 19.\nF3E5 Dry NTC fault. Fault is displayed if dry temperature sensor is out of range, or open\ncircuit or short circuit is detected. The was function is still operable,\nbut the dry function will not operate.\nSee TEST #10b: Dry Temperature sensor page 20.\nF3E6 Accelerometer error. Check ACU. See TEST #1: ACU Power Check, page 12.\nF4E1 Wash heater relay error or no feedback Error is generated when the ACU cannot detect the temperature rise\nsignal. of the wash heater. See TEST #9a Wash heating element, page 18.\nF4E2 Wash heater relay error. See TEST #9a: Wash Heating Element, page 18.\nF5E2 Lock failure. See TEST #4: Door Lock System, page 15.\nF5E3 Unlock failure. See TEST #4: Door Lock System, page 15.\nF5E4 Door not open error. Make sure to open and close the washer/dryer door between cycles.\nNo communication from the HMI See Test #2: Human-Machine Interface (HMI), page 14.\ndetected by ACU.\nNo communication from the ACU See Test #1: ACU Power Check, page 12.\ndetected by the HMI.\nNo communication from the MCU Replace ACU. See TEST #1: ACU Power Check, page 12.\ndetected by the ACU.\n8 DO NOT REMOVE OR DESTROY",
+            "8": "[W11320651 Rev B] Section: Sensor, page 19.\nSensor, page 19.\nF0E5 Off Balance Load. Load could be unbalanced or too large. Avoid tightly packing the\nload. Avoid washing single items.\nMain relay open or shorted. Main relay issue. Replace ACU.\nSee TEST #1: ACU Power Check, page 12.\nF1E2 MCU over- or under-voltage error. Check household voltage. See TEST #3: Motor Circuit, page 15.\nPressure sensor signal missing or out See TEST #7: Water Level Sensor, page 17.\nof range.\nF3E2 Wash NTC open or shorted. See TEST #10a: Wash Temperature Sensor, page 19.\nF3E5 Dry NTC fault. Fault is displayed if dry temperature sensor is out of range, or open\ncircuit or short circuit is detected. The was function is still operable,\nbut the dry function will not operate.\nSee TEST #10b: Dry Temperature sensor page 20.\nF3E6 Accelerometer error. Check ACU. See TEST #1: ACU Power Check, page 12.\nF4E1 Wash heater relay error or no feedback Error is generated when the ACU cannot detect the temperature rise\nsignal. of the wash heater. See TEST #9a Wash heating element, page 18.\nF4E2 Wash heater relay error. See TEST #9a: Wash Heating Element, page 18.\nF5E2 Lock failure. See TEST #4: Door Lock System, page 15.\nF5E3 Unlock failure. See TEST #4: Door Lock System, page 15.\nF5E4 Door not open error. Make sure to open and close the washer/dryer door between cycles.\nNo communication from the HMI See Test #2: Human-Machine Interface (HMI), page 14.\ndetected by ACU.\nNo communication from the ACU See Test #1: ACU Power Check, page 12.\ndetected by the HMI.\nNo communication from the MCU Replace ACU. See TEST #1: ACU Power Check, page 12.\ndetected by the ACU.\n8 DO NOT REMOVE OR DESTROY"
+          },
+          "diagnostic": {
+            "step": 2,
+            "phase": "next_step",
+            "symptom_anchor": "My washer shows F5E2 and the door locks but it won't start.",
+            "hypotheses": [
+              "Door lock failure due to obstruction or improper closure."
+            ],
+            "ruled_out": [
+              "Check if the door is firmly closed and look for obstructions.",
+              "Check if the door is firmly closed: Ensure that the door is completely closed and latched. Sometimes, it may appear closed but isn't fully latched",
+              "Look for obstructions: Check if there are any items preventing the door from closing properly. Make sure there are no clothes or other items sticking out be",
+              "Reset the washer: Cycle power to the control to reset the washer. You can do this by unplugging the washer for 5 minutes and then plugging it back in. This"
+            ],
+            "observations": [
+              {
+                "text": "My washer shows F5E2 and the door locks but it won't start.",
+                "source": "user",
+                "turn": 1
+              },
+              {
+                "text": "The washer shows F5E2 and the door locks but won't start.",
+                "source": "assistant",
+                "turn": 1
+              },
+              {
+                "text": "The door seems fully closed \u2014 what should I check next?",
+                "source": "user",
+                "turn": 2
+              },
+              {
+                "text": "The door seems fully closed.",
+                "source": "assistant",
+                "turn": 2
+              }
+            ],
+            "next_check": "Inspect the door lock mechanism and verify the door switch functionality.",
+            "symptom_path": [
+              {
+                "text": "My washer shows F5E2 and the door locks but it won't start.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "no_translations",
+            "rules": [],
+            "premises": {
+              "doorPolarity": "UNKNOWN"
+            },
+            "claims": {},
+            "untranslated": [
+              "Since the door appears to be fully closed, the next step is to check for a possible door lock failure. Here are the checks to perform:",
+              "1. **Door Lock Mechanism**: Inspect the door lock mechanism for any signs of damage or wear. Ensure that it is functioning properly and that the door latch is engaging correctly.",
+              "2. **Door Switch**: Verify that the door switch is working. The ACU (Automatic Control Unit) may detect an open door switch when attempting to lock, which can trigger the F5E2 error code.",
+              "3. **Interference**: Ensure there are no items obstructing the door lock mechanism that could prevent it from locking completely.",
+              "These checks are crucial as the F5E2 error indicates that the door is not locking properly due to one of these issues [2][3]."
+            ],
+            "confidence": 1.0,
+            "duration_ms": 4481
+          }
+        }
+      ]
+    },
+    {
+      "scenario_id": "control-lock-before-board",
+      "passed": false,
+      "detail": "turn 1: expect_contains_any missing one of ['control lock', 'LOC', 'lock']; turn 2: expect_contains_any missing one of ['HMI', 'ACU', 'test #2', 'communication', 'harness']; det turns only (needs --judge for prose)",
+      "command": "diagnose",
+      "abstained": false,
+      "answer": "Since the control panel is still unresponsive after checking the electrical supply and ensuring the Control Lock is off, we should consider the possibility of a control panel malfunction. Here are the next steps to check for this issue:\n\n1. **Check for error codes**: If any error codes appear in the display, note them down as they can help diagnose the issue.\n2. **Inspect the control panel connections**: Ensure that the wiring connections to the control panel are secure and not damaged. This may require disassembly, so be cautious of live voltage.\n3. **Test the control panel**: If you have access to a multimeter, you can test the control panel for continuity to see if it is functioning properly [2].",
+      "citations": [
+        "use-and-care-w11156985",
+        "W11156985 Rev A p.5 [structured]",
+        "W11156985"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 16638,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "Since the control panel is still unresponsive after checking the electrical supply and ensuring the Control Lock is off, we should consider the possibility of a control panel malfunction. Here are the next steps to check for this issue:",
+          "Check for error codes: If any error codes appear in the display, note them down as they can help diagnose the issue.",
+          "Inspect the control panel connections: Ensure that the wiring connections to the control panel are secure and not damaged. This may require disassembly, so be cautious of live voltage.",
+          "Test the control panel: If you have access to a multimeter, you can test the control panel for continuity to see if it is functioning properly [2]."
+        ],
+        "duration_ms": 3527
+      },
+      "turns": [
+        {
+          "turn": 1,
+          "user_message": "My washer powers on but the control panel doesn't respond to any buttons.",
+          "assistant_message": "Since your washer powers on but the control panel doesn't respond, let's start by checking the electrical supply and the control panel itself. Here are the steps to follow:\n\n1. **Check proper electrical supply**: \n   - Ensure the power cord is plugged into a grounded 3-prong outlet.\n   - Reset any tripped circuit breakers.\n   - Replace any blown fuses.\n\n2. **Control panel check**: \n   - If your model has a touch interface, ensure you are touching the control panel with your fingertip, not your fingernail, to register your selections. If it has physical buttons, make sure to press them firmly [1].",
+          "abstained": false,
+          "citations": [
+            "use-and-care-w11156985",
+            "W11156985 Rev A p.24 [structured]",
+            "W11156985"
+          ],
+          "retrieval_count": 2,
+          "claims": [
+            {
+              "text": "The washer may not respond due to improper electrical supply or issues with the control panel.",
+              "evidence_index": 1
+            }
+          ],
+          "evidence_blocks": {
+            "1": "[W11156985 Rev A] Section: Error Code Appears in Display (for 2- and 3-digit displays) Headers: Washer won\u2019t run or fill;\nwasher stops working\n(cont.) | Check proper electrical supply. | Plug power cord into a grounded 3 prong outlet.\nReset a tripped circuit breaker. Replace any blown fuses.\nNOTE: If problems continue, contact an electrician.",
+            "2": "[W11156985 Rev A]\nCONTROL PANEL AND FEATURES\nNOTES: \n\u25a0 Not all features and cycles are on all models. \n\u25a0 If your model has a touch interface, the control panel features a\nensure your selections are registered, touch the control panel w\noption, simply touch its name.\n\u25a0 If your model has physical buttons, make sure to press the butt\n\u25a0  At cycle completion, your setting and option choices will be rem\nlost, the settings and options will go back to the factory default\n1\nWHAT\nHOW \n4\nhold 3 sec for\nCycle Signal\n6\nCycles and settin\n1POWER\nSelect to turn the washer on and off. Select to stop/cancel  \na cycle at any time. \n2WHAT TO WASH/HOW TO WASH\nFirst determine what items are in the load that you are trying \nto wash. Use that to guide your \u201cWhat to Wash\u201d selection. \nThen determine how you want the washer to wash them  \nand make the appropriate \u201cHow to Wash\u201d selection.  \nSee \u201cCycle Guide\u201d for cycle details. If you do not make a \n\u201cHow to Wash\u201d selection, the washer will automaticlly select \nthe recommended or last-used \u201cHow to Wash\u201d cycle.\n3START/PAUSE\nTouch and hold for 3 seconds until the light above Start/\nPause comes on to start a cycle, or touch once while a cycle \nis in process to pause it.\n4CYCLE STATUS DISPLAY\nThe Cycle Status Display shows the progress of a cycle.  \nAt each stage of the process, you may notice sounds  \nor pauses that are different from traditional washers.\n\n sensitive surface that responds to a light touch of your finger. To \nith your fingertip, not your fingernail. When selecting a setting or \non firmly.\nembered for the next cycle. However, if power to the washer is \ns.\n23\n to wash\nto wash\n2\n5\nhold 3 sec forhold 3 sec forhold 3 sec for\nControl LockFanFreshPreSoak\n 7\ngs vary by model.\nEstimated Time Remaining\nThe Estimated Time Remaining shows the time required for \nthe cycle to complete. Factors such as load size, modifiers, \noptions selected, and water pressure may affect the time \nshown in the display. Tightly packed loads, unbalanced loads, \nor excessive suds may cause the washer to lengthen the \ncycle time as well.\nSensing\nWhen Start/Pause is touched the washer will chime, \nindicating it is starting. The drum will make a partial turn.  \nThe door will click when it locks.\nOnce the door has locked, the washer will begin spinning \nto sense the load size. This sensing process will continue \nthroughout the cycle.\nAfter the load size is sensed, the estimated time based  \non load size will be displayed and water will be added.  \nYou may hear water flowing through the dispenser,  \nadding detergent to the load. The actual cycle time may  \nbe lengthened; however, the display will continue to show  \nthe estimated time.\n5"
+          },
+          "diagnostic": {
+            "step": 1,
+            "phase": "next_step",
+            "symptom_anchor": "My washer powers on but the control panel doesn't respond to any buttons.",
+            "hypotheses": [
+              "Electrical supply issue or control panel malfunction"
+            ],
+            "ruled_out": [],
+            "observations": [
+              {
+                "text": "My washer powers on but the control panel doesn't respond to any buttons.",
+                "source": "user",
+                "turn": 1
+              },
+              {
+                "text": "The washer powers on but the control panel doesn't respond.",
+                "source": "assistant",
+                "turn": 1
+              }
+            ],
+            "next_check": "Check the electrical supply and control panel as outlined.",
+            "symptom_path": [
+              {
+                "text": "My washer powers on but the control panel doesn't respond to any buttons.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "no_translations",
+            "confidence": 1.0,
+            "premises": {},
+            "claims": {},
+            "untranslated": [
+              "Since your washer powers on but the control panel doesn't respond, let's start by checking the electrical supply and the control panel itself. Here are the steps to follow:",
+              "1. **Check proper electrical supply**:",
+              "- Ensure the power cord is plugged into a grounded 3-prong outlet.",
+              "- Reset any tripped circuit breakers.",
+              "- Replace any blown fuses.",
+              "2. **Control panel check**:",
+              "- If your model has a touch interface, ensure you are touching the control panel with your fingertip, not your fingernail, to register your selections. If it has physical buttons, make sure to press them firmly [1]."
+            ],
+            "duration_ms": 3571
+          }
+        },
+        {
+          "turn": 2,
+          "user_message": "I already held the Control Lock button for 3 seconds and LOC is gone \u2014 still dead.",
+          "assistant_message": "Since the control panel is still unresponsive after checking the electrical supply and ensuring the Control Lock is off, we should consider the possibility of a control panel malfunction. Here are the next steps to check for this issue:\n\n1. **Check for error codes**: If any error codes appear in the display, note them down as they can help diagnose the issue.\n2. **Inspect the control panel connections**: Ensure that the wiring connections to the control panel are secure and not damaged. This may require disassembly, so be cautious of live voltage.\n3. **Test the control panel**: If you have access to a multimeter, you can test the control panel for continuity to see if it is functioning properly [2].",
+          "abstained": false,
+          "citations": [
+            "use-and-care-w11156985",
+            "W11156985 Rev A p.5 [structured]",
+            "W11156985"
+          ],
+          "retrieval_count": 2,
+          "claims": [
+            {
+              "text": "The control panel may be malfunctioning if it remains unresponsive after checking the electrical supply and Control Lock.",
+              "evidence_index": 2
+            }
+          ],
+          "evidence_blocks": {
+            "1": "[W11156985 Rev A] Section: Error Code Appears in Display (for 2- and 3-digit displays) Headers: Washer won\u2019t run or fill;\nwasher stops working\n(cont.) | Check proper electrical supply. | Plug power cord into a grounded 3 prong outlet.\nReset a tripped circuit breaker. Replace any blown fuses.\nNOTE: If problems continue, contact an electrician.",
+            "2": "[W11156985 Rev A]\nCONTROL PANEL AND FEATURES\nNOTES: \n\u25a0 Not all features and cycles are on all models. \n\u25a0 If your model has a touch interface, the control panel features a\nensure your selections are registered, touch the control panel w\noption, simply touch its name.\n\u25a0 If your model has physical buttons, make sure to press the butt\n\u25a0  At cycle completion, your setting and option choices will be rem\nlost, the settings and options will go back to the factory default\n1\nWHAT\nHOW \n4\nhold 3 sec for\nCycle Signal\n6\nCycles and settin\n1POWER\nSelect to turn the washer on and off. Select to stop/cancel  \na cycle at any time. \n2WHAT TO WASH/HOW TO WASH\nFirst determine what items are in the load that you are trying \nto wash. Use that to guide your \u201cWhat to Wash\u201d selection. \nThen determine how you want the washer to wash them  \nand make the appropriate \u201cHow to Wash\u201d selection.  \nSee \u201cCycle Guide\u201d for cycle details. If you do not make a \n\u201cHow to Wash\u201d selection, the washer will automaticlly select \nthe recommended or last-used \u201cHow to Wash\u201d cycle.\n3START/PAUSE\nTouch and hold for 3 seconds until the light above Start/\nPause comes on to start a cycle, or touch once while a cycle \nis in process to pause it.\n4CYCLE STATUS DISPLAY\nThe Cycle Status Display shows the progress of a cycle.  \nAt each stage of the process, you may notice sounds  \nor pauses that are different from traditional washers.\n\n sensitive surface that responds to a light touch of your finger. To \nith your fingertip, not your fingernail. When selecting a setting or \non firmly.\nembered for the next cycle. However, if power to the washer is \ns.\n23\n to wash\nto wash\n2\n5\nhold 3 sec forhold 3 sec forhold 3 sec for\nControl LockFanFreshPreSoak\n 7\ngs vary by model.\nEstimated Time Remaining\nThe Estimated Time Remaining shows the time required for \nthe cycle to complete. Factors such as load size, modifiers, \noptions selected, and water pressure may affect the time \nshown in the display. Tightly packed loads, unbalanced loads, \nor excessive suds may cause the washer to lengthen the \ncycle time as well.\nSensing\nWhen Start/Pause is touched the washer will chime, \nindicating it is starting. The drum will make a partial turn.  \nThe door will click when it locks.\nOnce the door has locked, the washer will begin spinning \nto sense the load size. This sensing process will continue \nthroughout the cycle.\nAfter the load size is sensed, the estimated time based  \non load size will be displayed and water will be added.  \nYou may hear water flowing through the dispenser,  \nadding detergent to the load. The actual cycle time may  \nbe lengthened; however, the display will continue to show  \nthe estimated time.\n5"
+          },
+          "diagnostic": {
+            "step": 2,
+            "phase": "next_step",
+            "symptom_anchor": "My washer powers on but the control panel doesn't respond to any buttons.",
+            "hypotheses": [
+              "Control panel malfunction"
+            ],
+            "ruled_out": [
+              "Check the electrical supply and control panel as outlined.",
+              "Check proper electrical supply",
+              "Control panel check"
+            ],
+            "observations": [
+              {
+                "text": "My washer powers on but the control panel doesn't respond to any buttons.",
+                "source": "user",
+                "turn": 1
+              },
+              {
+                "text": "The washer powers on but the control panel doesn't respond.",
+                "source": "assistant",
+                "turn": 1
+              },
+              {
+                "text": "I already held the Control Lock button for 3 seconds and LOC is gone \u2014 still dead.",
+                "source": "user",
+                "turn": 2
+              },
+              {
+                "text": "The control panel is unresponsive after confirming the Control Lock is off.",
+                "source": "assistant",
+                "turn": 2
+              }
+            ],
+            "next_check": "Check for error codes, inspect the control panel connections, and test the control panel for continuity.",
+            "symptom_path": [
+              {
+                "text": "My washer powers on but the control panel doesn't respond to any buttons.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "no_translations",
+            "confidence": 1.0,
+            "premises": {},
+            "claims": {},
+            "untranslated": [
+              "Since the control panel is still unresponsive after checking the electrical supply and ensuring the Control Lock is off, we should consider the possibility of a control panel malfunction. Here are the next steps to check for this issue:",
+              "Check for error codes: If any error codes appear in the display, note them down as they can help diagnose the issue.",
+              "Inspect the control panel connections: Ensure that the wiring connections to the control panel are secure and not damaged. This may require disassembly, so be cautious of live voltage.",
+              "Test the control panel: If you have access to a multimeter, you can test the control panel for continuity to see if it is functioning properly [2]."
+            ],
+            "duration_ms": 3527
+          }
+        }
+      ]
+    },
+    {
+      "scenario_id": "f7e1-bolts-then-persist",
+      "passed": false,
+      "detail": "turn 1: expect_contains_any missing one of ['shipping', 'transport', 'bolt', 'install']; must_cite missing 'W11156977'; got ['service-manual-w11169652-revb', 'W11169652 Rev B p.33 [structured]', 'W11169652', 'tech-sheet-w11320651', 'W11320651 Rev B p.9 [structured] \u2014 MC/MCU Overload.', 'W11320651', 'tech-sheet-w11156989-revd', 'W11156989 Rev D p.9 [structured] \u2014 Motor disconnected error.', 'W11156989']; det turns only (needs --judge for prose)",
+      "command": "diagnose",
+      "abstained": false,
+      "answer": "Since you've already removed the shipping bolts and the washer still shakes violently while showing the F7 E1 error code, we should check the motor circuit. Here are the checks to perform: \n\n1. **Check harness continuity and connections**: Inspect the wiring harness and connections between the ACU (Appliance Control Unit) and the motor to ensure they are secure and undamaged.\n2. **See TEST #3: Motor Circuit**: This test will help diagnose any issues with the motor circuit itself [2]. \n\nPlease perform these checks and let me know the results.",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.33 [structured]",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 19862,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "Since you've already removed the shipping bolts and the washer still shakes violently while showing the F7 E1 error code, we should check the motor circuit. Here are the checks to perform:",
+          "1. **Check harness continuity and connections**: Inspect the wiring harness and connections between the ACU (Appliance Control Unit) and the motor to ensure they are secure and undamaged.",
+          "2. **See TEST #3: Motor Circuit**: This test will help diagnose any issues with the motor circuit itself [2].",
+          "Please perform these checks and let me know the results."
+        ],
+        "duration_ms": 2886
+      },
+      "turns": [
+        {
+          "turn": 1,
+          "user_message": "My new washer shakes violently and shows F7 E1 during spin.",
+          "assistant_message": "The F7 E1 error code indicates a motor control or motor overload fault. Here are some checks you can perform to troubleshoot this issue:\n\n1. **Recycle power to the washer**: Unplug the washer for a few minutes and then plug it back in to reset the control board.\n2. **Check harness continuity and connections**: Inspect the wiring harness and connections between the ACU (Appliance Control Unit) and the motor to ensure they are secure and undamaged.\n3. **Check for obstructions**: Make sure there are no obstructions between the spin basket and the outer tub that could be causing the motor to overload. \n4. **Check AC and DC supplies**: Verify that the power supply to the washer is stable and within the required specifications. \n\nThese steps are based on the error code description and recommended procedures for the F7 E1 fault [2].",
+          "abstained": false,
+          "citations": [
+            "service-manual-w11169652-revb",
+            "W11169652 Rev B p.33 [structured]",
+            "W11169652",
+            "tech-sheet-w11320651",
+            "W11320651 Rev B p.9 [structured] \u2014 MC/MCU Overload.",
+            "W11320651",
+            "tech-sheet-w11156989-revd",
+            "W11156989 Rev D p.9 [structured] \u2014 Motor disconnected error.",
+            "W11156989"
+          ],
+          "retrieval_count": 7,
+          "claims": [
+            {
+              "text": "The F7 E1 error code indicates a motor control or motor overload fault.",
+              "evidence_index": 2
+            },
+            {
+              "text": "You should check for obstructions between the spin basket and the outer tub.",
+              "evidence_index": 6
+            },
+            {
+              "text": "Inspect the wiring harness and connections between the ACU and the motor.",
+              "evidence_index": 4
+            }
+          ],
+          "evidence_blocks": {
+            "1": "6\nLoosen bolts with a 5/8\" (16 mm) wrench. Slide each bolt \nand spacer to center of hole. Pull bolts and plastic spacers \nfrom back of washer. Discard bolts and spacers.\nIMPORTANT: Do not plug washer in until installation has \nbeen completed.\n3.\u0007Remove transport bolts from\nwasher\nCONNECT DRAIN HOSE\nA\nIf clamp is not already in place on elbow end of drain hose, \nsqueeze clamp with pliers and slide it over end of hose, \ncentering it between the ribs, as shown. Squeeze clamp \nwith pliers and slide elbow end of drain hose onto drain \nport and secure with clamp.\nFor a laundry tub or standpipe drain, go to step 6.\nFor a floor drain, remove the preinstalled drain hose form \nas shown in Step 5. You may need additional parts with \nseparate directions. See \u201cAlternate Parts.\u201d\nIt is the responsibility of the installer to install and secure the \ndrain hose into the provided plumbing/drain in a manner that \nwill avoid the drain hose coming out of or leaking from the \nplumbing/drain.\n4. Attach drain hose to drain port\nA- Ribs\n2. Locate transport bolts\nLocate four transport bolts on rear of washer.",
+            "2": "[W11169652 Rev B] Section: Fault/Error Code Chart (continued)\nCode: F7EC\nor\nF7E12 | Description: Motor Control/Motor\nOverload Fault | Explanation and Recommended Procedure: Fault is displayed when the ACU has detected a problem with the motor. Try\nrecycling power to washer.\n\u2022 Check harness continuity and connections between ACU and motor.\n\u2022 Check AC and DC supplies. See TEST #1 (ACU Power Check) on page 3-6.\n\u2022 See TEST #3: Motor Circuit, pg. 3-10.",
+            "3": "[W11169652 Rev B] Section: Fault/Error Code Chart (continued)\nCode: F7EA\nor\nF7E10 | Description: Motor Control/Lost Phase\nFault | Explanation and Recommended Procedure: Fault is displayed when the ACU has detected a problem with the motor. Try\nrecycling power to washer.\n\u2022 Check harness continuity and connections between ACU and motor.\n\u2022 Check AC and DC supplies. See TEST #1 (ACU Power Check) on page 3-6.\n\u2022 See TEST #3: Motor Circuit, pg. 3-10.",
+            "4": "[W11156989 Rev D] Section: TEST #8: Drain Pump/Recirculation Pump, page 17.\nError Code: F7E10 OR\nF7EA | Problem: Motor disconnected error. | Checks & Tests: Check harness continuity and connections between ACU and motor.\nSee TEST #3: Motor Circuit, page 15.",
+            "5": "[W11156989 Rev D] Section: IMPORTANTES REMARQUES DE S\u00c9CURIT\u00c9 \u2013 \u201cpour les techniciens seulement\u201d\nCode\nd\u2019erreur: F7E12 OU\nF7EC | Probl\u00e8me: Surcharge du MC/MCM. | V\u00e9rifications et tests: V\u00e9rifier qu\u2019il n\u2019y ait pas d\u2019obstruction entre le panier d\u2019essorage et la\ncuve externe. V\u00e9rifier la continuit\u00e9 du faisceau et les connexions entre\nle MCA et le moteur. Voir le TEST no 3 : Circuit du moteur, page 41.",
+            "6": "[W11320651 Rev B] Section: TEST #8: Drain Pump/Recirculation Pump, page 17.\nError Code: F7E12 OR\nF7EC | Problem: MC/MCU Overload. | Checks & Tests: Check for obstruction between spin basket and outer tub. Check\nharness continuity and connections between ACU and motor.\nSee TEST #3: Motor Circuit, page 15.",
+            "7": "[W11320651 Rev B] Section: TEST #8: Drain Pump/Recirculation Pump, page 17.\nError Code: F7E10 OR\nF7EA | Problem: Motor disconnected error. | Checks & Tests: Check harness continuity and connections between ACU and motor.\nSee TEST #3: Motor Circuit, page 15."
+          },
+          "diagnostic": {
+            "step": 1,
+            "phase": "next_step",
+            "symptom_anchor": "My new washer shakes violently and shows F7 E1 during spin.",
+            "hypotheses": [
+              "Motor control or motor overload fault"
+            ],
+            "ruled_out": [],
+            "observations": [
+              {
+                "text": "My new washer shakes violently and shows F7 E1 during spin.",
+                "source": "user",
+                "turn": 1
+              },
+              {
+                "text": "The washer shakes violently and shows F7 E1 during spin.",
+                "source": "assistant",
+                "turn": 1
+              }
+            ],
+            "next_check": "Recycle power to the washer, check harness continuity and connections, check for obstructions, and verify AC and DC supplies.",
+            "symptom_path": [
+              {
+                "text": "My new washer shakes violently and shows F7 E1 during spin.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "no_translations",
+            "confidence": 1.0,
+            "premises": {},
+            "claims": {},
+            "untranslated": [
+              "The F7 E1 error code indicates a motor control or motor overload fault. Here are some checks you can perform to troubleshoot this issue:",
+              "1. **Recycle power to the washer**: Unplug the washer for a few minutes and then plug it back in to reset the control board.",
+              "2. **Check harness continuity and connections**: Inspect the wiring harness and connections between the ACU (Appliance Control Unit) and the motor to ensure they are secure and undamaged.",
+              "3. **Check for obstructions**: Make sure there are no obstructions between the spin basket and the outer tub that could be causing the motor to overload.",
+              "4. **Check AC and DC supplies**: Verify that the power supply to the washer is stable and within the required specifications.",
+              "These steps are based on the error code description and recommended procedures for the F7 E1 fault [2]."
+            ],
+            "duration_ms": 3723
+          }
+        },
+        {
+          "turn": 2,
+          "user_message": "I already removed all four shipping bolts \u2014 it still shakes and shows F7E1.",
+          "assistant_message": "Since you've already removed the shipping bolts and the washer still shakes violently while showing the F7 E1 error code, we should check the motor circuit. Here are the checks to perform: \n\n1. **Check harness continuity and connections**: Inspect the wiring harness and connections between the ACU (Appliance Control Unit) and the motor to ensure they are secure and undamaged.\n2. **See TEST #3: Motor Circuit**: This test will help diagnose any issues with the motor circuit itself [2]. \n\nPlease perform these checks and let me know the results.",
+          "abstained": false,
+          "citations": [
+            "service-manual-w11169652-revb",
+            "W11169652 Rev B p.33 [structured]",
+            "W11169652"
+          ],
+          "retrieval_count": 7,
+          "claims": [
+            {
+              "text": "The F7 E1 error code indicates a motor control or motor overload fault, which can be related to issues with the motor circuit.",
+              "evidence_index": 2
+            }
+          ],
+          "evidence_blocks": {
+            "1": "6\nLoosen bolts with a 5/8\" (16 mm) wrench. Slide each bolt \nand spacer to center of hole. Pull bolts and plastic spacers \nfrom back of washer. Discard bolts and spacers.\nIMPORTANT: Do not plug washer in until installation has \nbeen completed.\n3.\u0007Remove transport bolts from\nwasher\nCONNECT DRAIN HOSE\nA\nIf clamp is not already in place on elbow end of drain hose, \nsqueeze clamp with pliers and slide it over end of hose, \ncentering it between the ribs, as shown. Squeeze clamp \nwith pliers and slide elbow end of drain hose onto drain \nport and secure with clamp.\nFor a laundry tub or standpipe drain, go to step 6.\nFor a floor drain, remove the preinstalled drain hose form \nas shown in Step 5. You may need additional parts with \nseparate directions. See \u201cAlternate Parts.\u201d\nIt is the responsibility of the installer to install and secure the \ndrain hose into the provided plumbing/drain in a manner that \nwill avoid the drain hose coming out of or leaking from the \nplumbing/drain.\n4. Attach drain hose to drain port\nA- Ribs\n2. Locate transport bolts\nLocate four transport bolts on rear of washer.",
+            "2": "[W11169652 Rev B] Section: Fault/Error Code Chart (continued)\nCode: F7EC\nor\nF7E12 | Description: Motor Control/Motor\nOverload Fault | Explanation and Recommended Procedure: Fault is displayed when the ACU has detected a problem with the motor. Try\nrecycling power to washer.\n\u2022 Check harness continuity and connections between ACU and motor.\n\u2022 Check AC and DC supplies. See TEST #1 (ACU Power Check) on page 3-6.\n\u2022 See TEST #3: Motor Circuit, pg. 3-10.",
+            "3": "[W11169652 Rev B] Section: Fault/Error Code Chart (continued)\nCode: F7EA\nor\nF7E10 | Description: Motor Control/Lost Phase\nFault | Explanation and Recommended Procedure: Fault is displayed when the ACU has detected a problem with the motor. Try\nrecycling power to washer.\n\u2022 Check harness continuity and connections between ACU and motor.\n\u2022 Check AC and DC supplies. See TEST #1 (ACU Power Check) on page 3-6.\n\u2022 See TEST #3: Motor Circuit, pg. 3-10.",
+            "4": "[W11156989 Rev D] Section: TEST #8: Drain Pump/Recirculation Pump, page 17.\nError Code: F7E10 OR\nF7EA | Problem: Motor disconnected error. | Checks & Tests: Check harness continuity and connections between ACU and motor.\nSee TEST #3: Motor Circuit, page 15.",
+            "5": "[W11156989 Rev D] Section: IMPORTANTES REMARQUES DE S\u00c9CURIT\u00c9 \u2013 \u201cpour les techniciens seulement\u201d\nCode\nd\u2019erreur: F7E12 OU\nF7EC | Probl\u00e8me: Surcharge du MC/MCM. | V\u00e9rifications et tests: V\u00e9rifier qu\u2019il n\u2019y ait pas d\u2019obstruction entre le panier d\u2019essorage et la\ncuve externe. V\u00e9rifier la continuit\u00e9 du faisceau et les connexions entre\nle MCA et le moteur. Voir le TEST no 3 : Circuit du moteur, page 41.",
+            "6": "[W11320651 Rev B] Section: TEST #8: Drain Pump/Recirculation Pump, page 17.\nError Code: F7E12 OR\nF7EC | Problem: MC/MCU Overload. | Checks & Tests: Check for obstruction between spin basket and outer tub. Check\nharness continuity and connections between ACU and motor.\nSee TEST #3: Motor Circuit, page 15.",
+            "7": "[W11320651 Rev B] Section: TEST #8: Drain Pump/Recirculation Pump, page 17.\nError Code: F7E10 OR\nF7EA | Problem: Motor disconnected error. | Checks & Tests: Check harness continuity and connections between ACU and motor.\nSee TEST #3: Motor Circuit, page 15."
+          },
+          "diagnostic": {
+            "step": 2,
+            "phase": "next_step",
+            "symptom_anchor": "My new washer shakes violently and shows F7 E1 during spin.",
+            "hypotheses": [
+              "Motor control or motor overload fault"
+            ],
+            "ruled_out": [
+              "Recycle power to the washer",
+              "Check harness continuity and connections",
+              "Check for obstructions",
+              "Check AC and DC supplies",
+              "Recycle power to the washer, check harness continuity and connections, check for obstructions, and verify AC and DC supplies.",
+              "Recycle power to the washer: Unplug the washer for a few minutes and then plug it back in to reset the control board",
+              "Check harness continuity and connections: Inspect the wiring harness and connections between the ACU (Appliance Control Unit) and the motor to ensure they a",
+              "Check for obstructions: Make sure there are no obstructions between the spin basket and the outer tub that could be causing the motor to overload",
+              "Check AC and DC supplies: Verify that the power supply to the washer is stable and within the required specifications"
+            ],
+            "observations": [
+              {
+                "text": "My new washer shakes violently and shows F7 E1 during spin.",
+                "source": "user",
+                "turn": 1
+              },
+              {
+                "text": "The washer shakes violently and shows F7 E1 during spin.",
+                "source": "assistant",
+                "turn": 1
+              },
+              {
+                "text": "I already removed all four shipping bolts \u2014 it still shakes and shows F7E1.",
+                "source": "user",
+                "turn": 2
+              },
+              {
+                "text": "User has removed all four shipping bolts.",
+                "source": "assistant",
+                "turn": 2
+              }
+            ],
+            "next_check": "Check harness continuity and connections; See TEST #3: Motor Circuit.",
+            "symptom_path": [
+              {
+                "text": "My new washer shakes violently and shows F7 E1 during spin.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "no_translations",
+            "confidence": 1.0,
+            "premises": {},
+            "claims": {},
+            "untranslated": [
+              "Since you've already removed the shipping bolts and the washer still shakes violently while showing the F7 E1 error code, we should check the motor circuit. Here are the checks to perform:",
+              "1. **Check harness continuity and connections**: Inspect the wiring harness and connections between the ACU (Appliance Control Unit) and the motor to ensure they are secure and undamaged.",
+              "2. **See TEST #3: Motor Circuit**: This test will help diagnose any issues with the motor circuit itself [2].",
+              "Please perform these checks and let me know the results."
+            ],
+            "duration_ms": 2886
+          }
+        }
+      ]
+    },
+    {
+      "scenario_id": "mid-cycle-stop-diag-entry",
+      "passed": false,
+      "detail": "turn 1: expect_contains_any missing one of ['Service Diagnostic', 'diagnostic mode', '888', 'three (3) buttons', 'three buttons']; expect_cites_any missing one of ['W11169652']; got ['use-and-care-w11156985', 'W11156985 Rev A p.25 [structured]', 'W11156985']; det turns only (needs --judge for prose)",
+      "command": "diagnose",
+      "abstained": false,
+      "answer": "Since your washer stops after 10 minutes without finishing the wash and there are no error codes displayed, it may be helpful to check if the washer is pausing during certain cycles. Some cycles feature periods of tumbling and soak, which can cause temporary stops. Please allow the cycle to continue for a bit longer to see if it resumes on its own [1].",
+      "citations": [
+        "use-and-care-w11156985",
+        "W11156985 Rev A p.25 [structured]",
+        "W11156985"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 6456,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "Since your washer stops after 10 minutes without finishing the wash and there are no error codes displayed, it may be helpful to check if the washer is pausing during certain cycles. Some cycles feature periods of tumbling and soak, which can cause temporary stops. Please allow the cycle to continue for a bit longer to see if it resumes on its own [1]."
+        ],
+        "duration_ms": 2471
+      },
+      "turns": [
+        {
+          "turn": 1,
+          "user_message": "stops after 10 minutes of running without finishing the wash. no error code on the display.",
+          "assistant_message": "Since your washer stops after 10 minutes without finishing the wash and there are no error codes displayed, it may be helpful to check if the washer is pausing during certain cycles. Some cycles feature periods of tumbling and soak, which can cause temporary stops. Please allow the cycle to continue for a bit longer to see if it resumes on its own [1].",
+          "abstained": false,
+          "citations": [
+            "use-and-care-w11156985",
+            "W11156985 Rev A p.25 [structured]",
+            "W11156985"
+          ],
+          "retrieval_count": 2,
+          "claims": [
+            {
+              "text": "The washer may pause for about 2 minutes during certain cycles.",
+              "evidence_index": 1
+            }
+          ],
+          "evidence_blocks": {
+            "1": "[W11156985 Rev A] Section: Error Code Appears in Display (for 2- and 3-digit displays) Headers: If you experience | Possible Causes | Solution\nThe washer pauses for about 2 minutes during certain cycles.\nAllow the cycle to continue. Some cycles feature periods of\ntumbling and soak.",
+            "2": "[W11156985 Rev A] Section: Error Code Appears in Display (for 2- and 3-digit displays) Headers: Washer won\u2019t run or fill;\nwasher stops working\n(cont.) | Check proper electrical supply. | Plug power cord into a grounded 3 prong outlet.\nDo not use an extension cord."
+          },
+          "diagnostic": {
+            "step": 1,
+            "phase": "next_step",
+            "symptom_anchor": "stops after 10 minutes of running without finishing the wash. no error code on the display.",
+            "hypotheses": [
+              "The washer is pausing during a cycle."
+            ],
+            "ruled_out": [],
+            "observations": [
+              {
+                "text": "stops after 10 minutes of running without finishing the wash. no error code on the display.",
+                "source": "user",
+                "turn": 1
+              },
+              {
+                "text": "The washer stops after 10 minutes without finishing the wash and shows no error code.",
+                "source": "assistant",
+                "turn": 1
+              }
+            ],
+            "next_check": "Allow the cycle to continue and observe if it resumes.",
+            "symptom_path": [
+              {
+                "text": "stops after 10 minutes of running without finishing the wash. no error code on the display.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "no_translations",
+            "confidence": 1.0,
+            "premises": {},
+            "claims": {},
+            "untranslated": [
+              "Since your washer stops after 10 minutes without finishing the wash and there are no error codes displayed, it may be helpful to check if the washer is pausing during certain cycles. Some cycles feature periods of tumbling and soak, which can cause temporary stops. Please allow the cycle to continue for a bit longer to see if it resumes on its own [1]."
+            ],
+            "duration_ms": 2471
+          }
+        }
+      ]
+    },
+    {
+      "scenario_id": "f5e2-door-lock-still-unresolved",
+      "passed": true,
+      "detail": "ok; det turns only (needs --judge for prose)",
+      "command": "diagnose",
+      "abstained": false,
+      "answer": "Since the previous checks did not resolve the issue, we should investigate the door lock system further. Please check the following:  \n\n1. **Inspect the door lock assembly** for any visible damage or wear.  \n2. **Test the door lock mechanism** to ensure it is functioning properly.  \n3. **Check the wiring** to the door lock for any signs of damage or disconnection.  \n4. **Verify the ACU (Active Control Unit)** is receiving the correct signals from the door lock system.  \n\nThese checks will help determine if the door lock assembly or the ACU is at fault, which could be causing the F5E2 error code [1].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.32 [structured] \u2014 F5E2",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 19725,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "valid",
+        "rules": [
+          "will-not-lock-uses-lock-test"
+        ],
+        "premises": {
+          "doorPolarity": "WILL_NOT_LOCK"
+        },
+        "claims": {
+          "prescribesLockSideTest": true
+        },
+        "model": {
+          "doorPolarity": "WILL_NOT_LOCK",
+          "prescribesLockSideTest": true,
+          "prescribesUnlockSideTest": false,
+          "meterReading": 0,
+          "quotedReading": 0
+        },
+        "claim_outcomes": [
+          {
+            "name": "prescribesLockSideTest",
+            "outcome": "valid"
+          }
+        ],
+        "confidence": 1.0,
+        "duration_ms": 3831
+      },
+      "turns": [
+        {
+          "turn": 1,
+          "user_message": "Washer shows F5E2 and the door will not lock.",
+          "assistant_message": "The F5E2 error code indicates a door lock failure, which can occur due to several reasons: the door may not close completely due to interference, the ACU (Active Control Unit) detects an open door switch when attempting to lock, or the ACU cannot determine if the door lock is in a locked state. To troubleshoot this issue, please check the following:\n\n1. Ensure that the door closes completely and there is no interference preventing it from locking.\n2. Verify that the door switch is functioning correctly and not detected as open when the door is closed.\n3. Check if the ACU can determine the locked state of the door.\n\nRefer to TEST #4: Door Lock System for further diagnostics [1].",
+          "abstained": false,
+          "citations": [
+            "service-manual-w11169652-revb",
+            "W11169652 Rev B p.32 [structured] \u2014 F5E2",
+            "W11169652"
+          ],
+          "retrieval_count": 8,
+          "claims": [
+            {
+              "text": "The F5E2 error code indicates a door lock failure.",
+              "evidence_index": 1
+            }
+          ],
+          "evidence_blocks": {
+            "1": "[W11169652 Rev B] Section: Fault/Error Code Chart (continued)\nCode: F5E2 | Description: Door Lock Will Not Lock or\nDoor Lock Failure | Explanation and Recommended Procedure: Fault is displayed when one of the following conditions occur:\n\u2022 Door will not close completely due to interference.\n\u2022 ACU detects open door switch when attempting to lock.\n\u2022 ACU cannot determine if door lock is in a locked state.\n\u2022 See TEST #4: Door Lock System, pg. 3-11.",
+            "2": "[W11156989 Rev D] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "3": "[W11320651 Rev B] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "4": "[W11169652 Rev A] Section: Fault/Error Code Chart (continued)\nCode: F5E2 | Description: Door Lock Will Not Lock or\nDoor Lock Failure | Explanation and Recommended Procedure: Fault is displayed when one of the following conditions occur:\n\u2022 Door will not close completely due to interference.\n\u2022 ACU detects open door switch when attempting to lock.\n\u2022 ACU cannot determine if door lock is in a locked state.\n\u2022 See TEST #4: Door Lock System, pg. 3-11.",
+            "5": "[W11156989 Rev A] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "6": "[W11169652 Rev B] Section: Fault/Error Code Display Method\nFault/Error Code Display Method\n1Lock DoorIf door does n\nFault codes are displayed by showiSnygst eFm#, pEa#ge.  3\nT2he E# indicaDtreasin  t(hif en escuessspareyc)t ComIpf odrnaeinn pt usmyps \nDrain/Recircul\nUp to four Fault/Error codes may be stored. In S\n3Cold 1 ValveIf no water, se\ndisplays the next saved Fault/Error Code. If the \npage 3-13.\nare present.\n4Cold 2 ValveIf no water, se\nNOTE: Fault/Error codes cannot be cplaegaer 3e-d1.3.\n5Hot ValveIf no water, se\nExit Procedurepage 3-13.\n6Drain PumpIf drain pump \nTo exit Fault/Error Codes Display Mode, turn the\nDrain/Recircul\n7Recirculation PumpIf recirculation\nThe fault codes below may be indicated under va\n#8: Drain/Reci\nService Diagnostics.\n8Drain PumpIf drain pump \nDrain/Recircul\nF0E1Load in drum during Clean Washer cycle\n9Spin at 820 RPM                       If drum does n\nF0E3Highw t/eDmrapin e Prruomr, pd OryN cycleCircuit, page 3\nF100E4High temDrpy  eBrlorowr,e wrash cycleIf no airflow, s\npage 3-26.\nF1E2MCU over- or under-voltage error\n11Detergent PumpIf Detergent P\nF1E4Main relay open or shorted\n#12A: Drawer \nF3E1 Pressure sensor signal missing\n12Softener PumpIf Softener Pum\nor out of range#12A: Drawer \nF133E2 Wash CoWr d Srlyo wN TSCpi no  p    e   n      o    r     s hIof rdterudm does n\nCCW Slow SpinCircuit, page 3\nF3E5Three D sensor error\n14End of CycleWasher enters\nF3E6Dispenser container open or not in place\nTotal Time\nF4E1 Wash heater relay error\nnF4E2Dry heater relay error\n2-12   Whirlpool & Maytag Front-Load Washers\nF4E3Blower error\nF4E4Ozone relay error\nF5E1Door switch error\nF5E2Lock failure\nF5E3Unlock failure\nF5E4Door not open error\nDO NOT REMOVE OR DESTROY\n\nNoIoCrIA DNi\u2019aSg UnSoEs tOicNsLY\nnued)\nC MODE TESTS (cont.)\nExit Service Diagnostic Mode by scrolling to the top and \npressing the < button in the top left corner of the screen twice, \nand then pressing the HOME button.\n<DIAGNOSTICS HOME\nFigure 8\n manually commanded ON will be turned OFF. The Quick \nrum must be empty during this test. \nmmended ProcedureEst. Duration\not lock, see TEST #4: Door Lock 10 sec.\nT-1h1e. F# indicates the suspect System/Category.\ndteomes .not turn on, see TEST #8: 20 sec.\nation Pump, page 3-15. \nervice Diagnostic Mode, pressing START \ne TEST #6: Water Inlet Valves, 10 sec.\ndisplay shows \u201cF - E -,\u201d no fault codes \ne TEST #6: Water Inlet Valves, 10 sec.\ne TEST #6: Water Inlet Valves, 10 sec.\ndoes not turn on, see TEST #8: 10 sec. \n cycle selector knob or press and hold POWER.\nation Pump, page 3-15. \n pump does not turn on, see TEST 10 sec.\nrious conditions and can be accessed through\nrculation Pump, page 3-15. \ndoes not turn on, see TEST #8: 10 sec. \nation Pump, page 3-15. \nF6E1MC/MCU communication error\not spin, see TEST #3: Motor 5 min.\n-10.F6E3Unknown cycle ID error\nee TFE7STE #11 7: Dry BTalocwheorm Meotetro re, rror10 sec.\nF7E2MC/MCU over temp error\nump does not turn on, see TEST 10 sec.\nF7E3MC/MCU over current error\nBulk Dispenser, page 3-20.  \nF7E4Motor disconnected error\np does not turn on, see TEST 10 sec.\nBulkF D7iEsp3enser, pMagCe /3M-2C0U.  internal failure\not spin, see TEST #3: Motor 22 sec.\nF7E8MC/Motor over temp error\n-10.\nF7E9Locked rotor\n Standby Mode - Door Unlocks\nF8E1 Valve failure\n ~7-8 minutes\nF8E3Over\ufb02ow\nF9E1Long drain\n(cid:51)(cid:36)(cid:42)(cid:40)(cid:3)(cid:26)",
+            "7": "[W11156989 Rev D] Section: Sensor, page 19.\nSensor, page 19.\nF0E5 Off Balance Load. Load could be unbalanced or too large. Avoid tightly packing the\nload. Avoid washing single items.\nMain relay open or shorted. Main relay issue. Replace ACU.\nSee TEST #1: ACU Power Check, page 12.\nF1E2 MCU over- or under-voltage error. Check household voltage. See TEST #3: Motor Circuit, page 15.\nPressure sensor signal missing or out See TEST #7: Water Level Sensor, page 17.\nof range.\nF3E2 Wash NTC open or shorted. See TEST #10a: Wash Temperature Sensor, page 19.\nF3E5 Dry NTC fault. Fault is displayed if dry temperature sensor is out of range, or open\ncircuit or short circuit is detected. The was function is still operable,\nbut the dry function will not operate.\nSee TEST #10b: Dry Temperature sensor page 20.\nF3E6 Accelerometer error. Check ACU. See TEST #1: ACU Power Check, page 12.\nF4E1 Wash heater relay error or no feedback Error is generated when the ACU cannot detect the temperature rise\nsignal. of the wash heater. See TEST #9a Wash heating element, page 18.\nF4E2 Wash heater relay error. See TEST #9a: Wash Heating Element, page 18.\nF5E2 Lock failure. See TEST #4: Door Lock System, page 15.\nF5E3 Unlock failure. See TEST #4: Door Lock System, page 15.\nF5E4 Door not open error. Make sure to open and close the washer/dryer door between cycles.\nNo communication from the HMI See Test #2: Human-Machine Interface (HMI), page 14.\ndetected by ACU.\nNo communication from the ACU See Test #1: ACU Power Check, page 12.\ndetected by the HMI.\nNo communication from the MCU Replace ACU. See TEST #1: ACU Power Check, page 12.\ndetected by the ACU.\n8 DO NOT REMOVE OR DESTROY",
+            "8": "[W11320651 Rev B] Section: Sensor, page 19.\nSensor, page 19.\nF0E5 Off Balance Load. Load could be unbalanced or too large. Avoid tightly packing the\nload. Avoid washing single items.\nMain relay open or shorted. Main relay issue. Replace ACU.\nSee TEST #1: ACU Power Check, page 12.\nF1E2 MCU over- or under-voltage error. Check household voltage. See TEST #3: Motor Circuit, page 15.\nPressure sensor signal missing or out See TEST #7: Water Level Sensor, page 17.\nof range.\nF3E2 Wash NTC open or shorted. See TEST #10a: Wash Temperature Sensor, page 19.\nF3E5 Dry NTC fault. Fault is displayed if dry temperature sensor is out of range, or open\ncircuit or short circuit is detected. The was function is still operable,\nbut the dry function will not operate.\nSee TEST #10b: Dry Temperature sensor page 20.\nF3E6 Accelerometer error. Check ACU. See TEST #1: ACU Power Check, page 12.\nF4E1 Wash heater relay error or no feedback Error is generated when the ACU cannot detect the temperature rise\nsignal. of the wash heater. See TEST #9a Wash heating element, page 18.\nF4E2 Wash heater relay error. See TEST #9a: Wash Heating Element, page 18.\nF5E2 Lock failure. See TEST #4: Door Lock System, page 15.\nF5E3 Unlock failure. See TEST #4: Door Lock System, page 15.\nF5E4 Door not open error. Make sure to open and close the washer/dryer door between cycles.\nNo communication from the HMI See Test #2: Human-Machine Interface (HMI), page 14.\ndetected by ACU.\nNo communication from the ACU See Test #1: ACU Power Check, page 12.\ndetected by the HMI.\nNo communication from the MCU Replace ACU. See TEST #1: ACU Power Check, page 12.\ndetected by the ACU.\n8 DO NOT REMOVE OR DESTROY"
+          },
+          "diagnostic": {
+            "step": 1,
+            "phase": "next_step",
+            "symptom_anchor": "Washer shows F5E2 and the door will not lock.",
+            "hypotheses": [
+              "Door may not close completely due to interference",
+              "ACU detects open door switch when attempting to lock",
+              "ACU cannot determine if door lock is in a locked state"
+            ],
+            "ruled_out": [],
+            "observations": [
+              {
+                "text": "Washer shows F5E2 and the door will not lock.",
+                "source": "user",
+                "turn": 1
+              }
+            ],
+            "next_check": "Check if the door closes completely and there is no interference.",
+            "symptom_path": [
+              {
+                "text": "Washer shows F5E2 and the door will not lock.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "valid",
+            "rules": [
+              "will-not-lock-uses-lock-test"
+            ],
+            "premises": {
+              "doorPolarity": "WILL_NOT_LOCK"
+            },
+            "claims": {
+              "prescribesLockSideTest": true
+            },
+            "model": {
+              "doorPolarity": "WILL_NOT_LOCK",
+              "prescribesLockSideTest": true,
+              "prescribesUnlockSideTest": false,
+              "meterReading": 0,
+              "quotedReading": 0
+            },
+            "claim_outcomes": [
+              {
+                "name": "prescribesLockSideTest",
+                "outcome": "valid"
+              }
+            ],
+            "confidence": 1.0,
+            "duration_ms": 3186
+          }
+        },
+        {
+          "turn": 2,
+          "user_message": "checked but still facing the issue",
+          "assistant_message": "Since the previous checks did not resolve the issue, we should investigate the door lock system further. Please check the following:  \n\n1. **Inspect the door lock assembly** for any visible damage or wear.  \n2. **Test the door lock mechanism** to ensure it is functioning properly.  \n3. **Check the wiring** to the door lock for any signs of damage or disconnection.  \n4. **Verify the ACU (Active Control Unit)** is receiving the correct signals from the door lock system.  \n\nThese checks will help determine if the door lock assembly or the ACU is at fault, which could be causing the F5E2 error code [1].",
+          "abstained": false,
+          "citations": [
+            "service-manual-w11169652-revb",
+            "W11169652 Rev B p.32 [structured] \u2014 F5E2",
+            "W11169652"
+          ],
+          "retrieval_count": 8,
+          "claims": [
+            {
+              "text": "The F5E2 error code indicates a door lock failure, which can occur due to issues with the door lock assembly or the ACU.",
+              "evidence_index": 1
+            }
+          ],
+          "evidence_blocks": {
+            "1": "[W11169652 Rev B] Section: Fault/Error Code Chart (continued)\nCode: F5E2 | Description: Door Lock Will Not Lock or\nDoor Lock Failure | Explanation and Recommended Procedure: Fault is displayed when one of the following conditions occur:\n\u2022 Door will not close completely due to interference.\n\u2022 ACU detects open door switch when attempting to lock.\n\u2022 ACU cannot determine if door lock is in a locked state.\n\u2022 See TEST #4: Door Lock System, pg. 3-11.",
+            "2": "[W11156989 Rev D] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "3": "[W11320651 Rev B] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "4": "[W11169652 Rev A] Section: Fault/Error Code Chart (continued)\nCode: F5E2 | Description: Door Lock Will Not Lock or\nDoor Lock Failure | Explanation and Recommended Procedure: Fault is displayed when one of the following conditions occur:\n\u2022 Door will not close completely due to interference.\n\u2022 ACU detects open door switch when attempting to lock.\n\u2022 ACU cannot determine if door lock is in a locked state.\n\u2022 See TEST #4: Door Lock System, pg. 3-11.",
+            "5": "[W11156989 Rev A] Section: Sensor, page 19.\nError Code: F5E2 | Problem: Lock failure. | Checks & Tests: See TEST #4: Door Lock System, page 15.",
+            "6": "[W11169652 Rev B] Section: Fault/Error Code Display Method\nFault/Error Code Display Method\n1Lock DoorIf door does n\nFault codes are displayed by showiSnygst eFm#, pEa#ge.  3\nT2he E# indicaDtreasin  t(hif en escuessspareyc)t ComIpf odrnaeinn pt usmyps \nDrain/Recircul\nUp to four Fault/Error codes may be stored. In S\n3Cold 1 ValveIf no water, se\ndisplays the next saved Fault/Error Code. If the \npage 3-13.\nare present.\n4Cold 2 ValveIf no water, se\nNOTE: Fault/Error codes cannot be cplaegaer 3e-d1.3.\n5Hot ValveIf no water, se\nExit Procedurepage 3-13.\n6Drain PumpIf drain pump \nTo exit Fault/Error Codes Display Mode, turn the\nDrain/Recircul\n7Recirculation PumpIf recirculation\nThe fault codes below may be indicated under va\n#8: Drain/Reci\nService Diagnostics.\n8Drain PumpIf drain pump \nDrain/Recircul\nF0E1Load in drum during Clean Washer cycle\n9Spin at 820 RPM                       If drum does n\nF0E3Highw t/eDmrapin e Prruomr, pd OryN cycleCircuit, page 3\nF100E4High temDrpy  eBrlorowr,e wrash cycleIf no airflow, s\npage 3-26.\nF1E2MCU over- or under-voltage error\n11Detergent PumpIf Detergent P\nF1E4Main relay open or shorted\n#12A: Drawer \nF3E1 Pressure sensor signal missing\n12Softener PumpIf Softener Pum\nor out of range#12A: Drawer \nF133E2 Wash CoWr d Srlyo wN TSCpi no  p    e   n      o    r     s hIof rdterudm does n\nCCW Slow SpinCircuit, page 3\nF3E5Three D sensor error\n14End of CycleWasher enters\nF3E6Dispenser container open or not in place\nTotal Time\nF4E1 Wash heater relay error\nnF4E2Dry heater relay error\n2-12   Whirlpool & Maytag Front-Load Washers\nF4E3Blower error\nF4E4Ozone relay error\nF5E1Door switch error\nF5E2Lock failure\nF5E3Unlock failure\nF5E4Door not open error\nDO NOT REMOVE OR DESTROY\n\nNoIoCrIA DNi\u2019aSg UnSoEs tOicNsLY\nnued)\nC MODE TESTS (cont.)\nExit Service Diagnostic Mode by scrolling to the top and \npressing the < button in the top left corner of the screen twice, \nand then pressing the HOME button.\n<DIAGNOSTICS HOME\nFigure 8\n manually commanded ON will be turned OFF. The Quick \nrum must be empty during this test. \nmmended ProcedureEst. Duration\not lock, see TEST #4: Door Lock 10 sec.\nT-1h1e. F# indicates the suspect System/Category.\ndteomes .not turn on, see TEST #8: 20 sec.\nation Pump, page 3-15. \nervice Diagnostic Mode, pressing START \ne TEST #6: Water Inlet Valves, 10 sec.\ndisplay shows \u201cF - E -,\u201d no fault codes \ne TEST #6: Water Inlet Valves, 10 sec.\ne TEST #6: Water Inlet Valves, 10 sec.\ndoes not turn on, see TEST #8: 10 sec. \n cycle selector knob or press and hold POWER.\nation Pump, page 3-15. \n pump does not turn on, see TEST 10 sec.\nrious conditions and can be accessed through\nrculation Pump, page 3-15. \ndoes not turn on, see TEST #8: 10 sec. \nation Pump, page 3-15. \nF6E1MC/MCU communication error\not spin, see TEST #3: Motor 5 min.\n-10.F6E3Unknown cycle ID error\nee TFE7STE #11 7: Dry BTalocwheorm Meotetro re, rror10 sec.\nF7E2MC/MCU over temp error\nump does not turn on, see TEST 10 sec.\nF7E3MC/MCU over current error\nBulk Dispenser, page 3-20.  \nF7E4Motor disconnected error\np does not turn on, see TEST 10 sec.\nBulkF D7iEsp3enser, pMagCe /3M-2C0U.  internal failure\not spin, see TEST #3: Motor 22 sec.\nF7E8MC/Motor over temp error\n-10.\nF7E9Locked rotor\n Standby Mode - Door Unlocks\nF8E1 Valve failure\n ~7-8 minutes\nF8E3Over\ufb02ow\nF9E1Long drain\n(cid:51)(cid:36)(cid:42)(cid:40)(cid:3)(cid:26)",
+            "7": "[W11156989 Rev D] Section: Sensor, page 19.\nSensor, page 19.\nF0E5 Off Balance Load. Load could be unbalanced or too large. Avoid tightly packing the\nload. Avoid washing single items.\nMain relay open or shorted. Main relay issue. Replace ACU.\nSee TEST #1: ACU Power Check, page 12.\nF1E2 MCU over- or under-voltage error. Check household voltage. See TEST #3: Motor Circuit, page 15.\nPressure sensor signal missing or out See TEST #7: Water Level Sensor, page 17.\nof range.\nF3E2 Wash NTC open or shorted. See TEST #10a: Wash Temperature Sensor, page 19.\nF3E5 Dry NTC fault. Fault is displayed if dry temperature sensor is out of range, or open\ncircuit or short circuit is detected. The was function is still operable,\nbut the dry function will not operate.\nSee TEST #10b: Dry Temperature sensor page 20.\nF3E6 Accelerometer error. Check ACU. See TEST #1: ACU Power Check, page 12.\nF4E1 Wash heater relay error or no feedback Error is generated when the ACU cannot detect the temperature rise\nsignal. of the wash heater. See TEST #9a Wash heating element, page 18.\nF4E2 Wash heater relay error. See TEST #9a: Wash Heating Element, page 18.\nF5E2 Lock failure. See TEST #4: Door Lock System, page 15.\nF5E3 Unlock failure. See TEST #4: Door Lock System, page 15.\nF5E4 Door not open error. Make sure to open and close the washer/dryer door between cycles.\nNo communication from the HMI See Test #2: Human-Machine Interface (HMI), page 14.\ndetected by ACU.\nNo communication from the ACU See Test #1: ACU Power Check, page 12.\ndetected by the HMI.\nNo communication from the MCU Replace ACU. See TEST #1: ACU Power Check, page 12.\ndetected by the ACU.\n8 DO NOT REMOVE OR DESTROY",
+            "8": "[W11320651 Rev B] Section: Sensor, page 19.\nSensor, page 19.\nF0E5 Off Balance Load. Load could be unbalanced or too large. Avoid tightly packing the\nload. Avoid washing single items.\nMain relay open or shorted. Main relay issue. Replace ACU.\nSee TEST #1: ACU Power Check, page 12.\nF1E2 MCU over- or under-voltage error. Check household voltage. See TEST #3: Motor Circuit, page 15.\nPressure sensor signal missing or out See TEST #7: Water Level Sensor, page 17.\nof range.\nF3E2 Wash NTC open or shorted. See TEST #10a: Wash Temperature Sensor, page 19.\nF3E5 Dry NTC fault. Fault is displayed if dry temperature sensor is out of range, or open\ncircuit or short circuit is detected. The was function is still operable,\nbut the dry function will not operate.\nSee TEST #10b: Dry Temperature sensor page 20.\nF3E6 Accelerometer error. Check ACU. See TEST #1: ACU Power Check, page 12.\nF4E1 Wash heater relay error or no feedback Error is generated when the ACU cannot detect the temperature rise\nsignal. of the wash heater. See TEST #9a Wash heating element, page 18.\nF4E2 Wash heater relay error. See TEST #9a: Wash Heating Element, page 18.\nF5E2 Lock failure. See TEST #4: Door Lock System, page 15.\nF5E3 Unlock failure. See TEST #4: Door Lock System, page 15.\nF5E4 Door not open error. Make sure to open and close the washer/dryer door between cycles.\nNo communication from the HMI See Test #2: Human-Machine Interface (HMI), page 14.\ndetected by ACU.\nNo communication from the ACU See Test #1: ACU Power Check, page 12.\ndetected by the HMI.\nNo communication from the MCU Replace ACU. See TEST #1: ACU Power Check, page 12.\ndetected by the ACU.\n8 DO NOT REMOVE OR DESTROY"
+          },
+          "diagnostic": {
+            "step": 2,
+            "phase": "next_step",
+            "symptom_anchor": "Washer shows F5E2 and the door will not lock.",
+            "hypotheses": [
+              "Door lock assembly may be damaged or malfunctioning",
+              "Wiring to the door lock may be damaged",
+              "ACU may not be receiving correct signals from the door lock system"
+            ],
+            "ruled_out": [
+              "Check if the door closes completely and there is no interference.",
+              "Verify that the door switch is functioning correctly and not detected as open when the door is closed.",
+              "Check if the ACU can determine the locked state of the door.",
+              "Ensure that the door closes completely and there is no interference preventing it from locking",
+              "Verify that the door switch is functioning correctly and not detected as open when the door is closed",
+              "Check if the ACU can determine the locked state of the door",
+              "test #4"
+            ],
+            "observations": [
+              {
+                "text": "Washer shows F5E2 and the door will not lock.",
+                "source": "user",
+                "turn": 1
+              },
+              {
+                "text": "checked but still facing the issue",
+                "source": "user",
+                "turn": 2
+              },
+              {
+                "text": "User confirmed previous checks did not resolve the symptom.",
+                "source": "assistant",
+                "turn": 2
+              }
+            ],
+            "next_check": "Inspect the door lock assembly for any visible damage or wear.",
+            "symptom_path": [
+              {
+                "text": "Washer shows F5E2 and the door will not lock.",
+                "from_step": 1,
+                "frozen_cleared": []
+              }
+            ]
+          },
+          "reasoning": {
+            "outcome": "valid",
+            "rules": [
+              "will-not-lock-uses-lock-test"
+            ],
+            "premises": {
+              "doorPolarity": "WILL_NOT_LOCK"
+            },
+            "claims": {
+              "prescribesLockSideTest": true
+            },
+            "model": {
+              "doorPolarity": "WILL_NOT_LOCK",
+              "prescribesLockSideTest": true,
+              "prescribesUnlockSideTest": false,
+              "meterReading": 0,
+              "quotedReading": 0
+            },
+            "claim_outcomes": [
+              {
+                "name": "prescribesLockSideTest",
+                "outcome": "valid"
+              }
+            ],
+            "confidence": 1.0,
+            "duration_ms": 3831
+          }
+        }
+      ]
+    },
+    {
+      "scenario_id": "door-got-locked-unlock",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The door of the WFW5620HW0 model may be locked due to the cycle having started, which is a normal function of the appliance. The door will remain locked until the end of the cycle unless the 'Add Garment' light is lit, in which case touching START/PAUSE once will unlock the door [1].",
+      "citations": [
+        "use-and-care-w11156985",
+        "W11156985 Rev A p.26 [structured]",
+        "W11156985"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 8016,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "rules": [],
+        "premises": {
+          "doorPolarity": "STUCK_LOCKED"
+        },
+        "claims": {},
+        "untranslated": [
+          "The door of the WFW5620HW0 model may be locked due to the cycle having started, which is a normal function of the appliance. The door will remain locked until the end of the cycle unless the 'Add Garment' light is lit, in which case touching START/PAUSE once will unlock the door [1]."
+        ],
+        "confidence": 1.0,
+        "duration_ms": 3714
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "door-doesnt-open-unlock",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The door of the WFW5620HW0 may not open because it locks when a cycle has started. If the 'Add Garment' light is lit, you can unlock the door by touching START/PAUSE once [1].",
+      "citations": [
+        "use-and-care-w11156985",
+        "W11156985 Rev A p.26 [structured]",
+        "W11156985"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 6531,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "rules": [],
+        "premises": {
+          "doorPolarity": "UNKNOWN"
+        },
+        "claims": {},
+        "untranslated": [
+          "The door of the WFW5620HW0 may not open because it locks when a cycle has started. If the 'Add Garment' light is lit, you can unlock the door by touching START/PAUSE once [1]."
+        ],
+        "confidence": 1.0,
+        "duration_ms": 2914
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "door-lock-underspecified-clarify",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "Is the door stuck closed (won't open / won't unlock), or will it not lock to start a cycle? If the display shows an error code (for example F5E2), please include it.",
+      "citations": [],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 1352,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": null,
+      "turns": []
+    },
+    {
+      "scenario_id": "model-without-engineering-digit",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The service manual that covers the WFW5620HW is W11169652, with the latest revision being Rev B [1].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.17 [structured]",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 5027,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The service manual that covers the WFW5620HW is W11169652, with the latest revision being Rev B [1]."
+        ],
+        "duration_ms": 1634
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "digit-sensitive-document",
+      "passed": false,
+      "detail": "expect_contains_any missing one of ['WFW5620HW0', 'engineering', 'full model', 'complete model', 'exact model']; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: The evidence does not provide a parts list for the WFW5620HW model.",
+      "citations": [],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 6143,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": null,
+      "turns": []
+    },
+    {
+      "scenario_id": "adjacent-base-model-must-not-match",
+      "passed": false,
+      "detail": "expect_contains_any missing one of ['not cover', 'does not cover', 'different', '7MWFW', 'no,', 'No,']; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": true,
+      "answer": "No applicable manufacturer evidence was found for this question on model WFW5622HW0. Try rephrasing, include an error code if one is displayed, or contact Whirlpool Customer Care with your model and serial number.",
+      "citations": [],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 1337,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": null,
+      "turns": []
+    },
+    {
+      "scenario_id": "out-of-corpus-appliance",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": true,
+      "answer": "ABSTAIN: The evidence provided does not specifically address a Samsung dishwasher or its draining issues.",
+      "citations": [],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 2856,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": null,
+      "turns": []
+    },
+    {
+      "scenario_id": "out-of-corpus-model",
+      "passed": false,
+      "detail": "must_not_cite hit 'kb-f5e2-top-load'",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The F5 E2 error code on your Whirlpool WTW5000DW top load washer indicates that the washer cannot engage the lid lock, possibly due to an obstruction in the lid lock area. You should check for any objects or clothing items that may be blocking the lid lock. Additionally, cycling power to the control can help reset the washer; this involves unplugging the unit for 5 minutes and then plugging it back in [1].",
+      "citations": [
+        "kb-f5e2-top-load",
+        "kb-f5e2-top-load p.1 [structured]",
+        "kb-f5e2-top-load"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 7091,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The F5 E2 error code on your Whirlpool WTW5000DW top load washer indicates that the washer cannot engage the lid lock, possibly due to an obstruction in the lid lock area. You should check for any objects or clothing items that may be blocking the lid lock. Additionally, cycling power to the control can help reset the washer; this involves unplugging the unit for 5 minutes and then plugging it back in [1]."
+        ],
+        "duration_ms": 2659
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "known-gap-revised-manual",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "Revision B of the service manual states that the ACU is equipped with a status LED that indicates the health of the ACU. After the ACU is powered on, the LED will blink briefly for a few seconds and then blink slowly (0.5 seconds on, 0.5 seconds off). If the LED does not light, it indicates that there is no DC supply to the microcontroller, and the ACU should be replaced. If the LED is blinking slowly during operation, the ACU is likely functioning correctly, but further checks may be necessary if issues persist [1].",
+      "citations": [
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.44 [structured]",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 25033,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "Revision B of the service manual states that the ACU is equipped with a status LED that indicates the health of the ACU. After the ACU is powered on, the LED will blink briefly for a few seconds and then blink slowly (0.5 seconds on, 0.5 seconds off). If the LED does not light, it indicates that there is no DC supply to the microcontroller, and the ACU should be replaced. If the LED is blinking slowly during operation, the ACU is likely functioning correctly, but further checks may be necessary if issues persist [1]."
+        ],
+        "duration_ms": 6471
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "identifier-only-distinction",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The safety notice on page 1 of W11320651 states that the service data sheet is intended for use by individuals with electrical, electronic, and mechanical experience. It warns that any attempt to repair a major appliance may result in personal injury and property damage, and that the manufacturer or seller cannot be held responsible for any injury or damage arising from the use of this data sheet [2].",
+      "citations": [
+        "tech-sheet-w11320651",
+        "W11320651 Rev B p.1 [structured]",
+        "W11320651"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 6627,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The safety notice on page 1 of W11320651 states that the service data sheet is intended for use by individuals with electrical, electronic, and mechanical experience. It warns that any attempt to repair a major appliance may result in personal injury and property damage, and that the manufacturer or seller cannot be held responsible for any injury or damage arising from the use of this data sheet [2]."
+        ],
+        "duration_ms": 2450
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "shared-pages-deduplicated",
+      "passed": true,
+      "detail": "ok; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": false,
+      "answer": "Before servicing the WFW5620HW0 washer, it is important to check the following: ensure there is power at the wall outlet, verify if a household fuse has blown or if the circuit breaker or GFCI has tripped, confirm that both hot and cold water faucets are open and that the water supply hoses are unobstructed, and make sure the drain hose is not sealed into the drain pipe and has an air gap for ventilation. Additionally, check for any lint build-up in the drain pump clean-out [1] [5].",
+      "citations": [
+        "tech-sheet-w11320651",
+        "W11320651 Rev B p.3 [structured]",
+        "W11320651"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 11379,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "Before servicing the WFW5620HW0 washer, it is important to check the following: ensure there is power at the wall outlet, verify if a household fuse has blown or if the circuit breaker or GFCI has tripped, confirm that both hot and cold water faucets are open and that the water supply hoses are unobstructed, and make sure the drain hose is not sealed into the drain pipe and has an air gap for ventilation. Additionally, check for any lint build-up in the drain pump clean-out [1] [5]."
+        ],
+        "duration_ms": 5455
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "reflow-is-not-a-revision",
+      "passed": false,
+      "detail": "expect_contains_any missing one of ['same', 'identical', 'both', 'unchanged', 'no difference', 'not differ']; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The two tech sheets do differ regarding voltage checks on page 3. The W11320651 Rev B mentions checking for line voltage in the 'Diagnostic Test' section [1], while the W11169652 Rev B provides a detailed 'ACU Power Check' in the 'Component Testing' section [6].",
+      "citations": [
+        "tech-sheet-w11320651",
+        "W11320651 Rev B p.16 [structured]",
+        "W11320651",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.3 [structured]",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 7377,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The W11320651 Rev B mentions checking for line voltage in the 'Diagnostic Test' section [1], while the W11169652 Rev B provides a detailed 'ACU Power Check' in the 'Component Testing' section [6].",
+          "The two tech sheets do differ regarding voltage checks on page 3."
+        ],
+        "duration_ms": 2598
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "genuine-incremental-addition",
+      "passed": true,
+      "detail": "ok",
+      "command": "ask",
+      "abstained": false,
+      "answer": "ESCALATE: Service technician procedures (diagnostic TESTs or live voltage) are not provided step-by-step for owners. I can explain what the manufacturer documentation describes, but I cannot provide step-by-step instructions for this procedure for your audience level. Contact qualified appliance service.",
+      "citations": [
+        "tech-sheet-w11320651",
+        "W11320651 Rev B p.12 [structured]",
+        "W11320651",
+        "service-manual-w11169652-revb",
+        "W11169652 Rev B p.28 [structured]",
+        "W11169652"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 4801,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "skipped",
+        "reason": "safety_gate"
+      },
+      "turns": []
+    },
+    {
+      "scenario_id": "language-must-be-filtered",
+      "passed": false,
+      "detail": "expect_cites_any missing one of ['W11156989', 'W11320651']; got []; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": true,
+      "answer": "We don't have sufficiently matching manufacturer documentation for this question. Specify an appliance model or rephrase your question.",
+      "citations": [],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 1268,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": null,
+      "turns": []
+    },
+    {
+      "scenario_id": "symbol-font-list-structure",
+      "passed": false,
+      "detail": "expect_cites_any missing one of ['W11320651', 'W11156989']; got ['installation-instructions-w11156977', 'W11156977 Rev D p.20 [semantic] \u2014 Complete Installation Checklist', 'W11156977']; det-only (needs --judge for prose)",
+      "command": "ask",
+      "abstained": false,
+      "answer": "The pre-service checks from the diagnostic guide are as follows: 1. Consult the electrical specifications to ensure an appropriate power source and proper grounding. 2. Verify that all parts are installed and review steps to identify any missing components. 3. Check for the presence of all tools. 4. Ensure all shipping materials are removed from the back of the washer. 5. Confirm that hot and cold water supply hoses are securely attached and that water faucets are open. 6. Inspect for leaks around the faucets and water supply hoses. 7. Remove protective film from the console and any adhesive tape left on the washer. 8. Ensure the washer is plugged into a grounded three-prong outlet. 9. Dispose of or recycle all packaging materials. 10. Read the \"Using the Washer\" section in the washer's use and care guide. 11. To test and clean the washer, press POWER, select the Quick cycle, and run it empty using only HE detergent at half the recommended amount for a medium load.",
+      "citations": [
+        "installation-instructions-w11156977",
+        "W11156977 Rev D p.20 [semantic] \u2014 Complete Installation Checklist",
+        "W11156977"
+      ],
+      "claims": [],
+      "evidence_blocks": {},
+      "duration_ms": 15017,
+      "claims_checked": 0,
+      "claims_unsupported": 0,
+      "groundedness_rate": null,
+      "reasoning": {
+        "outcome": "no_translations",
+        "confidence": 1.0,
+        "premises": {},
+        "claims": {},
+        "untranslated": [
+          "The pre-service checks from the diagnostic guide are as follows: 1. Consult the electrical specifications to ensure an appropriate power source and proper grounding. 2. Verify that all parts are installed and review steps to identify any missing components. 3. Check for the presence of all tools. 4. Ensure all shipping materials are removed from the back of the washer. 5. Confirm that hot and cold water supply hoses are securely attached and that water faucets are open. 6. Inspect for leaks around the faucets and water supply hoses. 7. Remove protective film from the console and any adhesive tape left on the washer. 8. Ensure the washer is plugged into a grounded three-prong outlet. 9. Dispose of or recycle all packaging materials. 10. Read the \"Using the Washer\" section in the washer's use and care guide. 11. To test and clean the washer, press POWER, select the Quick cycle, and run it empty using only HE detergent at half the recommended amount for a medium load."
+        ],
+        "duration_ms": 4964
+      },
+      "turns": []
+    }
+  ]
+}

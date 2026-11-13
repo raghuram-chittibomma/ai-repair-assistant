@@ -11,7 +11,9 @@ pool connection before generation, **R15** trigram GIN, **R40** manifest cache
 with mtime + reload. S4 uses the current 18 fixtures as the decision set
 (held-out test waived). **R29** MRR / nDCG / retrieve latency land on that set.
 S6 landed (non-ranking): **R23** structured claims, **R27** claim groundedness,
-**R24** prompt version stamps. S7 agent-doable items landed: **R33**, **R34**,
+**R24** prompt version stamps. Additive after S6: SMT policy entailment on the
+answer path ([ADR-0055](adr/0055-automated-reasoning-checks.md)); does not
+replace R27. S7 agent-doable items landed: **R33**, **R34**,
 **R31** diagnose board, **R3** safety union, **R30** judge diversity,
 **R43**, ADR-0025 detectors, **R19**, **R25** transcript window, **R42**
 parts-list linkage, **R2** audience attestation, **R44** trace governance.
@@ -288,7 +290,9 @@ literals stay. A larger CrossEncoder is a new experiment, not this slice.
 ### S6 — groundedness and retrieval architecture (`ADR-first`)
 
 `R23` structured claim→evidence output ([ADR-0028](adr/0028-structured-claim-evidence.md)) ·
-`R27` claim groundedness ([ADR-0029](adr/0029-claim-groundedness.md)) · `R11`
+`R27` claim groundedness ([ADR-0029](adr/0029-claim-groundedness.md)) ·
+policy entailment on covered claims ([ADR-0055](adr/0055-automated-reasoning-checks.md);
+additive; not a review R-item) · `R11`
 applicability pre-filter with `R20`'s remaining four axes · `R18` closed-set
 diagnose intent ([ADR-0034](adr/0034-diagnose-nlu-split.md);
 [ADR-0039](adr/0039-diagnose-retrieve-labels.md); not unconstrained rewrite) · `R24` prompt version stamps

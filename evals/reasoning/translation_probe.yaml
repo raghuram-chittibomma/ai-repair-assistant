@@ -1,0 +1,95 @@
+# Live translation probe (ADR-0055). Manual, needs OPENAI_API_KEY, not a gate.
+# Soundness stops at translation: this measures whether the translator maps
+# natural turns onto the policy variables the way a reviewer would.
+# `expect` lists every outcome a reviewer would accept for the turn.
+policy_id: answer-invariants
+policy_version: 1
+cases:
+  - id: stuck-locked-unlock-procedure
+    question: The washer finished but the door is stuck locked and won't open.
+    answer: >
+      Run the door-will-not-unlock procedure: unplug the washer for two
+      minutes, then check the lock switch continuity [1].
+    expect: [valid]
+  - id: stuck-locked-lock-test
+    question: The washer finished but the door is stuck locked and won't open.
+    answer: >
+      Start with the door-will-not-lock test: confirm the latch engages and
+      the lock motor runs [1].
+    expect: [invalid]
+  - id: will-not-latch-lock-test
+    question: The door won't lock so the cycle never starts.
+    answer: >
+      Run the door-will-not-lock test and check the latch striker [1].
+    expect: [valid]
+  - id: will-not-latch-unlock-procedure
+    question: The door won't lock so the cycle never starts.
+    answer: >
+      Follow the door-will-not-unlock procedure and check the unlock relay [1].
+    expect: [invalid]
+  - id: got-locked-unlock-steps
+    question: door got locked
+    answer: >
+      If the cycle has finished and the door is still locked, touch
+      START/PAUSE when the Add Garment light is lit to unlock it [1].
+    # The translator often leaves the claim out; that ships the answer as is.
+    expect: [valid, no_translations]
+  - id: f5e2-door-locks-but-will-not-start
+    question: My washer shows F5E2 and the door locks but it won't start.
+    answer: >
+      F5E2 means the door lock did not engage. Check that nothing blocks the
+      door, then inspect the latch [1].
+    expect: [valid, no_translations]
+  - id: fault-code-meaning-no-door-fact
+    question: What does F5E2 mean?
+    answer: >
+      F5E2 means the door is not locking properly. Make sure the door is fully
+      closed and nothing blocks it, then reset the washer by unplugging it
+      for 5 minutes [1][2].
+    expect: [no_translations]
+  - id: acu-led-blink-is-not-a-reading
+    question: What does the ACU LED do at step 10 of the service test?
+    answer: >
+      The ACU diagnostic LED blinks rapidly for a few seconds, then blinks
+      slowly, 0.5 seconds on and 0.5 seconds off [1].
+    expect: [no_translations]
+  - id: door-problem-no-direction
+    question: Something is wrong with the door lock on my washer.
+    answer: >
+      Run the door-will-not-lock test [1].
+    expect: [satisfiable, translation_ambiguous]
+  - id: drain-not-about-the-door
+    question: The washer won't drain and there is water in the drum.
+    answer: >
+      Check the drain pump filter for debris and clean it [1].
+    expect: [no_translations]
+  - id: reading-quoted-back
+    question: I measured the drain pump coil and got 12 ohms.
+    answer: >
+      Your 12 ohm reading is outside the range the guide gives, so replace
+      the pump [1].
+    expect: [valid]
+  - id: reading-misquoted
+    question: I measured the drain pump coil and got 12 ohms.
+    answer: >
+      Your 21 ohm reading is outside the range the guide gives, so replace
+      the pump [1].
+    expect: [invalid]
+  - id: reading-next-to-a-spec-range
+    question: I measured the drain pump coil and got 12 ohms.
+    answer: >
+      The guide expects 6 to 20 ohms across the coil, so your 12 ohm reading
+      is in range and the coil is fine [1].
+    expect: [valid]
+  - id: spec-range-without-a-user-reading
+    question: What does connector J36 on the ACU connect to?
+    answer: >
+      J36 connects to the direct drive motor. Each pin pair reads 6 to 20
+      ohms [1] [2].
+    expect: [no_translations]
+  - id: spec-figure-not-a-quote
+    question: What should the drain pump coil read?
+    answer: >
+      The guide gives the expected coil resistance; compare your reading to
+      the table on that page [1].
+    expect: [no_translations]

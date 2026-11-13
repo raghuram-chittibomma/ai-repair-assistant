@@ -86,7 +86,7 @@ scenarios:
       - catalog
       - catalogue
       - supersed
-      - 2020
+      - "2020"
       - current
       - may have changed
     requires_judge: true

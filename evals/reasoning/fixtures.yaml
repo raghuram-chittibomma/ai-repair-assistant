@@ -1,0 +1,81 @@
+policy_id: answer-invariants
+policy_version: 1
+scenarios:
+  - id: unlock-forbids-lock-test
+    premises:
+      doorPolarity: STUCK_LOCKED
+    claims:
+      prescribesLockSideTest: true
+    expect: invalid
+    expect_rules: [stuck-locked-not-lock-test]
+  - id: unlock-allows-not-prescribing-lock-test
+    premises:
+      doorPolarity: STUCK_LOCKED
+    claims:
+      prescribesLockSideTest: false
+    expect: valid
+    expect_rules: [stuck-locked-not-lock-test]
+  - id: unlock-entails-unlock-test
+    premises:
+      doorPolarity: STUCK_LOCKED
+    claims:
+      prescribesUnlockSideTest: true
+    expect: valid
+    expect_rules: [stuck-locked-uses-unlock-test]
+  - id: lock-entails-lock-test
+    premises:
+      doorPolarity: WILL_NOT_LOCK
+    claims:
+      prescribesLockSideTest: true
+    expect: valid
+    expect_rules: [will-not-lock-uses-lock-test]
+  - id: lock-forbids-unlock-test
+    premises:
+      doorPolarity: WILL_NOT_LOCK
+    claims:
+      prescribesUnlockSideTest: true
+    expect: invalid
+    expect_rules: [will-not-lock-not-unlock-test]
+  - id: unknown-polarity-lock-test-not-entailed
+    premises:
+      doorPolarity: UNKNOWN
+    claims:
+      prescribesLockSideTest: true
+    expect: satisfiable
+  - id: unknown-polarity-unlock-test-not-entailed
+    premises:
+      doorPolarity: UNKNOWN
+    claims:
+      prescribesUnlockSideTest: true
+    expect: satisfiable
+  - id: unstated-polarity-lock-test-not-entailed
+    premises: {}
+    claims:
+      prescribesLockSideTest: true
+    expect: satisfiable
+  - id: quoting-the-user-reading-is-valid
+    premises:
+      meterReading: 12
+    claims:
+      quotedReading: 12
+    expect: valid
+    expect_rules: [quote-matches-reading]
+  - id: misquoting-the-user-reading-is-invalid
+    premises:
+      meterReading: 12
+    claims:
+      quotedReading: 21
+    expect: invalid
+    expect_rules: [quote-matches-reading]
+  - id: quote-without-a-stated-reading-not-entailed
+    premises: {}
+    claims:
+      quotedReading: 12
+    expect: satisfiable
+  - id: negative-reading-is-impossible
+    premises:
+      meterReading: -1
+    claims:
+      quotedReading: -1
+    expect: impossible
+    expect_rules: [non-negative-reading]

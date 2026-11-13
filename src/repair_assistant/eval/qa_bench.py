@@ -35,6 +35,7 @@ class TurnRecord:
     claims: list = field(default_factory=list)
     evidence_blocks: dict[int, str] = field(default_factory=dict)
     diagnostic: dict = field(default_factory=dict)
+    reasoning: dict | None = None
 
 
 @dataclass
@@ -53,6 +54,7 @@ class QAScenarioResult:
     claims_checked: int = 0
     claims_unsupported: int = 0
     groundedness_rate: float | None = None
+    reasoning: dict | None = None
 
 
 def load_smoke_scenarios(path: Path | None = None) -> dict[str, Any]:
@@ -133,6 +135,7 @@ def _run_ask(
         claims=list(outcome.claims or []),
         evidence_blocks=dict(outcome.evidence_blocks or {}),
         duration_ms=elapsed,
+        reasoning=getattr(outcome, "reasoning", None),
     )
     _stamp_groundedness(result, result.claims, result.evidence_blocks)
     passed, detail = grade_with_optional_judge(
@@ -176,6 +179,7 @@ def _run_diagnose(
                 claims=list(getattr(last, "claims", None) or []),
                 evidence_blocks=dict(getattr(last, "evidence_blocks", None) or {}),
                 diagnostic=dict(getattr(last, "diagnostic", None) or {}),
+                reasoning=getattr(last, "reasoning", None),
             )
         )
 
@@ -208,6 +212,7 @@ def _run_diagnose(
         citations=target.citations,
         turns=turns,
         duration_ms=elapsed,
+        reasoning=target.reasoning,
     )
     _stamp_groundedness(
         result,

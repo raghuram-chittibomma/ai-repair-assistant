@@ -900,6 +900,7 @@ def ask(
                 "retrieval_count": outcome.retrieval_count,
                 "safety_action": outcome.safety_action,
                 "escalated": outcome.escalated,
+                "reasoning": (outcome.reasoning or {}).get("outcome"),
             },
             metadata={
                 **meta,
@@ -1101,6 +1102,87 @@ def prepare_ask(
     )
 
 
+@dataclass
+class _ReleasedAnswer:
+    text: str
+    abstained: bool
+    abstain_reason: str
+    citations: list
+    claims: list
+    reasoning: dict | None
+
+
+def _release_gated_answer(
+    *,
+    question: str,
+    gated,
+    bound,
+    llm,
+    system: str,
+    user_prompt: str,
+    images,
+    available,
+    pdf_paths=None,
+) -> _ReleasedAnswer:
+    """SMT release after the safety gate. A replaced safety answer is not rechecked."""
+    from repair_assistant.reasoning.models import RewriteDraft
+    from repair_assistant.reasoning.release import apply_policy_release
+    from repair_assistant.reasoning.translator import translator_for_llm
+
+    original = (bound.display or "").strip()
+    safety_replaced = gated.blocked or (bool(original) and original not in gated.text)
+    if safety_replaced:
+        return _ReleasedAnswer(
+            text=gated.text,
+            abstained=gated.blocked,
+            abstain_reason=gated.notice if gated.blocked else "",
+            citations=[] if gated.blocked else list(bound.citations),
+            claims=list(bound.claims),
+            reasoning={"outcome": "skipped", "reason": "safety_gate"},
+        )
+
+    def rewrite(addendum: str) -> RewriteDraft:
+        raw = invoke_complete(
+            llm,
+            f"{system}\n\n{addendum}",
+            user_prompt,
+            images or None,
+            pdf_paths=list(pdf_paths) if pdf_paths else None,
+        )
+        rewritten = bind_generation(raw, available)
+        return RewriteDraft(
+            text=rewritten.display,
+            claims=list(rewritten.claims),
+            citations=list(rewritten.citations),
+            abstained=rewritten.abstained,
+        )
+
+    release = apply_policy_release(
+        question=question,
+        answer=gated.text,
+        translator=translator_for_llm(llm),
+        rewrite=rewrite,
+        citations=list(bound.citations),
+    )
+    if not release.mutates:
+        return _ReleasedAnswer(
+            text=gated.text,
+            abstained=gated.blocked,
+            abstain_reason=gated.notice if gated.blocked else "",
+            citations=[] if gated.blocked else list(bound.citations),
+            claims=list(bound.claims),
+            reasoning=release.reasoning,
+        )
+    return _ReleasedAnswer(
+        text=release.text,
+        abstained=bool(release.abstained),
+        abstain_reason=release.abstain_reason or "",
+        citations=[] if release.citations is None else list(release.citations),
+        claims=[] if release.claims is None else list(release.claims),
+        reasoning=release.reasoning,
+    )
+
+
 def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult:
     """Generate from a prep. Must not be called while holding a pool connection."""
     if prep.early is not None:
@@ -1110,27 +1192,35 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
         api_key=openai_api_key(), model=llm_model(), prompt_name="ask_system"
     )
     try:
-        raw = invoke_complete(
-            llm,
-            prep.system,
-            prep.user_prompt,
-            prep.page_images or None,
-            pdf_paths=prep.evidence_pdfs or None,
-        )
-    except (LLMError, LLMTimeoutError) as exc:
-        _log.warning("Generation failed; returning retrieved evidence instead: %s", exc)
-        return _degraded_answer(
-            prep.question,
-            citations=prep.available,
-            retrieval_count=len(prep.hits),
-            assessment=prep.assessment,
-            exc=exc,
-        )
+        try:
+            raw = invoke_complete(
+                llm,
+                prep.system,
+                prep.user_prompt,
+                prep.page_images or None,
+                pdf_paths=prep.evidence_pdfs or None,
+            )
+        except (LLMError, LLMTimeoutError) as exc:
+            _log.warning("Generation failed; returning retrieved evidence instead: %s", exc)
+            return _degraded_answer(
+                prep.question,
+                citations=prep.available,
+                retrieval_count=len(prep.hits),
+                assessment=prep.assessment,
+                exc=exc,
+            )
+        return _finish_ask(prep, llm, raw)
     finally:
-        if prep._evidence_attach is not None:
-            prep._evidence_attach.cleanup()
-            prep._evidence_attach = None
+        _cleanup_evidence_attach(prep)
 
+
+def _cleanup_evidence_attach(prep: AskPrep) -> None:
+    if prep._evidence_attach is not None:
+        prep._evidence_attach.cleanup()
+        prep._evidence_attach = None
+
+
+def _finish_ask(prep: AskPrep, llm: LLMClient, raw: str) -> AnswerResult:
     bound = bind_generation(raw, prep.available)
     blocks = evidence_blocks_from_citations(prep.available)
     if bound.abstained:
@@ -1150,20 +1240,31 @@ def complete_ask(prep: AskPrep, *, llm: LLMClient | None = None) -> AnswerResult
         )
 
     gated = _trace_gate(prep.assessment, bound.display, prep.evidence_text)
-    cited = [] if gated.blocked else bound.citations
+    released = _release_gated_answer(
+        question=prep.question,
+        gated=gated,
+        bound=bound,
+        llm=llm,
+        system=prep.system,
+        user_prompt=prep.user_prompt,
+        images=prep.page_images,
+        available=prep.available,
+        pdf_paths=prep.evidence_pdfs,
+    )
     return AnswerResult(
         question=prep.question,
-        answer=gated.text,
-        abstained=gated.blocked,
-        abstain_reason=gated.notice if gated.blocked else "",
-        citations=cited,
-        claims=list(bound.claims),
+        answer=released.text,
+        abstained=released.abstained,
+        abstain_reason=released.abstain_reason,
+        citations=released.citations,
+        claims=released.claims,
         evidence_blocks=blocks,
         retrieval_count=len(prep.hits),
         safety_action=gated.action.value,
         safety_notice=gated.notice,
         escalated=gated.escalated,
         figure_pages=_figure_specs(prep),
+        reasoning=released.reasoning,
     )
 
 
@@ -1205,6 +1306,7 @@ def _answer_result_to_done(result: AnswerResult) -> dict[str, Any]:
         "safety_notice": result.safety_notice,
         "escalated": result.escalated,
         "figure_pages": figure_page_payloads(result.figure_pages),
+        "reasoning": result.reasoning,
     }
 
 
@@ -1247,16 +1349,17 @@ def stream_from_prep(
             assessment=prep.assessment,
             exc=exc,
         )
+        _cleanup_evidence_attach(prep)
         yield _answer_result_to_done(degraded)
         return
-    finally:
-        if prep._evidence_attach is not None:
-            prep._evidence_attach.cleanup()
-            prep._evidence_attach = None
+    except BaseException:
+        _cleanup_evidence_attach(prep)
+        raise
 
     bound = bind_generation(raw, prep.available)
     blocks = evidence_blocks_from_citations(prep.available)
     if bound.abstained:
+        _cleanup_evidence_attach(prep)
         yield _answer_result_to_done(
             AnswerResult(
                 question=prep.question,
@@ -1276,23 +1379,38 @@ def stream_from_prep(
         return
 
     gated = _trace_gate(prep.assessment, bound.display, prep.evidence_text)
-    if stream_tokens and gated.text and not gated.blocked:
-        for piece in iter_answer_tokens(prep.assessment, gated.text):
+    try:
+        released = _release_gated_answer(
+            question=prep.question,
+            gated=gated,
+            bound=bound,
+            llm=client,
+            system=prep.system,
+            user_prompt=prep.user_prompt,
+            images=prep.page_images,
+            available=prep.available,
+            pdf_paths=prep.evidence_pdfs,
+        )
+    finally:
+        _cleanup_evidence_attach(prep)
+    if stream_tokens and released.text and not released.abstained:
+        for piece in iter_answer_tokens(prep.assessment, released.text):
             yield {"type": "token", "text": piece}
     yield _answer_result_to_done(
         AnswerResult(
             question=prep.question,
-            answer=gated.text,
-            abstained=gated.blocked,
-            abstain_reason=gated.notice if gated.blocked else "",
-            citations=[] if gated.blocked else bound.citations,
-            claims=list(bound.claims),
+            answer=released.text,
+            abstained=released.abstained,
+            abstain_reason=released.abstain_reason,
+            citations=released.citations,
+            claims=released.claims,
             evidence_blocks=blocks,
             retrieval_count=len(prep.hits),
             safety_action=gated.action.value,
             safety_notice=gated.notice,
             escalated=gated.escalated,
             figure_pages=_figure_specs(prep),
+            reasoning=released.reasoning,
         )
     )
 

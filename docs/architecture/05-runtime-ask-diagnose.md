@@ -77,6 +77,13 @@ flowchart TD
 - **Citations:** from `claims[].evidence_index`, with `[n]` in prose as fallback.
 - **Groundedness:** `bench-qa` scores each claim against its evidence block
   ([ADR-0029](../adr/0029-claim-groundedness.md)). The judge sees those blocks.
+- **Policy entailment:** after `gate_answer`, a Z3 check proves claims that map
+  onto `config/reasoning/answer_invariants.yaml` ([ADR-0055](../adr/0055-automated-reasoning-checks.md)).
+  A valid claim ships. An invalid claim is rewritten once, then withheld.
+  An under-determined or ambiguous covered claim becomes a question.
+  Text the policy does not translate stays on the citation check. The safety
+  regex gate still runs first, and this check does not run when that gate
+  already replaced the answer.
 - **Page images:** When a hit is a figure / schematic / photo-access page or
   cites a figure, and a vision-capable dated model is configured, attach up
   to three PDF page JPEGs at generate time ([ADR-0035](../adr/0035-late-fusion-page-images.md)).
@@ -131,7 +138,7 @@ flowchart TD
 | --- | --- |
 | `assess` | Pre-LLM safety; block skips retrieve/LLM |
 | `retrieve` | First turn / `new_symptom` / `mid_cycle_stop`: search + coalesce. `ack` / `still_unresolved` with a pack: **reuse** that evidence ([ADR-0043](../adr/0043-session-evidence-reuse.md)). Turn 2+ classify is label-only ([ADR-0039](../adr/0039-diagnose-retrieve-labels.md)): prefer **Jev** when `JEV_API_KEY` is set ([ADR-0054](../adr/0054-jev-diagnose-classify.md)), else OpenAI structured JSON, else regex / `acks.py` |
-| `respond` | Multi-turn system prompt, citations, optional gated page images, post-LLM `gate_answer` (OpenAI generate) |
+| `respond` | Multi-turn system prompt, citations, optional gated page images, post-LLM `gate_answer`, then the same SMT release check as ask (ADR-0055) |
 
 - **State:** Messages, appliance, evidence, citation pool, abstain / escalate flags ([ADR-0013](../adr/0013-langgraph-diagnostic.md)), plus an inspectable board (`step`, `phase`, `hypotheses`, `ruled_out`, `observations`) that is merged each turn and injected into the prompt ([ADR-0031](../adr/0031-structured-diagnostic-state.md)). On an acknowledgement (classify `ack` / `still_unresolved`, or `acks.py`), merge also records the prior `next_check`, numbered checklist items (one per line or inline `1. … 2. …`), and `TEST #N` names as `ruled_out` when the model omits them. Do not restart a cleared category from its first remedy **on the same problem**. After a corrected problem, live `ruled_out` starts empty ([ADR-0046](../adr/0046-current-span-protocol.md)) so the same See TEST may be offered again; history stays on the tally trail. A See TEST pointer may be named once per current symptom; after the user confirms it, respond closes by rule — do not call generate to repeat that TEST.
 - **NLU vs protocol:** Rules own the board, safety, applicability, and which OEM phrases may be appended. Turn 2+ classify returns a label only ([ADR-0039](../adr/0039-diagnose-retrieve-labels.md), [ADR-0054](../adr/0054-jev-diagnose-classify.md)). Progress follow-ups keep the last evidence pack so generate cannot hop books ([ADR-0043](../adr/0043-session-evidence-reuse.md)). Do not grow slang rows, a rule-only flowchart, or free query rewrite ([ADR-0034](../adr/0034-diagnose-nlu-split.md)). Regex / `acks.py` stay as fallback.

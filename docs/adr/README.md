@@ -68,6 +68,7 @@ End-to-end diagram (propose → human board → retrieve → generate with layou
 | --- | --- | --- |
 | [0012](0012-grounded-qa.md) | Retrieve (ADR-0010) → numbered evidence → OpenAI chat; citations + abstention | Charter Phase 6 |
 | [0028](0028-structured-claim-evidence.md) | Claim→evidence is a JSON `claims[].evidence_index`, not a regex scrape | Review R23; precondition for R27 |
+| [0055](0055-automated-reasoning-checks.md) | SMT policy entailment after the safety gate; lexical groundedness stays for untranslated text | Thresholds and negation survive a citation overlap check |
 
 ## Phase 6 — Diagnostic assistant
 

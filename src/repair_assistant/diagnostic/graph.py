@@ -62,6 +62,7 @@ from repair_assistant.qa.env import (
 from repair_assistant.qa.generate import (
     LLMClient,
     OpenAIClient,
+    _release_gated_answer,
     _trace_evidence_prompt,
     _trace_gate,
     invoke_complete,
@@ -233,6 +234,7 @@ def _done_payload(
         "diagnostic": dict(state.get("diagnostic") or {}),
         "tally": tally,
         "figure_pages": figure_page_payloads(state.get("figure_pages") or []),
+        "reasoning": state.get("reasoning"),
         "_state": state,
     }
 
@@ -302,6 +304,20 @@ def _session_symptom_anchor(messages: list) -> str:
             return text.strip()
     texts = _user_texts(messages)
     return texts[0].strip() if texts else ""
+
+
+def _policy_question(state: DiagnosticGraphState, latest: str) -> str:
+    """User facts for the policy check: the current problem span on a progress turn."""
+    label = _intent_label(state)
+    progress = label in {"ack", "still_unresolved"} or is_progress_followup(latest)
+    if not progress:
+        return latest
+    board = board_from_mapping(state.get("diagnostic"))
+    span = board.symptom_path[-1].text if board.symptom_path else board.symptom_anchor
+    span = (span or _session_symptom_anchor(state["messages"])).strip()
+    if span and span != latest.strip():
+        return f"{span}\n{latest}"
+    return latest
 
 
 def _retrieval_query(messages: list) -> str:
@@ -722,9 +738,11 @@ def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
                         pdf_paths=pdf_paths or None,
                     )
                     bound = bind_generation(raw, available)
-        finally:
+        except BaseException:
             _cleanup_evidence_pdfs(state)
+            raise
         if bound.abstained:
+            _cleanup_evidence_pdfs(state)
             return _attach_board(
                 state,
                 {
@@ -742,17 +760,32 @@ def make_respond_node(llm: LLMClient, manifest: Manifest | None = None):
             bound.display,
             evidence_text=state.get("evidence_text", ""),
         )
+        try:
+            released = _release_gated_answer(
+                question=_policy_question(state, latest),
+                gated=gated,
+                bound=bound,
+                llm=llm,
+                system=system,
+                user_prompt=user_prompt,
+                images=images,
+                available=available,
+                pdf_paths=pdf_paths,
+            )
+        finally:
+            _cleanup_evidence_pdfs(state)
         return _attach_board(
             state,
             {
-                "messages": [AIMessage(content=gated.text)],
-                "abstained": gated.blocked,
-                "abstain_reason": gated.notice if gated.blocked else "",
+                "messages": [AIMessage(content=released.text)],
+                "abstained": released.abstained,
+                "abstain_reason": released.abstain_reason,
                 "safety_action": gated.action.value,
                 "safety_notice": gated.notice,
                 "escalated": gated.escalated,
                 "prompt_directive": assessment.prompt_directive,
-                "claims": claims_as_dicts(bound.claims),
+                "claims": claims_as_dicts(released.claims),
+                "reasoning": released.reasoning,
             },
             raw=raw,
         )
@@ -928,13 +961,15 @@ def diagnose_turn_stream(
                     invoke_stream(client, retry_system, user_prompt, images)
                 ).strip()
             bound = bind_generation(raw, available)
-    finally:
+    except BaseException:
         _cleanup_evidence_pdfs(state)
+        raise
 
     stream_tokens = (
         not progress_followup and may_stream(assessment) and not pdf_paths
     )
     if bound.abstained:
+        _cleanup_evidence_pdfs(state)
         state = _apply_delta(
             state,
             {
@@ -949,23 +984,38 @@ def diagnose_turn_stream(
         return
 
     gated = _trace_gate(assessment, bound.display, state.get("evidence_text", ""))
-    if stream_tokens and gated.text and not gated.blocked:
-        for piece in iter_answer_tokens(assessment, gated.text):
+    try:
+        released = _release_gated_answer(
+            question=_policy_question(state, latest),
+            gated=gated,
+            bound=bound,
+            llm=client,
+            system=system,
+            user_prompt=user_prompt,
+            images=images,
+            available=available,
+            pdf_paths=pdf_paths,
+        )
+    finally:
+        _cleanup_evidence_pdfs(state)
+    if stream_tokens and released.text and not released.abstained:
+        for piece in iter_answer_tokens(assessment, released.text):
             yield {"type": "token", "text": piece}
     state = _apply_delta(
         state,
         {
-            "messages": [AIMessage(content=gated.text)],
-            "abstained": gated.blocked,
-            "abstain_reason": gated.notice if gated.blocked else "",
+            "messages": [AIMessage(content=released.text)],
+            "abstained": released.abstained,
+            "abstain_reason": released.abstain_reason,
             "safety_action": gated.action.value,
             "safety_notice": gated.notice,
             "escalated": gated.escalated,
-            "claims": claims_as_dicts(bound.claims),
+            "claims": claims_as_dicts(released.claims),
+            "reasoning": released.reasoning,
         },
     )
     state = _stamp_board(state, raw=raw)
-    yield _done_payload(state, gated.text)
+    yield _done_payload(state, released.text)
 
 
 def retrieve_diagnose_state(

@@ -255,6 +255,7 @@ class DiagnosticSession:
                 evidence_blocks=dict(pending.get("evidence_blocks") or {}),
                 diagnostic=dict(pending.get("diagnostic") or {}),
                 figure_pages=list(pending.get("figure_pages") or []),
+                reasoning=pending.get("reasoning"),
             )
             update_span(
                 span,
@@ -265,6 +266,7 @@ class DiagnosticSession:
                     "retrieval_count": turn.retrieval_count,
                     "safety_action": turn.safety_action,
                     "escalated": turn.escalated,
+                    "reasoning": (turn.reasoning or {}).get("outcome") if isinstance(turn.reasoning, dict) else None,
                     "diagnostic_phase": (turn.diagnostic or {}).get("phase"),
                     "diagnostic_step": (turn.diagnostic or {}).get("step"),
                 },

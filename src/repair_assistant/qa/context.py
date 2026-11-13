@@ -69,6 +69,7 @@ class AnswerResult:
     safety_notice: str = ""
     escalated: bool = False
     figure_pages: list[dict] = field(default_factory=list)
+    reasoning: dict | None = None
 
 
 def evidence_blocks_from_citations(citations: list[Citation]) -> dict[int, str]:

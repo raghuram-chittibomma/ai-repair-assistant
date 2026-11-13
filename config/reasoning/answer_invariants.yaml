@@ -1,0 +1,75 @@
+id: answer-invariants
+version: 1
+variables:
+  - name: doorPolarity
+    type: enum
+    role: fact
+    values: [STUCK_LOCKED, WILL_NOT_LOCK, UNKNOWN]
+    unknown: UNKNOWN
+    ask: >
+      Is the door stuck locked so it will not open, or will it not lock so the
+      cycle cannot start?
+    description: >
+      Which way the user says the door is failing. STUCK_LOCKED when the door
+      is locked and the user cannot open it: "door got locked", "door is
+      locked", "locked shut", "stuck locked", "won't open", "won't unlock".
+      WILL_NOT_LOCK when the door fails to lock or latch: "won't lock",
+      "failed to lock", "won't latch", "door not locking". UNKNOWN (do not
+      omit) when the user mentions a door or door lock problem without saying
+      which way it fails: "door lock problem", "something is wrong with the
+      door lock". Omit only when the user does not mention a door problem at
+      all, for example a drain or error-code question, or when the door locks
+      normally and something else fails.
+  - name: prescribesLockSideTest
+    type: bool
+    role: claim
+    requires: doorPolarity
+    description: >
+      True when the draft answer tells the user to run the door-will-not-lock
+      test or checks for a door that will not lock or latch as the next step.
+      Omit when the answer does not prescribe it.
+  - name: prescribesUnlockSideTest
+    type: bool
+    role: claim
+    requires: doorPolarity
+    description: >
+      True when the draft answer tells the user to run the
+      door-will-not-unlock or door-will-not-open procedure, or steps to unlock
+      a locked door. Omit when the answer does not prescribe it.
+  - name: meterReading
+    type: int
+    role: fact
+    ask: What number did your meter show, and in which unit?
+    description: >
+      Whole-number multimeter reading (ohms, volts, or amps) the user says
+      they measured. Never a fault code, model number, LED pattern, step
+      number, or time. Omit when the user states no measured reading. A
+      negative reading conflicts with the non-negative bound.
+  - name: quotedReading
+    type: int
+    role: claim
+    requires: meterReading
+    description: >
+      The user's own multimeter reading as the draft answer restates it back
+      to them, for example "your 12 ohm reading". Omit for a specification,
+      expected range, fault code, or any figure from the manual, and omit when
+      the answer does not restate the user's reading.
+rules:
+  - id: stuck-locked-not-lock-test
+    note: If the door is stuck locked, the answer must not prescribe the lock-side test.
+    expr: "(=> (= doorPolarity STUCK_LOCKED) (not prescribesLockSideTest))"
+  - id: stuck-locked-uses-unlock-test
+    note: If the door is stuck locked, the unlock-side procedure is the one to prescribe.
+    expr: "(=> (= doorPolarity STUCK_LOCKED) prescribesUnlockSideTest)"
+  - id: will-not-lock-not-unlock-test
+    note: If the door will not lock, the answer must not prescribe the unlock-side procedure.
+    expr: "(=> (= doorPolarity WILL_NOT_LOCK) (not prescribesUnlockSideTest))"
+  - id: will-not-lock-uses-lock-test
+    note: If the door will not lock, the lock-side test is the one to prescribe.
+    expr: "(=> (= doorPolarity WILL_NOT_LOCK) prescribesLockSideTest)"
+  - id: non-negative-reading
+    note: A meter reading is at least zero.
+    expr: "(>= meterReading 0)"
+  - id: quote-matches-reading
+    note: An answer that restates the user's reading quotes the number the user gave.
+    expr: "(= quotedReading meterReading)"
